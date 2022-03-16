@@ -1,0 +1,13 @@
+node_modules
+.env
+.DS_Store
+.idea/*
+coverage
+coverage.json
+typechain
+package-lock.json
+yarn.lock
+
+#Hardhat files
+cache
+artifacts
