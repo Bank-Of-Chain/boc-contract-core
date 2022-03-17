@@ -44,7 +44,6 @@ contract USDi is
     mapping(address => uint256) public nonRebasingCreditsPerToken;
     mapping(address => RebaseOptions) public rebaseState;
 
-    uint256 private constant RESOLUTION_INCREASE = 1e9;
 
     /**
      * @dev Sets the values for `name`, `symbol`, and `decimals`. All three of
@@ -104,30 +103,16 @@ contract USDi is
     }
 
     /**
-     * @return Low resolution rebasingCreditsPerToken
-     */
-    function rebasingCreditsPerToken() public view returns (uint256) {
-        return _rebasingCreditsPerToken / RESOLUTION_INCREASE;
-    }
-
-    /**
-     * @return Low resolution total number of rebasing credits
-     */
-    function rebasingCredits() public view returns (uint256) {
-        return _rebasingCredits / RESOLUTION_INCREASE;
-    }
-
-    /**
      * @return High resolution rebasingCreditsPerToken
      */
-    function rebasingCreditsPerTokenHighres() public view returns (uint256) {
+    function rebasingCreditsPerToken() public view returns (uint256) {
         return _rebasingCreditsPerToken;
     }
 
     /**
      * @return High resolution total number of rebasing credits
      */
-    function rebasingCreditsHighres() public view returns (uint256) {
+    function rebasingCredits() public view returns (uint256) {
         return _rebasingCredits;
     }
 
@@ -160,35 +145,9 @@ contract USDi is
         view
         returns (uint256)
     {
-        uint256 cpt = _creditsPerToken(_account);
-        if (cpt == 1e27) {
-            // For a period before the resolution upgrade, we created all new
-            // contract accounts at high resolution. Since they are not changing
-            // as a result of this upgrade, we will return their true values
-            return _creditBalances[_account];
-        } else {
-            return _creditBalances[_account] / RESOLUTION_INCREASE;
-        }
+        return _creditBalances[_account];
     }
 
-    /**
-     * @dev Gets the credits balance of the specified address.
-     * @param _account The address to query the balance of.
-     * @return (uint256, uint256) Credit balance, credits per token of the address
-     */
-    function creditsBalanceOfHighres(address _account)
-        public
-        view
-        returns (
-            uint256,
-            uint256
-        )
-    {
-        return (
-            _creditBalances[_account],
-            _creditsPerToken(_account)
-        );
-    }
 
     /**
      * @dev Transfer tokens to a specified address.
@@ -487,7 +446,7 @@ contract USDi is
             if (_creditBalances[_account] == 0) {
                 // Since there is no existing balance, we can directly set to
                 // high resolution, and do not have to do any other bookkeeping
-                nonRebasingCreditsPerToken[_account] = 1e27;
+                nonRebasingCreditsPerToken[_account] = 1e18;
             } else {
                 // Migrate an existing account:
 
