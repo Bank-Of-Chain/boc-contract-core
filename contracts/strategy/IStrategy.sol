@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 interface IStrategy {
 
-    event VaultChanged(address _oldVault,address _newVault);
-    event Harvest(uint _beforeAssets,uint _afterAssets);
+    event MigarteToNewVault(address _oldVault,address _newVault);
+    event Harvest(uint256 _beforeAssets,uint256 _afterAssets,address _rewardToken,uint256 _claimAmount);
     event Deposit(address[] _assets, uint256[] _amounts);
     event Withdraw(uint256 _withdrawShares,uint256 _totalShares,address[] _assets, uint256[] _amounts);
 
@@ -40,8 +40,9 @@ interface IStrategy {
     function get3rdPoolAssets() external view returns (uint256);
 
     /// @notice Provide a signal to the keeper that `harvest()` should be called.
-    /// @dev `callCostInWei` must be priced in terms of `wei` (1e-18 ETH).
-    function harvestTrigger(uint256 callCostInWei) external view returns (bool);
+    /// @param _rewardsToken reward token.
+    /// @param _pendingAmount pending reward amount.
+    function getPendingRewards() external view returns (address _rewardsToken,uint256 _pendingAmount);
 
     /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
     function harvest() external;
@@ -55,9 +56,6 @@ interface IStrategy {
     /// @param _withdrawShares Numerator
     /// @param _totalShares Denominator
     function withdraw(uint256 _withdrawShares,uint256 _totalShares) external;
-
-
-    // function balanceOfLpTokens() external view returns (uint256[] memory);
 
 
 
