@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 interface IStrategy {
 
-    event MigarteToNewVault(address _oldVault,address _newVault);
+    event MigrateToNewVault(address _oldVault,address _newVault);
     event Harvest(uint256 _beforeAssets,uint256 _afterAssets,address _rewardToken,uint256 _claimAmount);
     event Deposit(address[] _assets, uint256[] _amounts);
     event Withdraw(uint256 _withdrawShares,uint256 _totalShares,address[] _assets, uint256[] _amounts);
@@ -23,7 +23,7 @@ interface IStrategy {
     /// @notice Vault address
     function vault() external view returns (address);
 
-    /// @notice Migarte to new vault
+    /// @notice Migrate to new vault
     function setVault(address vaultAddress) external;
 
     /// @notice Harvester address
@@ -36,7 +36,7 @@ interface IStrategy {
     /// @notice Total assets of strategy in USD.
     function estimatedTotalAssets() external view returns (uint256);
 
-    /// @notice 3rd prototcol's pool total assets in USD.
+    /// @notice 3rd protocol's pool total assets in USD.
     function get3rdPoolAssets() external view returns (uint256);
 
     /// @notice Provide a signal to the keeper that `harvest()` should be called.
