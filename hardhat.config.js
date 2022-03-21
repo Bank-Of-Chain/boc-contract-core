@@ -4,6 +4,10 @@ require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
+require('hardhat-contract-sizer');
+const {
+  removeConsoleLog
+} = require('hardhat-preprocessor');
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -30,9 +34,17 @@ module.exports = {
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
   },
+  preprocess: {
+    eachLine: removeConsoleLog(bre => true),
+  },
   gasReporter: {
-    enabled: process.env.REPORT_GAS !== undefined,
-    currency: "USD",
+      enabled: true,
+      currency: 'USD',
+  },
+  contractSizer: {
+    alphaSort: true,
+    runOnCompile: true,
+    disambiguatePaths: false,
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,

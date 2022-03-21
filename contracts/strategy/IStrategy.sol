@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 interface IStrategy {
 
     event MigrateToNewVault(address _oldVault,address _newVault);
-    event Harvest(uint256 _beforeAssets,uint256 _afterAssets,address _rewardToken,uint256 _claimAmount);
-    event Deposit(address[] _assets, uint256[] _amounts);
-    event Withdraw(uint256 _withdrawShares,uint256 _totalShares,address[] _assets, uint256[] _amounts);
+    event Report(uint256 _beforeAssets,uint256 _afterAssets,address[] _rewardTokens,uint256[] _claimAmounts);
+    event Borrow(address[] _assets, uint256[] _amounts);
+    event Repay(uint256 _withdrawShares,uint256 _totalShares,address[] _assets, uint256[] _amounts);
 
     /// @notice Version of strategy
     function getVersion() external pure returns (string memory);
@@ -24,14 +24,14 @@ interface IStrategy {
     function vault() external view returns (address);
 
     /// @notice Migrate to new vault
-    function setVault(address vaultAddress) external;
+    function setVault(address _vaultAddress) external;
 
     /// @notice Harvester address
     function harvester() external view returns (address);
 
     /// @notice Provide the strategy need underlying token and ratio
     /// @dev If ratio is 0, it means that the ratio of the token is free.
-    function getWantsInfo() external view returns (address[] memory assets,uint[] memory ratios);
+    function getWantsInfo() external view returns (address[] memory _assets,uint[] memory _ratios);
 
     /// @notice Total assets of strategy in USD.
     function estimatedTotalAssets() external view returns (uint256);
@@ -47,15 +47,15 @@ interface IStrategy {
     /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
     function harvest() external;
 
-    /// @notice Vault deposit funds to strategy
-    /// @param _assets Deposit token address
-    /// @param _amounts Deposit token amount
-    function deposit(address[] memory _assets, uint256[] memory _amounts) external;
+    /// @notice Strategy borrow funds from vault
+    /// @param _assets borrow token address
+    /// @param _amounts borrow token amount
+    function borrow(address[] memory _assets, uint256[] memory _amounts) external;
 
-    /// @notice Vault withdraw funds from strategy
+    /// @notice Strategy repay the funds to vault
     /// @param _withdrawShares Numerator
     /// @param _totalShares Denominator
-    function withdraw(uint256 _withdrawShares,uint256 _totalShares) external returns (address[] memory _assets, uint256[] memory _amounts);
+    function repay(uint256 _withdrawShares,uint256 _totalShares) external returns (address[] memory _assets, uint256[] memory _amounts);
 
 
 
