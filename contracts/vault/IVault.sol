@@ -29,6 +29,12 @@ interface IVault {
     /// @notice Vault total asset in USD
     function totalAssets() external view returns (uint256);
 
+    /// @notice Address of treasury
+    function treasury() external view returns (address);
+
+    /// @notice Address of price oracle
+    function valueInterpreter() external view returns (address);
+
     /// @notice All strategies
     function getStrategies()
         external
