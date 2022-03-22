@@ -18,7 +18,11 @@ contract USDi is
 {
     using StableMath for uint256;
 
-    event TotalSupplyChanged(uint256 _newSupply,uint256 _rebasingCredits,uint256 _rebasingCreditsPerToken);
+    event TotalSupplyChanged(
+        uint256 _newSupply,
+        uint256 _rebasingCredits,
+        uint256 _rebasingCreditsPerToken
+    );
     event RebaseLocked(address _account);
     event RebaseUnlocked(address _account);
 
@@ -43,7 +47,6 @@ contract USDi is
     uint256 public nonRebasingSupply;
     mapping(address => uint256) public nonRebasingCreditsPerToken;
     mapping(address => RebaseOptions) public rebaseState;
-
 
     /**
      * @dev Sets the values for `name`, `symbol`, and `decimals`. All three of
@@ -140,14 +143,9 @@ contract USDi is
      * @return (uint256) Credit balance and credits per token of the
      *         address
      */
-    function creditsBalanceOf(address _account)
-        public
-        view
-        returns (uint256)
-    {
+    function creditsBalanceOf(address _account) public view returns (uint256) {
         return _creditBalances[_account];
     }
-
 
     /**
      * @dev Transfer tokens to a specified address.
@@ -336,7 +334,12 @@ contract USDi is
         bool isNonRebasingAccount = _isNonRebasingAccount(_account);
         uint256 creditAmount = _amount.mulTruncate(_creditsPerToken(_account));
         _creditBalances[_account] += creditAmount;
-        console.log('mint %s,amount:%d,creditBalances:%d',_account,_amount,_creditBalances[_account]);
+        // console.log(
+        //     "mint %s,amount:%d,creditBalances:%d",
+        //     _account,
+        //     _amount,
+        //     _creditBalances[_account]
+        // );
         // If the account is non rebasing and doesn't have a set creditsPerToken
         // then set it i.e. this is a mint from a fresh contract
         if (isNonRebasingAccount) {
@@ -536,7 +539,9 @@ contract USDi is
 
         require(_rebasingCreditsPerToken > 0, "Invalid change in supply");
 
-        _totalSupply = _rebasingCredits.divPrecisely(_rebasingCreditsPerToken) + nonRebasingSupply;
+        _totalSupply =
+            _rebasingCredits.divPrecisely(_rebasingCreditsPerToken) +
+            nonRebasingSupply;
 
         emit TotalSupplyChanged(
             _totalSupply,

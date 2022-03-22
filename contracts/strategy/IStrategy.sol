@@ -2,11 +2,20 @@
 pragma solidity ^0.8.0;
 
 interface IStrategy {
-
-    event MigrateToNewVault(address _oldVault,address _newVault);
-    event Report(uint256 _beforeAssets,uint256 _afterAssets,address[] _rewardTokens,uint256[] _claimAmounts);
+    event MigrateToNewVault(address _oldVault, address _newVault);
+    event Report(
+        uint256 _beforeAssets,
+        uint256 _afterAssets,
+        address[] _rewardTokens,
+        uint256[] _claimAmounts
+    );
     event Borrow(address[] _assets, uint256[] _amounts);
-    event Repay(uint256 _withdrawShares,uint256 _totalShares,address[] _assets, uint256[] _amounts);
+    event Repay(
+        uint256 _withdrawShares,
+        uint256 _totalShares,
+        address[] _assets,
+        uint256[] _amounts
+    );
 
     /// @notice Version of strategy
     function getVersion() external pure returns (string memory);
@@ -31,7 +40,10 @@ interface IStrategy {
 
     /// @notice Provide the strategy need underlying token and ratio
     /// @dev If ratio is 0, it means that the ratio of the token is free.
-    function getWantsInfo() external view returns (address[] memory _assets,uint[] memory _ratios);
+    function getWantsInfo()
+        external
+        view
+        returns (address[] memory _assets, uint256[] memory _ratios);
 
     /// @notice Total assets of strategy in USD.
     function estimatedTotalAssets() external view returns (uint256);
@@ -40,9 +52,15 @@ interface IStrategy {
     function get3rdPoolAssets() external view returns (uint256);
 
     /// @notice Provide a signal to the keeper that `harvest()` should be called.
-    /// @param _rewardsToken reward token.
-    /// @param _pendingAmount pending reward amount.
-    function getPendingRewards() external view returns (address _rewardsToken,uint256 _pendingAmount);
+    /// @param _rewardsTokens reward token.
+    /// @param _pendingAmounts pending reward amount.
+    function getPendingRewards()
+        external
+        view
+        returns (
+            address[] memory _rewardsTokens,
+            uint256[] memory _pendingAmounts
+        );
 
     /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
     function harvest() external;
@@ -50,13 +68,13 @@ interface IStrategy {
     /// @notice Strategy borrow funds from vault
     /// @param _assets borrow token address
     /// @param _amounts borrow token amount
-    function borrow(address[] memory _assets, uint256[] memory _amounts) external;
+    function borrow(address[] memory _assets, uint256[] memory _amounts)
+        external;
 
     /// @notice Strategy repay the funds to vault
     /// @param _withdrawShares Numerator
     /// @param _totalShares Denominator
-    function repay(uint256 _withdrawShares,uint256 _totalShares) external returns (address[] memory _assets, uint256[] memory _amounts);
-
-
-
+    function repay(uint256 _withdrawShares, uint256 _totalShares)
+        external
+        returns (address[] memory _assets, uint256[] memory _amounts);
 }

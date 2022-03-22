@@ -8,9 +8,24 @@ interface IVault {
     event RemoveAsset(address _asset);
     event AddStrategies(address[] _strategies);
     event RemoveStrategies(address[] _strategies);
-    event Mint(address _account,address[] _assets, uint256[] _amounts, uint256 _mintAmount);
-    event Burn(address _account,address[] _assets, uint256[] _amounts, uint256 _burnAmount);
-    event Exchange(address _srcAsset,uint256 _srcAmount,address _distAsset,address _distAmount);
+    event Mint(
+        address _account,
+        address[] _assets,
+        uint256[] _amounts,
+        uint256 _mintAmount
+    );
+    event Burn(
+        address _account,
+        address[] _assets,
+        uint256[] _amounts,
+        uint256 _burnAmount
+    );
+    event Exchange(
+        address _srcAsset,
+        uint256 _srcAmount,
+        address _distAsset,
+        address _distAmount
+    );
     event Redeem(address _strategy, uint256 _amount);
     event SetEmergencyShutdown(bool _shutdown);
 
