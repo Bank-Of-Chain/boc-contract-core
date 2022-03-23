@@ -1,6 +1,6 @@
 {
   "name": "boc-contract-core",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "BankOfChain protocol core.",
   "main": "index.js",
   "scripts": {

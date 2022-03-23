@@ -1,3 +1,5 @@
 hardhat.config.js
 scripts
 test
+artifacts
+cache
