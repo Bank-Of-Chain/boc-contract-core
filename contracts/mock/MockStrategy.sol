@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
 pragma solidity ^0.8.0;
 
-
 import "../strategy/BaseStrategy.sol";
 import "./Mock3rdPool.sol";
 
@@ -14,12 +13,12 @@ contract MockStrategy is BaseStrategy {
         public
         initializer
     {
-        console.log('MockStrategy--initialize');
+        console.log("MockStrategy--initialize");
         mock3rdPool = Mock3rdPool(_mock3rdPool);
 
         address[] memory _wants = new address[](1);
         _wants[0] = mock3rdPool.underlyingToken();
-        super._initialize(_vault,23,_wants);
+        super._initialize(_vault, 23, _wants);
     }
 
     function getVersion()
@@ -50,6 +49,15 @@ contract MockStrategy is BaseStrategy {
         _ratios[0] = 1;
     }
 
+    /// @notice Returns the position details of the strategy.
+    function getPositionDetail()
+        external
+        view
+        virtual
+        override
+        returns (address[] memory _tokens, uint256[] memory _amounts)
+    {}
+
     function estimatedTotalAssets()
         external
         view
@@ -61,7 +69,7 @@ contract MockStrategy is BaseStrategy {
         uint256 sharePrice = mock3rdPool.pricePerShare();
         uint256 decimals = mock3rdPool.decimals();
 
-        return (lpAmount * sharePrice) / 10 ** decimals;
+        return (lpAmount * sharePrice) / 10**decimals;
     }
 
     function get3rdPoolAssets()
@@ -75,7 +83,7 @@ contract MockStrategy is BaseStrategy {
         uint256 sharePrice = mock3rdPool.pricePerShare();
         uint256 decimals = mock3rdPool.decimals();
 
-        return (totalSupply * sharePrice) / 10 ** decimals;
+        return (totalSupply * sharePrice) / 10**decimals;
     }
 
     function getPendingRewards()
@@ -88,7 +96,7 @@ contract MockStrategy is BaseStrategy {
             uint256[] memory _pendingAmounts
         )
     {
-        (_rewardsTokens,_pendingAmounts) = mock3rdPool.getPendingRewards();
+        (_rewardsTokens, _pendingAmounts) = mock3rdPool.getPendingRewards();
     }
 
     function claimRewards()
@@ -100,7 +108,7 @@ contract MockStrategy is BaseStrategy {
             uint256[] memory _claimAmounts
         )
     {
-        (_rewardsTokens,) = mock3rdPool.getPendingRewards();
+        (_rewardsTokens, ) = mock3rdPool.getPendingRewards();
         _claimAmounts = mock3rdPool.claim();
     }
 
@@ -119,7 +127,7 @@ contract MockStrategy is BaseStrategy {
     {
         uint256 lpAmount = mock3rdPool.balanceOf(address(this));
         uint256 withdrawAmount = (lpAmount * _withdrawShares) / _totalShares;
-        (_assets,_amounts) = mock3rdPool.withdraw(withdrawAmount);
+        (_assets, _amounts) = mock3rdPool.withdraw(withdrawAmount);
     }
 
     function protectedTokens()
