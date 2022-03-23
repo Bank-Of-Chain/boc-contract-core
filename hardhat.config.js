@@ -2,12 +2,26 @@ require("dotenv").config();
 
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
+require('@nomiclabs/hardhat-truffle5');
 require("hardhat-gas-reporter");
 require("solidity-coverage");
 require('hardhat-contract-sizer');
 const {
   removeConsoleLog
 } = require('hardhat-preprocessor');
+
+let keys = {}
+try {
+    keys = require('./dev-keys.json');
+} catch (error) {
+    keys = {
+        alchemyKey: {
+            dev: process.env.CHAIN_KEY
+        }
+    }
+}
+
+const DEFAULT_BLOCK_GAS_LIMIT = 30000000;
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -28,6 +42,29 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 module.exports = {
 
   networks: {
+    hardhat: {
+      forking: {
+        //url: "https://mainnet.infura.io/v3/" + keys.infuraKey,
+        url: 'https://eth-mainnet.alchemyapi.io/v2/' + keys.alchemyKey.dev,
+        // url: 'https://eth-mainnet.alchemyapi.io/v2/LkaC5kaCGk8i5CIzO1kkuJrw3186Nkza',
+        blockNumber: 14176613, // <-- edit here
+      },
+      blockGasLimit: DEFAULT_BLOCK_GAS_LIMIT,
+      timeout: 1800000,
+      allowUnlimitedContractSize: true,
+    },
+    localhost: {
+      url: 'http://localhost:8545',
+      allowUnlimitedContractSize: true,
+      // 执行打块时使用的gasPrice，单位：wei
+      // gasPrice: 100 * 10 ** 9,
+      timeout: 1800000,
+
+      /*
+        notice no mnemonic here? it will just use account 0 of the hardhat node to deploy
+        (you can put in a mnemonic here to set the deployer locally)
+      */
+    },
     ropsten: {
       url: process.env.ROPSTEN_URL || "",
       accounts:
@@ -38,8 +75,8 @@ module.exports = {
     eachLine: removeConsoleLog(bre => true),
   },
   gasReporter: {
-      enabled: true,
-      currency: 'USD',
+    enabled: true,
+    currency: 'USD',
   },
   contractSizer: {
     alphaSort: true,
@@ -82,5 +119,5 @@ module.exports = {
     tests: './test',
     cache: './cache',
     artifacts: './artifacts',
-},
+  },
 };

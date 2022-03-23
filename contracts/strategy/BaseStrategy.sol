@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
 
@@ -20,7 +21,7 @@ interface IVault {
     function valueInterpreter() external view returns (address);
 }
 
-abstract contract BaseStrategy is AccessControlMixin {
+abstract contract BaseStrategy is AccessControlMixin,Initializable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     event MigarteToNewVault(address _oldVault, address _newVault);
@@ -196,7 +197,6 @@ abstract contract BaseStrategy is AccessControlMixin {
         }
 
         (_assets, _amounts) = withdrawFrom3rdPool(_repayShares, _totalShares);
-        transferTokensToTarget(address(vault), _assets, _amounts);
 
         for (uint8 i = 0; i < wantsCopy.length; i++) {
             address token = wantsCopy[i];
@@ -208,6 +208,7 @@ abstract contract BaseStrategy is AccessControlMixin {
                 (balancesBefore[i] * _repayShares) /
                 _totalShares;
         }
+        transferTokensToTarget(address(vault), _assets, _amounts);
 
         emit Repay(_repayShares, _totalShares, _assets, _amounts);
     }
