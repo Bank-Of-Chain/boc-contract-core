@@ -333,112 +333,18 @@ contract Vault is VaultStorage {
             _burnAmount = _burnAmount.sub(_amount.mul(redeemFeeBps).div(10000));
         }
         //redeem price in vault
-        uint256 _totalValueInVault = 0;
-        uint256 trackedAssetsLength = trackedAssetsMap.length();
-        for (uint256 i = 0; i < trackedAssetsLength; i++) {
-            (address trackedAsset,) = trackedAssetsMap.at(i);
-            uint256 balance = IERC20Upgradeable(trackedAsset).balanceOf(address(this));
-            if (balance > 0) {
-                uint256 decimals = Helpers.getDecimals(trackedAsset);
-                uint256 price = _priceUSDRedeem(trackedAsset);
-                _totalValueInVault = _totalValueInVault.add(balance.mulTruncateScale(price, 10 ** decimals));
-            }
-        }
-        uint256 _needWithdrawFromStrategyValue = 0;
+        uint256 _totalValueInVault = _calculateValueInVault();
         // vault not enough
         if (_totalValueInVault < _burnAmount) {
-            uint256 needWithdrawValue = _burnAmount - _totalValueInVault;
-            //            address[] memory withdrawTokens = _getTrackedAssets();
-            //            uint256[] memory withdrawAmounts = new uint256[](withdrawTokens.length);
-            for (uint256 i = 0; i < withdrawQueue.length; i++) {
-                address _strategy = withdrawQueue[i];
-                if (_strategy == ZERO_ADDRESS) break;
-
-                if (!strategySet.contains(_strategy)) {
-                    continue;
-                }
-                uint256 strategyTotalValue = 0;
-                IStrategy strategy = IStrategy(_strategy);
-                (address[] memory _tokens, uint256[] memory _amounts) = strategy.getPositionDetail();
-                for (uint256 i = 0; i < _tokens.length; i++) {
-                    if (_amounts[i] > 0) {
-                        uint256 decimals = Helpers.getDecimals(_tokens[i]);
-                        uint256 price = _priceUSDRedeem(_tokens[i]);
-                        strategyTotalValue = strategyTotalValue.add(_amounts[i].mulTruncateScale(price, 10 ** decimals));
-                    }
-                }
-
-                uint256 strategyWithdrawValue;
-                if (needWithdrawValue > strategyTotalValue) {
-                    strategyWithdrawValue = strategyTotalValue;
-                    needWithdrawValue -= strategyWithdrawValue;
-                } else {
-                    strategyWithdrawValue = needWithdrawValue;
-                    needWithdrawValue = 0;
-                }
-                console.log('start withdrawn from %s numerator %d denominator %d', strategy.name(), strategyWithdrawValue, strategyTotalValue);
-                (address[] memory withdrawStrategyAssets, uint256[] memory withdrawStrategyAmounts) = strategy.repay(strategyWithdrawValue, strategyTotalValue);
-                //                uint256 withdrawn;
-                //                for (uint256 i = 0; i < withdrawStrategyAssets.length; i++) {
-                //                    console.log('withdrawn from %s asset %s amount %d', strategy.name(), withdrawStrategyAssets[i], withdrawStrategyAmounts[i]);
-                ////                    withdrawn = withdrawn.add(withdrawStrategyAmounts[i].mul(IValueInterpreter(valueInterpreterAddress).price(withdrawStrategyAssets[i])));
-                //                    for (uint256 j = 0; j < withdrawTokens.length; j++) {
-                //                        if (withdrawTokens[j] == withdrawStrategyAssets[i]) {
-                //                            withdrawAmounts[j] += withdrawStrategyAmounts[i];
-                //                            console.log('withdrawn total token %s amount %d', withdrawStrategyAssets[i], withdrawAmounts[j]);
-                //                            break;
-                //                        }
-                //                    }
-                //                }
-                //                console.log('[vault.withdraw] strategy %s amountNeeded %d withdrawn %d', strategy.name(), strategyWithdrawValue, withdrawn);
-
-                //                _recordStrategyGainLoss(_strategy, withdrawn, strategyWithdrawValue);
-
-                if (needWithdrawValue <= 0) {
-                    break;
-                }
-            }
-
+            _repayFromWithdrawQueue(_burnAmount - _totalValueInVault);
         }
 
+        uint256[] memory outputs = _calculateOutput(_burnAmount);
 
-        uint256[] memory outputs = new uint256[](trackedAssetsLength);
-
-        uint256 _needTransferAmount = _burnAmount;
-
-        for (uint256 i = 0; i < trackedAssetsLength; i++) {
-            (address trackedAsset,) = trackedAssetsMap.at(i);
-            uint256 balance = IERC20Upgradeable(trackedAsset).balanceOf(address(this));
-            uint256 decimals = Helpers.getDecimals(trackedAsset);
-            if (balance > 0) {
-                uint256 price = _priceUSDRedeem(trackedAsset);
-                uint256 _value = balance.mulTruncateScale(price, 10 ** decimals);
-                if (_value >= _needTransferAmount) {
-                    outputs[i] = _needTransferAmount;
-                    break;
-                } else {
-                    outputs[i] = _value;
-                    _needTransferAmount = _needTransferAmount.sub(_value);
-                }
-            }
-        }
-
-        if (maxSupplyDiff > 0) {
-            // Check that USDI is backed by enough assets
-            uint256 _totalSupply = usdi.totalSupply();
-            uint256 _backingValue = _totalAssetInVault().add(_totalAssetInStrategies());
-            // Allow a max difference of maxSupplyDiff% between
-            // backing assets value and OUSD total supply
-            uint256 diff = _totalSupply.divPrecisely(_backingValue);
-            require(
-                (diff > 1e18 ? diff.sub(1e18) : uint256(1e18).sub(diff)) <=
-                maxSupplyDiff,
-                "Backing supply liquidity error"
-            );
-        }
+        _checkUSDIBackedEnough();
 
         uint256 _actualAmount = 0;
-        for (uint256 i = 0; i < trackedAssetsLength; i++) {
+        for (uint256 i = 0; i < trackedAssetsMap.length(); i++) {
             (address withdrawToken,) = trackedAssetsMap.at(i);
             uint256 withdrawDecimals = Helpers.getDecimals(withdrawToken);
             uint256 withdrawAmount = outputs[i].scaleBy(withdrawDecimals, 18);
@@ -487,6 +393,156 @@ contract Vault is VaultStorage {
             _rebase();
         }
         emit Burn(msg.sender, _asset, _amount, _burnAmount);
+    }
+
+    // calculate Value In Vault by priceUSDRedeem usd (1e18)
+    function _calculateValueInVault() internal returns (uint256 _totalValueInVault){
+        //redeem price in vault
+        uint256 trackedAssetsLength = trackedAssetsMap.length();
+        for (uint256 i = 0; i < trackedAssetsLength; i++) {
+            (address trackedAsset,) = trackedAssetsMap.at(i);
+            uint256 balance = IERC20Upgradeable(trackedAsset).balanceOf(address(this));
+            if (balance > 0) {
+                uint256 decimals = Helpers.getDecimals(trackedAsset);
+                uint256 price = _priceUSDRedeem(trackedAsset);
+                _totalValueInVault = _totalValueInVault.add(balance.mulTruncateScale(price, 10 ** decimals));
+            }
+        }
+    }
+
+    // withdraw from strategy queue
+    function _repayFromWithdrawQueue(uint256 needWithdrawValue) internal {
+        for (uint256 i = 0; i < withdrawQueue.length; i++) {
+            address _strategy = withdrawQueue[i];
+            if (_strategy == ZERO_ADDRESS) break;
+
+            if (!strategySet.contains(_strategy)) {
+                continue;
+            }
+            uint256 strategyTotalValue = 0;
+            IStrategy strategy = IStrategy(_strategy);
+            (address[] memory _tokens, uint256[] memory _amounts) = strategy.getPositionDetail();
+            for (uint256 i = 0; i < _tokens.length; i++) {
+                if (_amounts[i] > 0) {
+                    uint256 decimals = Helpers.getDecimals(_tokens[i]);
+                    uint256 price = _priceUSDRedeem(_tokens[i]);
+                    strategyTotalValue = strategyTotalValue.add(_amounts[i].mulTruncateScale(price, 10 ** decimals));
+                }
+            }
+
+            uint256 strategyWithdrawValue;
+            if (needWithdrawValue > strategyTotalValue) {
+                strategyWithdrawValue = strategyTotalValue;
+                needWithdrawValue -= strategyWithdrawValue;
+            } else {
+                strategyWithdrawValue = needWithdrawValue;
+                needWithdrawValue = 0;
+            }
+            console.log('start withdrawn from %s numerator %d denominator %d', strategy.name(), strategyWithdrawValue, strategyTotalValue);
+            (address[] memory withdrawStrategyAssets, uint256[] memory withdrawStrategyAmounts) = strategy.repay(strategyWithdrawValue, strategyTotalValue);
+
+            if (needWithdrawValue <= 0) {
+                break;
+            }
+        }
+    }
+
+    function _calculateOutput(uint256 _needTransferAmount) internal returns (uint256[] memory){
+        uint256 trackedAssetsMapLength = trackedAssetsMap.length();
+        uint256[] memory outputs = new uint256[](trackedAssetsMapLength);
+        for (uint256 i = 0; i < trackedAssetsMapLength; i++) {
+            (address trackedAsset,) = trackedAssetsMap.at(i);
+            uint256 balance = IERC20Upgradeable(trackedAsset).balanceOf(address(this));
+            uint256 decimals = Helpers.getDecimals(trackedAsset);
+            if (balance > 0) {
+                uint256 price = _priceUSDRedeem(trackedAsset);
+                uint256 _value = balance.mulTruncateScale(price, 10 ** decimals);
+                if (_value >= _needTransferAmount) {
+                    outputs[i] = _needTransferAmount;
+                    break;
+                } else {
+                    outputs[i] = _value;
+                    _needTransferAmount = _needTransferAmount.sub(_value);
+                }
+            }
+        }
+    }
+
+    //Check that USDI is backed by enough assets
+    function _checkUSDIBackedEnough() internal {
+        if (maxSupplyDiff > 0) {
+            // Check that USDI is backed by enough assets
+            uint256 _totalSupply = usdi.totalSupply();
+            uint256 _backingValue = _totalAssetInVault().add(_totalAssetInStrategies());
+            // Allow a max difference of maxSupplyDiff% between
+            // backing assets value and OUSD total supply
+            uint256 diff = _totalSupply.divPrecisely(_backingValue);
+            require(
+                (diff > 1e18 ? diff.sub(1e18) : uint256(1e18).sub(diff)) <=
+                maxSupplyDiff,
+                "Backing supply liquidity error"
+            );
+        }
+    }
+
+    /// @notice burn USDi,return stablecoins
+    /// @param _amount Amount of USDi to burn
+    function burnWithNonExchange(uint256 _amount,
+        uint256 _minimumUnitAmount
+    ) external returns (address[] memory _assets, uint256[] memory _amounts){
+        require(_amount > 0 && _amount <= usdi.balanceOf(msg.sender), "Amount must be greater than 0 and less than or equal to balance");
+
+        uint256 _burnAmount = _amount;
+        // Calculate redeem fee
+        if (redeemFeeBps > 0) {
+            _burnAmount = _burnAmount.sub(_amount.mul(redeemFeeBps).div(10000));
+        }
+        //redeem price in vault
+        uint256 _totalValueInVault = _calculateValueInVault();
+        // vault not enough
+        if (_totalValueInVault < _burnAmount) {
+            _repayFromWithdrawQueue(_burnAmount - _totalValueInVault);
+        }
+
+        uint256[] memory outputs = _calculateOutput(_burnAmount);
+
+        _checkUSDIBackedEnough();
+
+        uint256 _actualAmount = 0;
+        for (uint256 i = 0; i < trackedAssetsMap.length(); i++) {
+            _actualAmount = _actualAmount.add(outputs[i]);
+            (address withdrawToken,) = trackedAssetsMap.at(i);
+            uint256 withdrawDecimals = Helpers.getDecimals(withdrawToken);
+            outputs[i] = outputs[i].scaleBy(withdrawDecimals, 18);
+            if (outputs[i] > 0) {
+                if (IERC20Upgradeable(withdrawToken).balanceOf(address(this)) >= outputs[i]) {
+                    // Use Vault funds first if sufficient
+                    IERC20Upgradeable(withdrawToken).safeTransfer(msg.sender, outputs[i]);
+                } else {
+                    revert("Liquidity error");
+                }
+            }
+        }
+
+        if (_minimumUnitAmount > 0) {
+            require(
+                _actualAmount >= _minimumUnitAmount,
+                "Redeem amount lower than minimum"
+            );
+        }
+
+        usdi.burn(msg.sender, _burnAmount);
+
+        // Until we can prove that we won't affect the prices of our assets
+        // by withdrawing them, this should be here.
+        // It's possible that a strategy was off on its asset total, perhaps
+        // a reward token sold for more or for less than anticipated.
+        if (_burnAmount > rebaseThreshold && !rebasePaused) {
+            _rebase();
+        }
+        address[] memory _assets = _getTrackedAssets();
+        emit BurnWithNoExchange(msg.sender, _assets, outputs, _burnAmount);
+        return (_assets, outputs);
     }
 
     /// @notice Change USDi supply with Vault total assets.

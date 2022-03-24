@@ -20,6 +20,12 @@ interface IVault {
         uint256 _amount,
         uint256 _burnAmount
     );
+    event BurnWithNoExchange(
+        address _account,
+        address[] _assets,
+        uint256[] _amounts,
+        uint256 _burnAmount
+    );
     event Exchange(
         address _srcAsset,
         uint256 _srcAmount,
@@ -86,6 +92,12 @@ interface IVault {
         uint256 _minimumUnitAmount,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
     ) external;
+
+    /// @notice burn USDi,return stablecoins
+    /// @param _amount Amount of USDi to burn
+    function burnWithNonExchange(uint256 _amount,
+        uint256 _minimumUnitAmount
+    ) external returns (address[] memory _assets, uint256[] memory _amounts);
 
     /// @notice Change USDi supply with Vault total assets.
     function rebase() external;
