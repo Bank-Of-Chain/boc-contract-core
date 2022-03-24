@@ -36,7 +36,7 @@ contract Vault is VaultStorage {
     }
 
     modifier isActiveStrategy(address _strategy) {
-        require(strategySet.contains(_strategy),"strategy not exist");
+        require(strategySet.contains(_strategy), "strategy not exist");
         _;
     }
 
@@ -93,17 +93,8 @@ contract Vault is VaultStorage {
 
 
     /// @notice Vault holds asset value directly in USD (1e18)
-    function valueOfTrackedTokens() external view returns (uint256 _totalValue){
-        uint256 trackedAssetsLength = trackedAssetsMap.length();
-        for (uint256 i = 0; i < trackedAssetsLength; i++) {
-            (address trackedAsset,) = trackedAssetsMap.at(i);
-            uint256 balance = IERC20Upgradeable(trackedAsset).balanceOf(address(this));
-            if (balance > 0) {
-                uint256 decimals = Helpers.getDecimals(trackedAsset);
-                _totalValue = _totalValue.add(balance.scaleBy(18, decimals));
-            }
-        }
-        console.log('[vault.valueOfTrackedTokens] end totalValue:%d', _totalValue);
+    function valueOfTrackedTokens() external view returns (uint256){
+        return _totalAssetInVault();
     }
 
 
@@ -164,6 +155,7 @@ contract Vault is VaultStorage {
     /// @notice Remove support for specific asset.
     function removeAsset(address _asset) external isVaultManager whenNotEmergency {
         require(assetSet.contains(_asset), "Asset already not supported");
+        assetSet.remove(_asset);
         trackedAssetsMap.minus(_asset, 1);
         if (trackedAssetsMap.get(_asset) <= 0 && IERC20Upgradeable(_asset).balanceOf(address(this)) == 0) {
             trackedAssetsMap.remove(_asset);
@@ -177,15 +169,15 @@ contract Vault is VaultStorage {
     ///      and the strategy will invest the funds in the 3rd protocol
     function addStrategy(address[] memory _strategies) external isVaultManager whenNotEmergency {
         bool addressValid = true;
-        bool strategyNotExit = true;
+        bool strategyNotExist = true;
         bool vaultValid = true;
         for (uint256 i = 0; i < _strategies.length; i++) {
             addressValid = (_strategies[i] != ZERO_ADDRESS);
             if (addressValid == false) {
                 break;
             }
-            strategyNotExit = !strategySet.contains(_strategies[i]);
-            if (strategyNotExit == false) {
+            strategyNotExist = !strategySet.contains(_strategies[i]);
+            if (strategyNotExist == false) {
                 break;
             }
             vaultValid = (IStrategy(_strategies[i]).vault() == address(this));
@@ -193,12 +185,10 @@ contract Vault is VaultStorage {
                 break;
             }
         }
-        require(addressValid && strategyNotExit && vaultValid, "Strategy is invalid or the strategy already existed or vault address invalid");
-
+        require(addressValid && strategyNotExist && vaultValid, "Strategy is invalid or the strategy already existed or the vault address is invalid");
 
         for (uint256 i = 0; i < _strategies.length; i++) {
             strategySet.add(_strategies[i]);
-
             address[] memory _wants = IStrategy(_strategies[i]).getWants();
             for (uint j = 0; j < _wants.length; j++) {
                 trackedAssetsMap.plus(_wants[j], 1);
@@ -211,6 +201,15 @@ contract Vault is VaultStorage {
     /// @notice Remove strategy from strategy list
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
     function removeStrategy(address[] memory _strategies) external isVaultManager {
+        bool strategyExist = true;
+        for (uint256 i = 0; i < _strategies.length; i++) {
+            strategyExist = strategySet.contains(_strategies[i]);
+            if (strategyExist == false) {
+                break;
+            }
+        }
+        require(strategyExist, "Strategy not exist");
+
         for (uint256 i = 0; i < _strategies.length; i++) {
             _removeStrategy(_strategies[i]);
         }
@@ -222,8 +221,6 @@ contract Vault is VaultStorage {
      * @param _addr Address of the strategy to remove
      */
     function _removeStrategy(address _addr) internal {
-        require(strategySet.contains(_addr), "Strategy not exist");
-
         // Withdraw all assets
         IStrategy strategy = IStrategy(_addr);
 
@@ -237,7 +234,6 @@ contract Vault is VaultStorage {
                 trackedAssetsMap.remove(wantToken);
             }
         }
-
         _removeStrategyFromQueue(_addr);
     }
 
@@ -246,12 +242,12 @@ contract Vault is VaultStorage {
     /// @param _amounts Amount of the asset being deposited
     /// @dev Support single asset or multi-assets
     function mint(address[] memory _assets, uint256[] memory _amounts) external whenNotEmergency defense {
-        require(_assets.length > 0 && _amounts.length > 0 && _assets.length == _amounts.length, "Assets or amounts must not be empty and Assets length equal amounts");
+        require(_assets.length > 0 && _amounts.length > 0 && _assets.length == _amounts.length, "Assets or amounts must not be empty and Assets length must equal amounts length");
         bool amountsGreaterThanZero = true;
         bool assetsExist = true;
 
         for (uint256 i = 0; i < _assets.length; i++) {
-            assetsExist = trackedAssetsMap.contains(_assets[i]);
+            assetsExist = assetSet.contains(_assets[i]);
             if (assetsExist == false) {
                 break;
             }
@@ -272,13 +268,6 @@ contract Vault is VaultStorage {
             priceAdjustedDeposit = priceAdjustedDeposit.add(_amounts[i].mulTruncateScale(price, 10 ** assetDecimals));
         }
 
-        //        if (_minimumUsdiAmount > 0) {
-        //            require(
-        //                priceAdjustedDeposit >= _minimumUsdiAmount,
-        //                "Mint amount lower than minimum"
-        //            );
-        //        }
-
         // Rebase must happen before any transfers occur.
         if (unitAdjustedDeposit >= rebaseThreshold && !rebasePaused) {
             _rebase();
@@ -292,9 +281,7 @@ contract Vault is VaultStorage {
             IERC20Upgradeable asset = IERC20Upgradeable(_assets[i]);
             asset.safeTransferFrom(msg.sender, address(this), _amounts[i]);
         }
-        //        if (unitAdjustedDeposit >= autoAllocateThreshold) {
-        //            _allocate();
-        //        }
+
         emit Mint(msg.sender, _assets, _amounts, priceAdjustedDeposit);
     }
 
@@ -310,7 +297,7 @@ contract Vault is VaultStorage {
         require(assetSet.contains(_asset), "The asset not support");
         bool toTokenValid = true;
         for (uint256 i = 0; i < _exchangeTokens.length; i++) {
-            toTokenValid = _exchangeTokens[i].toToken == _asset;
+            toTokenValid = (_exchangeTokens[i].toToken == _asset);
             if (toTokenValid == false) {
                 break;
             }
@@ -676,17 +663,17 @@ contract Vault is VaultStorage {
     /// @notice redeem the funds from specified strategy.
     function redeem(address _strategy, uint256 _amount) external isKeeper isActiveStrategy(_strategy) whenNotEmergency {
         IStrategy strategy = IStrategy(_strategy);
-        //需要注意8位还是18位，确认后调整
-        uint256 strategyAssetValue = strategy.estimatedTotalAssets();
-        require(_amount <= strategyAssetValue);
-        (address[] memory _assets, uint256[] memory _amounts) = strategy.repay(_amount, strategyAssetValue);
-        uint256 redeemValue;
-        for (uint256 j = 0; j < _assets.length; j++) {
-            uint256 decimals = Helpers.getDecimals(_assets[j]);
-            uint256 price = _priceUSDRedeem(_assets[j]);
-            redeemValue = redeemValue.add(_amounts[j].mulTruncateScale(price, 10 ** decimals));
+        (address[] memory _tokens, uint256[] memory _amounts) = strategy.getPositionDetail();
+        uint256 strategyAssetValue = 0;
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            if (_amounts[i] > 0) {
+                uint256 decimals = Helpers.getDecimals(_tokens[i]);
+                strategyAssetValue = strategyAssetValue.add(_amounts[i].scaleBy(18, decimals));
+            }
         }
+        require(_amount <= strategyAssetValue);
 
+        strategy.repay(_amount, strategyAssetValue);
         console.log('[vault.redeem] %s redeem _amount %d totalDebt %d ', strategy.name(), _amount, strategyAssetValue);
         emit Redeem(_strategy, _amount);
     }
