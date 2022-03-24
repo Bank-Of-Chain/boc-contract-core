@@ -485,9 +485,9 @@ contract Vault is VaultStorage {
         }
     }
 
-    /// @notice burn USDi,return stablecoins
+    /// @notice burn USDi,return stablecoins without exchange
     /// @param _amount Amount of USDi to burn
-    function burnWithNonExchange(uint256 _amount,
+    function burnWithoutExchange(uint256 _amount,
         uint256 _minimumUnitAmount
     ) external returns (address[] memory _assets, uint256[] memory _amounts){
         require(_amount > 0 && _amount <= usdi.balanceOf(msg.sender), "Amount must be greater than 0 and less than or equal to balance");
@@ -541,7 +541,7 @@ contract Vault is VaultStorage {
             _rebase();
         }
         address[] memory _assets = _getTrackedAssets();
-        emit BurnWithNoExchange(msg.sender, _assets, outputs, _burnAmount);
+        emit BurnWithoutExchange(msg.sender, _assets, outputs, _burnAmount);
         return (_assets, outputs);
     }
 

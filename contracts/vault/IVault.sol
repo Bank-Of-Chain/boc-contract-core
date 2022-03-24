@@ -20,7 +20,7 @@ interface IVault {
         uint256 _amount,
         uint256 _burnAmount
     );
-    event BurnWithNoExchange(
+    event BurnWithoutExchange(
         address _account,
         address[] _assets,
         uint256[] _amounts,
@@ -93,9 +93,9 @@ interface IVault {
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
     ) external;
 
-    /// @notice burn USDi,return stablecoins
+    /// @notice burn USDi,return stablecoins  without exchange
     /// @param _amount Amount of USDi to burn
-    function burnWithNonExchange(uint256 _amount,
+    function burnWithoutExchange(uint256 _amount,
         uint256 _minimumUnitAmount
     ) external returns (address[] memory _assets, uint256[] memory _amounts);
 

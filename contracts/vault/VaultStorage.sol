@@ -38,7 +38,7 @@ contract VaultStorage is Initializable, AccessControlMixin {
         uint256 _amount,
         uint256 _burnAmount
     );
-    event BurnWithNoExchange(
+    event BurnWithoutExchange(
         address _account,
         address[] _assets,
         uint256[] _amounts,
