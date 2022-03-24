@@ -12,7 +12,7 @@ import "../library/BocRoles.sol";
 import "hardhat/console.sol";
 
 contract USDi is
-    IERC20Upgradeable,
+IERC20Upgradeable,
     ReentrancyGuardUpgradeable,
     AccessControlMixin
 {

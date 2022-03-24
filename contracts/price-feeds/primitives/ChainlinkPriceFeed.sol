@@ -123,6 +123,39 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         return (quoteAssetAmount_, isValid_);
     }
 
+
+    /// @notice Calculates the value of a base asset in terms of a quote asset (using a canonical rate)
+    /// @param _baseAsset The base asset
+    /// @param _baseAssetAmount The base asset amount to convert
+    /// @return quoteAssetAmount_ The equivalent quote asset amount
+    /// @return isValid_ True if the rates used in calculations are deemed valid
+    function calcValueInUsd(
+        address _baseAsset,
+        uint256 _baseAssetAmount
+    ) external view override returns (uint256 quoteAssetAmount_, bool isValid_) {
+        // Case where _baseAsset == _quoteAsset is handled by ValueInterpreter
+
+        int256 baseAssetRate = __getLatestRateData(_baseAsset);
+        if (baseAssetRate <= 0) {
+            return (0, false);
+        }
+
+        (quoteAssetAmount_, isValid_) = __calcConversionAmountInUsd(
+            _baseAsset,
+            _baseAssetAmount,
+            uint256(baseAssetRate)
+        );
+
+        return (quoteAssetAmount_, isValid_);
+    }
+
+
+    /// @notice Gets the unit variable value for a primitive
+    /// @return unit_ The unit variable value
+    function getAssetUnit(address _asset) public view override returns (uint256 unit_) {
+        return getUnitForPrimitive(_asset);
+    }
+
     /// @notice Checks whether an asset is a supported primitive of the price feed
     /// @param _asset The asset to check
     /// @return isSupported_ True if the asset is a supported primitive
@@ -189,6 +222,51 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         // If _baseAsset's rate is in USD and _quoteAsset's rate is in ETH
         return (
         __calcConversionAmountUsdRateAssetToEthRateAsset(
+            _baseAssetAmount,
+            baseAssetUnit,
+            _baseAssetRate,
+            quoteAssetUnit,
+            _quoteAssetRate,
+            uint256(ethPerUsdRate)
+        ),
+        true
+        );
+    }
+    /// @dev Helper to convert an amount from a _baseAsset to a _usdAsset
+    function __calcConversionAmountInUsd(
+        address _baseAsset,
+        uint256 _baseAssetAmount,
+        uint256 _baseAssetRate
+    ) private view returns (uint256 usdAssetAmount_, bool isValid_) {
+        RateAsset baseAssetRateAsset = getRateAssetForPrimitive(_baseAsset);
+
+        uint256 baseAssetUnit = getUnitForPrimitive(_baseAsset);
+        uint256 quoteAssetUnit = USD_UNIT;
+        uint256 _quoteAssetRate = USD_UNIT;
+
+        // If base asset rates are in USD
+        if (baseAssetRateAsset == RateAsset.USD) {
+            return (
+            __calcConversionAmountSameRateAsset(
+                _baseAssetAmount,
+                baseAssetUnit,
+                _baseAssetRate,
+                quoteAssetUnit,
+                _quoteAssetRate
+            ),
+            true
+            );
+        }
+
+        (,int ethPerUsdRate,, uint256 ethPerUsdRateLastUpdatedAt,) = AggregatorV3Interface(ethUsdAggregator).latestRoundData();
+        if (ethPerUsdRate <= 0) {
+            return (0, false);
+        }
+        __validateRateIsNotStale(ethUsdAggregator, ethPerUsdRateLastUpdatedAt, ethUsdHeartbeat);
+
+        // If _baseAsset's rate is in ETH
+        return (
+        __calcConversionAmountEthRateAssetToUsdRateAsset(
             _baseAssetAmount,
             baseAssetUnit,
             _baseAssetRate,

@@ -99,7 +99,83 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         return value_;
     }
 
+    /*
+       * 资产的usd价值
+       * _baseAsset: 源token地址
+       * _amount: 源token数量
+       */
+    function calcCanonicalAssetValueInUsd(
+        address _baseAsset,
+        uint256 _amount
+    ) external view override returns (uint256 value_){
+        if (_amount == 0) {
+            return _amount;
+        }
+        bool isValid_;
+        (value_, isValid_) = __calcAssetValueInUsd(_baseAsset, _amount);
+        require(isValid_, 'Invalid rate');
+        return value_;
+    }
+
+    /*
+       * baseUnit数量资产的usd价值
+       * _baseAsset: 源token地址
+       */
+    function price(address _baseAsset) external view override returns (uint256 value_){
+        // Handle case that asset is a primitive
+        if (IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(_baseAsset)) {
+            bool isValid_;
+            (value_, isValid_) = IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).calcValueInUsd(
+                _baseAsset,
+                IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).getAssetUnit(_baseAsset)
+            );
+            require(isValid_, 'Invalid rate');
+            return value_;
+        }
+        revert(string(
+            abi.encodePacked(
+                '__calcAssetValue: Unsupported _baseAsset ',
+                Strings.toHexString(uint160(_baseAsset), 20)
+            )
+        ));
+    }
+
     // PRIVATE FUNCTIONS
+
+    /// @dev Helper to differentially calculate an asset value
+    /// based on if it is a primitive or derivative asset.
+    function __calcAssetValueInUsd(
+        address _baseAsset,
+        uint256 _amount
+    ) private view returns (uint256 value_, bool isValid_) {
+        if (_amount == 0) {
+            return (_amount, true);
+        }
+
+        // Handle case that asset is a primitive
+        if (IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(_baseAsset)) {
+            return
+            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).calcValueInUsd(
+                _baseAsset,
+                _amount
+            );
+        }
+
+        // Handle case that asset is a derivative
+        address derivativePriceFeed = IAggregatedDerivativePriceFeed(
+            AGGREGATED_DERIVATIVE_PRICE_FEED
+        ).getPriceFeedForDerivative(_baseAsset);
+        if (derivativePriceFeed != address(0)) {
+            return __calcDerivativeValueInUsd(derivativePriceFeed, _baseAsset, _amount);
+        }
+
+        revert(string(
+            abi.encodePacked(
+                '__calcAssetValue: Unsupported _baseAsset ',
+                Strings.toHexString(uint160(_baseAsset), 20)
+            )
+        ));
+    }
 
     /// @dev Helper to differentially calculate an asset value
     /// based on if it is a primitive or derivative asset.
@@ -137,6 +213,39 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
                     Strings.toHexString(uint160(_baseAsset), 20)
                 )
             ));
+    }
+
+    /// @dev Helper to calculate the value of a derivative in an arbitrary asset.
+    /// Handles multiple underlying assets (e.g., Uniswap and Balancer pool tokens).
+    /// Handles underlying assets that are also derivatives (e.g., a cDAI-ETH LP)
+    function __calcDerivativeValueInUsd(
+        address _derivativePriceFeed,
+        address _derivative,
+        uint256 _amount
+    ) private view returns (uint256 value_, bool isValid_) {
+        (address[] memory underlyings, uint256[] memory underlyingAmounts) = IDerivativePriceFeed(
+            _derivativePriceFeed
+        ).calcUnderlyingValues(_derivative, _amount);
+
+        require(underlyings.length > 0, '__calcDerivativeValue: No underlyings');
+        require(
+            underlyings.length == underlyingAmounts.length,
+            '__calcDerivativeValue: Arrays unequal lengths'
+        );
+
+        // Let validity be negated if any of the underlying value calculations are invalid
+        isValid_ = true;
+        for (uint256 i = 0; i < underlyings.length; i++) {
+            (uint256 underlyingValue, bool underlyingValueIsValid) = __calcAssetValueInUsd(
+                underlyings[i],
+                underlyingAmounts[i]
+            );
+
+            if (!underlyingValueIsValid) {
+                isValid_ = false;
+            }
+            value_ = value_ + underlyingValue;
+        }
     }
 
     /// @dev Helper to calculate the value of a derivative in an arbitrary asset.
