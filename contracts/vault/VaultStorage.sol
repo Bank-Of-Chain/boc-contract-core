@@ -20,7 +20,10 @@ import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract VaultStorage is Initializable, AccessControlMixin {
+
     using StableMath for uint256;
+    using EnumerableSet for EnumerableSet.AddressSet;
+    using IterableIntMap for IterableIntMap.AddressToIntMap;
 
     event AddAsset(address _asset);
     event RemoveAsset(address _asset);
@@ -61,6 +64,13 @@ contract VaultStorage is Initializable, AccessControlMixin {
 
     // usdi
     USDi internal usdi;
+
+    // all strategy
+    EnumerableSet.AddressSet internal strategySet;
+    // Assets supported by the Vault, i.e. Stablecoins
+    EnumerableSet.AddressSet internal assetSet;
+    // Assets held by Vault
+    IterableIntMap.AddressToIntMap internal trackedAssetsMap;
 
     // emergency shutdown
     bool public emergencyShutdown;

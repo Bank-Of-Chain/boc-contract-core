@@ -13,18 +13,8 @@ contract Vault is VaultStorage {
     using SafeMath for uint256;
     using StableMath for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
-
-
-    // all strategy
-    EnumerableSet.AddressSet internal strategySet;
-    // Assets supported by the Vault, i.e. Stablecoins
-    EnumerableSet.AddressSet internal assetSet;
-    // Assets held by Vault
-    IterableIntMap.AddressToIntMap internal trackedAssetsMap;
-
 
     // Only smart contracts will be affected by this modifier
     modifier defense() {
@@ -46,7 +36,7 @@ contract Vault is VaultStorage {
     }
 
     modifier isActiveStrategy(address _strategy) {
-        require(strategySet.contains(_strategy));
+        require(strategySet.contains(_strategy),"strategy not exist");
         _;
     }
 
