@@ -2,9 +2,11 @@
 pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/access/AccessControlEnumerable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
 //治理者代理，部署后owner会转移给多签账户
-contract AccessControlProxy is AccessControlEnumerable {
+contract AccessControlProxy is Initializable, AccessControlEnumerable {
+
     /// same privileges as `gov_role`
     bytes32 public constant DELEGATE_ROLE = keccak256('DELEGATE_ROLE');
     /// configuring options within the vault contract
@@ -12,7 +14,7 @@ contract AccessControlProxy is AccessControlEnumerable {
     /// can `rebalance` the vault via the strategy contract
     bytes32 public constant KEEPER_ROLE = keccak256('KEEPER_ROLE');
 
-    constructor(address _governance, address _delegate, address _vault, address _keeper){
+    function initialize(address _governance, address _delegate, address _vault, address _keeper) public initializer {
         require(!(_governance == address(0) || _delegate == address(0) || _vault == address(0) || _keeper == address(0)));
 
         _setupRole(DEFAULT_ADMIN_ROLE, _governance);
