@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.0;
 
-import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 // Based on StableMath from Stability Labs Pty. Ltd.
 // https://github.com/mstable/mStable-contracts/blob/master/contracts/shared/StableMath.sol
 
 library StableMath {
-    using SafeMath for uint256;
 
     /**
      * @dev Scaling unit for use in specific calculations,
@@ -30,9 +29,9 @@ library StableMath {
         uint256 from
     ) internal pure returns (uint256) {
         if (to > from) {
-            x = x.mul(10**(to - from));
+            x = x * (10 ** (to - from));
         } else if (to < from) {
-            x = x.div(10**(from - to));
+            x = x / (10 ** (from - to));
         }
         return x;
     }
@@ -68,9 +67,9 @@ library StableMath {
     ) internal pure returns (uint256) {
         // e.g. assume scale = fullScale
         // z = 10e18 * 9e17 = 9e36
-        uint256 z = x.mul(y);
+        uint256 z = x * y;
         // return 9e36 / 1e18 = 9e18
-        return z.div(scale);
+        return z / scale;
     }
 
     /**
@@ -81,16 +80,16 @@ library StableMath {
      *          scale unit, rounded up to the closest base unit.
      */
     function mulTruncateCeil(uint256 x, uint256 y)
-        internal
-        pure
-        returns (uint256)
+    internal
+    pure
+    returns (uint256)
     {
         // e.g. 8e17 * 17268172638 = 138145381104e17
-        uint256 scaled = x.mul(y);
+        uint256 scaled = x * y;
         // e.g. 138145381104e17 + 9.99...e17 = 138145381113.99...e17
-        uint256 ceil = scaled.add(FULL_SCALE.sub(1));
+        uint256 ceil = scaled + (FULL_SCALE - 1);
         // e.g. 13814538111.399...e18 / 1e18 = 13814538111
-        return ceil.div(FULL_SCALE);
+        return ceil / FULL_SCALE;
     }
 
     /**
@@ -102,13 +101,13 @@ library StableMath {
      *         executing the division on the right hand input.
      */
     function divPrecisely(uint256 x, uint256 y)
-        internal
-        pure
-        returns (uint256)
+    internal
+    pure
+    returns (uint256)
     {
         // e.g. 8e18 * 1e18 = 8e36
-        uint256 z = x.mul(FULL_SCALE);
+        uint256 z = x * FULL_SCALE;
         // e.g. 8e36 / 10e18 = 8e17
-        return z.div(y);
+        return z / y;
     }
 }

@@ -33,8 +33,17 @@ interface IVault {
         address _distAmount
     );
     event Redeem(address _strategy, uint256 _amount);
-    event SetEmergencyShutdown(bool _shutdown);
     event RemoveStrategyFromQueue(address[] _strategies);
+    event SetEmergencyShutdown(bool _shutdown);
+    event RebasePaused();
+    event RebaseUnpaused();
+    event RebaseThresholdUpdated(uint256 _threshold);
+    event MaxSupplyDiffChanged(uint256 maxSupplyDiff);
+    event TrusteeFeeBpsChanged(uint256 _basis);
+    event TreasuryAddressChanged(address _address);
+    event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
+    event RedeemFeeUpdated(uint256 _redeemFeeBps);
+    event SetWithdrawalQueue(address[] queues);
 
     /// @notice Version of vault
     function getVersion() external pure returns (string memory);
@@ -83,20 +92,17 @@ interface IVault {
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
     /// @dev Support single asset or multi-assets
-    function mint(address[] memory _assets, uint256[] memory _amounts) external;
+    function mint(address[] memory _assets, uint256[] memory _amounts, uint256 _minimumUsdiAmount) external;
 
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
+    /// @param _asset one of StableCoin asset
+    /// @param _minimumUnitAmount Minimum stablecoin units to receive in return
     function burn(uint256 _amount,
         address _asset,
         uint256 _minimumUnitAmount,
+        bool _needExchange,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
-    ) external;
-
-    /// @notice burn USDi,return stablecoins  without exchange
-    /// @param _amount Amount of USDi to burn
-    function burnWithoutExchange(uint256 _amount,
-        uint256 _minimumUnitAmount
     ) external returns (address[] memory _assets, uint256[] memory _amounts);
 
     /// @notice Change USDi supply with Vault total assets.
@@ -110,9 +116,6 @@ interface IVault {
 
     /// @notice Withdraw the funds from specified strategy.
     function redeem(address _strategy, uint256 _amount) external;
-
-    /// @notice Strategy report asset
-    function report(uint256 _strategyAsset) external;
 
     /// @notice Shutdown the vault when an emergency occurs, cannot mint/burn.
     function setEmergencyShutdown(bool active) external;
