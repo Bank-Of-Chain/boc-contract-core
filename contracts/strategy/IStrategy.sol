@@ -49,7 +49,7 @@ interface IStrategy {
     function getWants() external view returns (address[] memory _wants);
 
     /// @notice Returns the position details of the strategy.
-    function getPositionDetail() external view returns (address[] memory _tokens, uint256[] memory _amounts);
+    function getPositionDetail() external view returns (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue);
 
     /// @notice Total assets of strategy in USD.
     function estimatedTotalAssets() external view returns (uint256);

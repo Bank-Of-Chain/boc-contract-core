@@ -54,8 +54,17 @@ contract VaultStorage is Initializable, AccessControlMixin {
         address _distAmount
     );
     event Redeem(address _strategy, uint256 _amount);
-    event SetEmergencyShutdown(bool _shutdown);
     event RemoveStrategyFromQueue(address[] _strategies);
+    event SetEmergencyShutdown(bool _shutdown);
+    event RebasePaused();
+    event RebaseUnpaused();
+    event RebaseThresholdUpdated(uint256 _threshold);
+    event MaxSupplyDiffChanged(uint256 maxSupplyDiff);
+    event TrusteeFeeBpsChanged(uint256 _basis);
+    event TreasuryAddressChanged(address _address);
+    event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
+    event RedeemFeeUpdated(uint256 _redeemFeeBps);
+    event SetWithdrawalQueue(address[] queues);
 
     address internal constant ZERO_ADDRESS = address(0);
 
@@ -72,10 +81,10 @@ contract VaultStorage is Initializable, AccessControlMixin {
     // Assets held by Vault
     IterableIntMap.AddressToIntMap internal trackedAssetsMap;
 
+    //adjust Position Period
+    bool public adjustPositionPeriod;
     // emergency shutdown
     bool public emergencyShutdown;
-    //adjust position
-    bool public adjustPositionPeriod;
     // Pausing bools
     bool public rebasePaused = false;
     // Mints over this amount automatically rebase. 18 decimals.
