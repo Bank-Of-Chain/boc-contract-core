@@ -8,5 +8,12 @@ interface IPrimitivePriceFeed {
         address
     ) external view returns (uint256, bool);
 
+    function calcValueInUsd(
+        address _baseAsset,
+        uint256 _baseAssetAmount
+    ) external view returns (uint256 quoteAssetAmount_, bool isValid_);
+
+    function getAssetUnit(address) external view returns (uint256);
+
     function isSupportedAsset(address) external view returns (bool);
 }

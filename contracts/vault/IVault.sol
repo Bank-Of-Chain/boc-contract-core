@@ -16,6 +16,12 @@ interface IVault {
     );
     event Burn(
         address _account,
+        address _asset,
+        uint256 _amount,
+        uint256 _burnAmount
+    );
+    event BurnWithoutExchange(
+        address _account,
         address[] _assets,
         uint256[] _amounts,
         uint256 _burnAmount
@@ -28,6 +34,7 @@ interface IVault {
     );
     event Redeem(address _strategy, uint256 _amount);
     event SetEmergencyShutdown(bool _shutdown);
+    event RemoveStrategyFromQueue(address[] _strategies);
 
     /// @notice Version of vault
     function getVersion() external pure returns (string memory);
@@ -52,15 +59,9 @@ interface IVault {
 
     /// @notice All strategies
     function getStrategies()
-        external
-        view
-        returns (address[] memory strategies);
-
-    /// @notice Calculate the number of stablecoins that burn shares can return
-    function calculateRedeemOutputs(uint256 _amount)
-        external
-        view
-        returns (uint256[] memory);
+    external
+    view
+    returns (address[] memory strategies);
 
     /// @notice Added support for specific asset.
     function addAsset(address _asset) external;
@@ -86,7 +87,17 @@ interface IVault {
 
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
-    function burn(uint256 _amount) external;
+    function burn(uint256 _amount,
+        address _asset,
+        uint256 _minimumUnitAmount,
+        IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
+    ) external;
+
+    /// @notice burn USDi,return stablecoins  without exchange
+    /// @param _amount Amount of USDi to burn
+    function burnWithoutExchange(uint256 _amount,
+        uint256 _minimumUnitAmount
+    ) external returns (address[] memory _assets, uint256[] memory _amounts);
 
     /// @notice Change USDi supply with Vault total assets.
     function rebase() external;
