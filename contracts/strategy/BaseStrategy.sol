@@ -8,6 +8,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20Metadat
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
+import "../library/StableMath.sol";
+import "../price-feeds/IValueInterpreter.sol";
 
 interface IVault {
     function accessControlProxy() external view returns (address);
@@ -23,6 +25,7 @@ interface IVault {
 
 abstract contract BaseStrategy is AccessControlMixin,Initializable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using StableMath for uint256;
 
     event MigarteToNewVault(address _oldVault, address _newVault);
     event Report(
@@ -40,6 +43,7 @@ abstract contract BaseStrategy is AccessControlMixin,Initializable {
     );
 
     IVault public vault;
+    IValueInterpreter public valueInterpreter;
     address public harvester;
     uint16 public protocol;
     address[] public wants;
@@ -53,6 +57,7 @@ abstract contract BaseStrategy is AccessControlMixin,Initializable {
     ) internal {
         protocol = _protocol;
         vault = IVault(_vault);
+        valueInterpreter = IValueInterpreter(vault.valueInterpreter());
 
         _initAccessControl(vault.accessControlProxy());
 
@@ -270,9 +275,9 @@ abstract contract BaseStrategy is AccessControlMixin,Initializable {
     function queryTokenValue(address _token, uint256 _amount)
         internal
         view
-        returns (uint256 vauleInUSD)
+        returns (uint256 valueInUSD)
     {
-        // TODO::need valueInterpreter()
+        valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(_token, _amount).scaleBy(18, 8);
     }
 
     function decimalUnitOfToken(address _token)
