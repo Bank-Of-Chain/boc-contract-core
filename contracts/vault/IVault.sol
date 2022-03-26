@@ -72,9 +72,6 @@ interface IVault {
     view
     returns (address[] memory strategies);
 
-    /// @notice All assets
-    function getAssets() external view returns (address[] memory);
-
     /// @notice Added support for specific asset.
     function addAsset(address _asset) external;
 
