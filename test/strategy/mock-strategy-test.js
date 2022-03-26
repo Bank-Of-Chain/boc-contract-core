@@ -32,6 +32,7 @@ describe('Strategy test',function(){
     let mock3rdPool;
     let mockStrategy;
     let mockVault;
+    let harvester;
 
     
 
@@ -39,6 +40,7 @@ describe('Strategy test',function(){
         // [sender] = new MockProvider().getWallets();
         let accounts = await ethers.getSigners();
         sender = accounts[0];
+        harvester = accounts[1];
 
         await topUpUsdtByAddress(100000 * 1e6,sender.address);
 
@@ -56,7 +58,7 @@ describe('Strategy test',function(){
         mockStrategy = await MockStrategy.new();
         console.log('mockStrategy:',mockStrategy.address);
 
-        await mockStrategy.initialize(mockVault.address,mock3rdPool.address);
+        await mockStrategy.initialize(mockVault.address, harvester, mock3rdPool.address);
     });
 
   
