@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
 import "../library/StableMath.sol";
@@ -23,7 +23,7 @@ interface IVault {
     function valueInterpreter() external view returns (address);
 }
 
-abstract contract BaseStrategy is AccessControlMixin,Initializable {
+abstract contract BaseStrategy is AccessControlMixin, Initializable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using StableMath for uint256;
 
@@ -78,6 +78,10 @@ abstract contract BaseStrategy is AccessControlMixin,Initializable {
     /// @notice Name of strategy
     function name() external pure virtual returns (string memory);
 
+    function getWants() external view returns (address[] memory) {
+        return wants;
+    }
+
     /// @notice Provide the strategy need underlying token and ratio
     /// @dev If ratio is 0, it means that the ratio of the token is free.
     function getWantsInfo()
@@ -87,7 +91,11 @@ abstract contract BaseStrategy is AccessControlMixin,Initializable {
         returns (address[] memory _assets, uint256[] memory _ratios);
 
     /// @notice Returns the position details of the strategy.
-    function getPositionDetail() external view virtual returns (address[] memory _tokens, uint256[] memory _amounts);
+    function getPositionDetail()
+        external
+        view
+        virtual
+        returns (address[] memory _tokens, uint256[] memory _amounts);
 
     /// @notice Total assets of strategy in USD.
     function estimatedTotalAssets() external view virtual returns (uint256);
@@ -124,7 +132,7 @@ abstract contract BaseStrategy is AccessControlMixin,Initializable {
     function report(
         address[] memory _rewardTokens,
         uint256[] memory _claimAmounts
-    ) private {
+    ) internal {
         uint256 prevTotalAsset = lastTotalAsset;
         uint256 currTotalAsset = this.estimatedTotalAssets();
         vault.report(currTotalAsset);
@@ -139,7 +147,7 @@ abstract contract BaseStrategy is AccessControlMixin,Initializable {
     }
 
     /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
-    function harvest() external {
+    function harvest() external virtual {
         address[] memory _rewardsTokens;
         uint256[] memory _pendingAmounts;
         uint256[] memory _claimAmounts;
@@ -279,7 +287,9 @@ abstract contract BaseStrategy is AccessControlMixin,Initializable {
         view
         returns (uint256 valueInUSD)
     {
-        valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(_token, _amount).scaleBy(18, 8);
+        valueInUSD = valueInterpreter
+            .calcCanonicalAssetValueInUsd(_token, _amount)
+            .scaleBy(18, 8);
     }
 
     function decimalUnitOfToken(address _token)
