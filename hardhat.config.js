@@ -72,7 +72,7 @@ module.exports = {
     },
   },
   preprocess: {
-    eachLine: removeConsoleLog(bre => true),
+    eachLine: removeConsoleLog(bre => false),
   },
   gasReporter: {
     enabled: true,

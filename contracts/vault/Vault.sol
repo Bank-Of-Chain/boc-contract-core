@@ -60,6 +60,7 @@ contract Vault is VaultStorage {
 
         usdi = USDi(_usdi);
 
+        rebasePaused = false;
         // Initial redeem fee of 0 basis points
         redeemFeeBps = 0;
         // Threshold for rebasing
@@ -237,8 +238,13 @@ contract Vault is VaultStorage {
     }
 
     /// @notice All strategies
-    function getStrategies() external view returns (address[] memory _strategies){
+    function getStrategies() external view returns (address[] memory){
         return strategySet.values();
+    }
+
+    /// @notice All assets
+    function getAssets() external view returns (address[] memory){
+        return assetSet.values();
     }
 
     /// @notice Added support for specific asset.
@@ -413,7 +419,7 @@ contract Vault is VaultStorage {
                 needWithdrawValue = 0;
             }
             IStrategy strategy = IStrategy(_strategy);
-            console.log('start withdrawn from %s numerator %d denominator %d', _strategy, strategyWithdrawValue, strategyTotalValue);
+            // console.log('start withdrawn from %s numerator %d denominator %d', _strategy, strategyWithdrawValue, strategyTotalValue);
             strategy.repay(strategyWithdrawValue, strategyTotalValue);
 
             if (needWithdrawValue <= 0) {
@@ -425,16 +431,17 @@ contract Vault is VaultStorage {
     /// @notice calculate need transfer amount from vault ,set to outputs
     function _calculateOutputs(uint256 _needTransferAmount, uint256[] memory _assetRedeemPrices, uint256[] memory _assetDecimals) internal returns (uint256[] memory){
         uint256[] memory outputs = new uint256[](trackedAssetsMap.length());
-        for (uint256 i = 0; i < trackedAssetsMap.length(); i++) {
+
+        for (uint256 i = trackedAssetsMap.length() - 1; i >= 0; i--) {
             (address trackedAsset,) = trackedAssetsMap.at(i);
             uint256 balance = IERC20Upgradeable(trackedAsset).balanceOf(address(this));
             if (balance > 0) {
                 uint256 _value = balance.mulTruncateScale(_assetRedeemPrices[i], 10 ** _assetDecimals[i]);
                 if (_value >= _needTransferAmount) {
-                    outputs[i] = _needTransferAmount;
+                    outputs[i] = balance.scaleBy(18, _assetDecimals[i]) * _needTransferAmount / _value;
                     break;
                 } else {
-                    outputs[i] = _value;
+                    outputs[i] = balance.scaleBy(18, _assetDecimals[i]);
                     _needTransferAmount = _needTransferAmount - _value;
                 }
             }
@@ -457,7 +464,7 @@ contract Vault is VaultStorage {
                         IExchangeAggregator.ExchangeToken memory exchangeToken = _exchangeTokens[j];
                         if (exchangeToken.fromToken == withdrawToken && exchangeToken.toToken == _asset) {
                             uint256 toAmount = _exchange(exchangeToken.fromToken, exchangeToken.toToken, withdrawAmount, exchangeToken.exchangeParam);
-                            console.log('withdraw exchange token %s amount %d toAmount %d', withdrawAmount, withdrawAmount, toAmount);
+                            // console.log('withdraw exchange token %s amount %d toAmount %d', withdrawAmount, withdrawAmount, toAmount);
                             _actualAmount = _actualAmount + (toAmount.scaleBy(18, _toDecimals));
                             break;
                         }
@@ -712,7 +719,7 @@ contract Vault is VaultStorage {
         // Yield fee collection
         address _treasureAddress = treasury;
         // gas savings
-        if (_treasureAddress != address(0) && (vaultValue > usdiSupply)) {
+        if (trusteeFeeBps > 0 && _treasureAddress != address(0) && (vaultValue > usdiSupply)) {
             uint256 yield = vaultValue - usdiSupply;
             uint256 fee = yield * trusteeFeeBps / 10000;
             require(yield > fee, "Fee must not be greater than yield");
@@ -773,7 +780,7 @@ contract Vault is VaultStorage {
         uint256 minProductIndex = 0;
         if (_ratios.length > 1) {
             for (uint256 i = 0; i < _ratios.length; i++) {
-                console.log('token %s amount %d aspect %d', _wants[i], toAmounts[i], _ratios[i]);
+                // console.log('token %s amount %d aspect %d', _wants[i], toAmounts[i], _ratios[i]);
                 // console.log('token i+1  %s amount %d aspect %d', tokenDetails[i + 1].token, tokenDetails[i + 1].amount, tokenAspects[i + 1].aspect);
                 if (_ratios[i] == 0) {
                     //允许wants中存在占比为0的token
@@ -791,14 +798,14 @@ contract Vault is VaultStorage {
         uint256 minAspect = _ratios[minProductIndex];
         for (uint256 i = 0; i < toAmounts.length; i++) {
             if (toAmounts[i] > 0) {
-                console.log('token %s amount %d', _wants[i], toAmounts[i]);
-                console.log(' minProductIndex %d minMount %d minAspect %d', minProductIndex, minMount, minAspect);
+                // console.log('token %s amount %d', _wants[i], toAmounts[i]);
+                // console.log(' minProductIndex %d minMount %d minAspect %d', minProductIndex, minMount, minAspect);
                 uint256 actualAmount = toAmounts[i];
                 if (_ratios[i] > 0) {
                     actualAmount = _ratios[i] * minMount / minAspect;
                 }
                 toAmounts[i] = actualAmount;
-                console.log('token %s actual amount %d', _wants[i], actualAmount);
+                // console.log('token %s actual amount %d', _wants[i], actualAmount);
                 IERC20Upgradeable(_wants[i]).safeTransfer(_strategy, actualAmount);
             }
         }
@@ -810,6 +817,8 @@ contract Vault is VaultStorage {
         uint256 _amount,
         IExchangeAggregator.ExchangeParam memory exchangeParam
     ) internal returns (uint256 exchangeAmount) {
+        require(trackedAssetsMap.contains(_toToken), '!T');
+
         IExchangeAdapter.SwapDescription memory swapDescription = IExchangeAdapter.SwapDescription({
         amount : _amount,
         srcToken : _fromToken,
@@ -820,7 +829,7 @@ contract Vault is VaultStorage {
         exchangeAmount = IExchangeAggregator(exchangeManager).swap(exchangeParam.platform, exchangeParam.method, exchangeParam.encodeExchangeArgs, swapDescription);
         uint256 oracleExpectedAmount = IValueInterpreter(valueInterpreter).calcCanonicalAssetValue(_fromToken, _amount, _toToken);
         require(exchangeAmount >= oracleExpectedAmount * (MAX_BPS - exchangeParam.slippage - exchangeParam.oracleAdditionalSlippage) / MAX_BPS, 'OL');
-        //        emit Exchange(_fromToken, _amount, _toToken, exchangeAmount);
+        emit Exchange(_fromToken, _amount, _toToken, exchangeAmount);
     }
 
     // calculate strategy value
@@ -848,7 +857,7 @@ contract Vault is VaultStorage {
 
         IStrategy strategy = IStrategy(_strategy);
         strategy.repay(_amount, strategyAssetValue);
-        console.log('[vault.redeem] %s redeem _amount %d totalDebt %d ', _strategy, _amount, strategyAssetValue);
+        // console.log('[vault.redeem] %s redeem _amount %d totalDebt %d ', _strategy, _amount, strategyAssetValue);
         emit Redeem(_strategy, _amount);
     }
 

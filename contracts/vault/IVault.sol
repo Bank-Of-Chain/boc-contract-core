@@ -30,7 +30,7 @@ interface IVault {
         address _srcAsset,
         uint256 _srcAmount,
         address _distAsset,
-        address _distAmount
+        uint256 _distAmount
     );
     event Redeem(address _strategy, uint256 _amount);
     event RemoveStrategyFromQueue(address[] _strategies);
@@ -71,6 +71,9 @@ interface IVault {
     external
     view
     returns (address[] memory strategies);
+
+    /// @notice All assets
+    function getAssets() external view returns (address[] memory);
 
     /// @notice Added support for specific asset.
     function addAsset(address _asset) external;
