@@ -9,7 +9,7 @@ import "hardhat/console.sol";
 contract MockStrategy is BaseStrategy {
     Mock3rdPool mock3rdPool;
 
-    function initialize(address _vault, address _mock3rdPool)
+    function initialize(address _vault, address _harvester,address _mock3rdPool)
         public
         initializer
     {
@@ -18,7 +18,7 @@ contract MockStrategy is BaseStrategy {
 
         address[] memory _wants = new address[](1);
         _wants[0] = mock3rdPool.underlyingToken();
-        super._initialize(_vault, 23, _wants);
+        super._initialize(_vault, _harvester, 23, _wants);
     }
 
     function getVersion()

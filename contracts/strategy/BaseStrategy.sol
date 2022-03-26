@@ -52,10 +52,12 @@ abstract contract BaseStrategy is AccessControlMixin,Initializable {
 
     function _initialize(
         address _vault,
+        address _harvester,
         uint16 _protocol,
         address[] memory _wants
     ) internal {
         protocol = _protocol;
+        harvester = _harvester;
         vault = IVault(_vault);
         valueInterpreter = IValueInterpreter(vault.valueInterpreter());
 
