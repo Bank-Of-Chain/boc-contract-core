@@ -61,8 +61,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     function _initialize(
         address _vault,
         address _harvester,
-        uint16 _protocol,
-        address[] memory _wants
+        uint16 _protocol
     ) internal {
         protocol = _protocol;
         harvester = _harvester;
@@ -71,6 +70,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
         _initAccessControl(vault.accessControlProxy());
 
+        (address[] _wants,) = getWantsInfo();
         require(_wants.length > 0, "wants is required");
         for (uint i = 0; i < _wants.length; i++) {
             require(_wants[i] != address(0), "SAI");
@@ -103,7 +103,18 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     function getPositionDetail() external view virtual returns (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue);
 
     /// @notice Total assets of strategy in USD.
-    function estimatedTotalAssets() external view virtual returns (uint256);
+    function estimatedTotalAssets() external view returns (uint256){
+        (address[] tokens, uint256[] amounts, bool isUsd, uint256 usdValue) = getPositionDetail();
+        if (isUsd) {
+            return usdValue;
+        } else {
+            uint256 totalUsdValue = 0;
+            for (uint i = 0; i < tokens.length; i++) {
+                totalUsdValue = totalUsdValue + queryTokenValue(tokens[i], amounts[i]);
+            }
+            return totalUsdValue;
+        }
+    }
 
     /// @notice 3rd prototcol's pool total assets in USD.
     function get3rdPoolAssets() external view virtual returns (uint256);
