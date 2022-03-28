@@ -49,17 +49,6 @@ contract MockStrategy is BaseStrategy {
         _ratios[0] = 1;
     }
 
-    function getWants()
-    external
-    view
-    virtual
-    override
-    returns (address[] memory _assets)
-    {
-        _assets = new address[](1);
-        _assets[0] = mock3rdPool.underlyingToken();
-    }
-
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
         external
