@@ -23,18 +23,21 @@ interface IVault {
     function valueInterpreter() external view returns (address);
 }
 
-abstract contract BaseStrategy is AccessControlMixin, Initializable {
+abstract contract BaseStrategy is Initializable, AccessControlMixin {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using StableMath for uint256;
 
-    event MigarteToNewVault(address _oldVault, address _newVault);
+    event MigrateToNewVault(address _oldVault, address _newVault);
+
     event Report(
         uint256 _beforeAssets,
         uint256 _afterAssets,
         address[] _rewardTokens,
         uint256[] _claimAmounts
     );
+
     event Borrow(address[] _assets, uint256[] _amounts);
+
     event Repay(
         uint256 _withdrawShares,
         uint256 _totalShares,
@@ -50,6 +53,11 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
 
     uint256 public lastTotalAsset;
 
+    modifier onlyVault {
+        require(msg.sender == address(vault));
+        _;
+    }
+
     function _initialize(
         address _vault,
         address _harvester,
@@ -64,7 +72,7 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
         _initAccessControl(vault.accessControlProxy());
 
         require(_wants.length > 0, "wants is required");
-        for (uint8 i = 0; i < _wants.length; i++) {
+        for (uint i = 0; i < _wants.length; i++) {
             require(_wants[i] != address(0), "SAI");
         }
         wants = _wants;
@@ -87,7 +95,7 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     returns (address[] memory _assets, uint256[] memory _ratios);
 
     /// @notice Provide the strategy need underlying token and ratio
-    function getWants() external view virtual returns (address[] memory) {
+    function getWants() external view returns (address[] memory) {
         return wants;
     }
 
@@ -174,7 +182,7 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     /// @param _amounts borrow token amount
     function borrow(address[] memory _assets, uint256[] memory _amounts)
     external
-    onlyRole(BocRoles.VAULT_ROLE)
+    onlyVault
     {
         require(_assets.length == wants.length);
         // statistics the actual number of tokens, because the strategy may have balance before
@@ -198,7 +206,7 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     /// @param _totalShares Denominator
     function repay(uint256 _repayShares, uint256 _totalShares)
     external
-    onlyRole(BocRoles.VAULT_ROLE)
+    onlyVault
     returns (address[] memory _assets, uint256[] memory _amounts)
     {
         require(
