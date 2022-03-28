@@ -49,7 +49,6 @@ describe('Strategy test',function(){
 
         mockVault = await MockVault.new(accessControlProxy.address);
         console.log('mockVault:',mockVault.address);
-        await accessControlProxy.grantRole(await accessControlProxy.VAULT_ROLE(),mockVault.address);
 
         mock3rdPool = await deployMockContract(sender,Mock3rdPoolArtifacts.abi);
         console.log('mock3rdPool:',mock3rdPool.address);

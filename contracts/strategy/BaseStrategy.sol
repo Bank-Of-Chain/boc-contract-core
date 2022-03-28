@@ -53,6 +53,11 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
     uint256 public lastTotalAsset;
 
+    modifier onlyVault {
+        require(msg.sender == address(vault));
+        _;
+    }
+
     function _initialize(
         address _vault,
         address _harvester,
@@ -177,7 +182,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     /// @param _amounts borrow token amount
     function borrow(address[] memory _assets, uint256[] memory _amounts)
     external
-    onlyRole(BocRoles.VAULT_ROLE)
+    onlyVault
     {
         require(_assets.length == wants.length);
         // statistics the actual number of tokens, because the strategy may have balance before
@@ -201,7 +206,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     /// @param _totalShares Denominator
     function repay(uint256 _repayShares, uint256 _totalShares)
     external
-    onlyRole(BocRoles.VAULT_ROLE)
+    onlyVault
     returns (address[] memory _assets, uint256[] memory _amounts)
     {
         require(
