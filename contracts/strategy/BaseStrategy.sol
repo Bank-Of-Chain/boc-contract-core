@@ -61,7 +61,8 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     function _initialize(
         address _vault,
         address _harvester,
-        uint16 _protocol
+        uint16 _protocol,
+        address[] memory _wants
     ) internal {
         protocol = _protocol;
         harvester = _harvester;
@@ -70,7 +71,6 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
         _initAccessControl(vault.accessControlProxy());
 
-        (address[] _wants,) = getWantsInfo();
         require(_wants.length > 0, "wants is required");
         for (uint i = 0; i < _wants.length; i++) {
             require(_wants[i] != address(0), "SAI");
