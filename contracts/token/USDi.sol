@@ -7,7 +7,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/StableMath.sol";
-import "../library/BocRoles.sol";
 
 import "hardhat/console.sol";
 
@@ -47,6 +46,14 @@ IERC20Upgradeable,
     uint256 public nonRebasingSupply;
     mapping(address => uint256) public nonRebasingCreditsPerToken;
     mapping(address => RebaseOptions) public rebaseState;
+    address public vault;
+
+    modifier onlyVault {
+        console.log('vault: %s', vault);
+        console.log('msg.sender: %s', msg.sender);
+        require(msg.sender == vault);
+        _;
+    }
 
     /**
      * @dev Sets the values for `name`, `symbol`, and `decimals`. All three of
@@ -58,13 +65,15 @@ IERC20Upgradeable,
         string memory nameArg,
         string memory symbolArg,
         uint8 decimalsArg,
-        address _accessControlProxy
+        address _accessControlProxy,
+        address _vault
     ) public initializer {
         _name = nameArg;
         _symbol = symbolArg;
         _decimals = decimalsArg;
         _initAccessControl(_accessControlProxy);
         _rebasingCreditsPerToken = 1e18;
+        vault = _vault;
     }
 
     /**
@@ -313,7 +322,7 @@ IERC20Upgradeable,
      */
     function mint(address _account, uint256 _amount)
         external
-        onlyRole(BocRoles.VAULT_ROLE)
+        onlyVault
     {
         _mint(_account, _amount);
     }
@@ -360,7 +369,7 @@ IERC20Upgradeable,
      */
     function burn(address account, uint256 amount)
         external
-        onlyRole(BocRoles.VAULT_ROLE)
+        onlyVault
     {
         _burn(account, amount);
     }
@@ -520,7 +529,7 @@ IERC20Upgradeable,
      */
     function changeSupply(uint256 _newTotalSupply)
         external
-        onlyRole(BocRoles.VAULT_ROLE)
+        onlyVault
         nonReentrant
     {
         require(_totalSupply > 0, "Cannot increase 0 supply");

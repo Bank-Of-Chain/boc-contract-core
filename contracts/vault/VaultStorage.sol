@@ -9,6 +9,7 @@ import '../price-feeds/IValueInterpreter.sol';
 import '../strategy/IStrategy.sol';
 import '../library/IterableIntMap.sol';
 import "../library/StableMath.sol";
+import "../library/BocRoles.sol";
 import "../token/USDi.sol";
 import "../util/Helpers.sol";
 
