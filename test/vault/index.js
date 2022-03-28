@@ -33,6 +33,7 @@ const TestAdapter = hre.artifacts.require("TestAdapter");
 const ExchangeAggregator = hre.artifacts.require("ExchangeAggregator");
 const USDi = hre.artifacts.require("USDi");
 const Vault = hre.artifacts.require('Vault');
+const Harvester = hre.artifacts.require('Harvester');
 const MockS3CoinStrategy = hre.artifacts.require('MockS3CoinStrategy');
 
 describe("Vault", function () {
@@ -51,6 +52,7 @@ describe("Vault", function () {
     let treasury;
     let testAdapter;
     let mockS3CoinStrategy;
+    let harvester;
 
     // Core protocol contracts
     let usdi;
@@ -154,12 +156,15 @@ describe("Vault", function () {
         usdi = await USDi.new();
         await usdi.initialize('USDi', 'USDi', 18, accessControlProxy.address);
 
-        vault.initialize(usdi.address, accessControlProxy.address, treasury.address, exchangeAggregator.address, valueInterpreter.address);
+        await vault.initialize(usdi.address, accessControlProxy.address, treasury.address, exchangeAggregator.address, valueInterpreter.address);
+
+        const harvester = await Harvester.new();
+        await harvester.initialize(accessControlProxy.address, vault.address, MFC.USDT_ADDRESS, exchangeAggregator.address);
 
         console.log('mockS3CoinStrategy USDi');
         // 策略
         mockS3CoinStrategy = await MockS3CoinStrategy.new();
-        await mockS3CoinStrategy.initialize(vault.address);
+        await mockS3CoinStrategy.initialize(vault.address, harvester.address);
 
     });
 
@@ -317,6 +322,7 @@ describe("Vault", function () {
         let addToVaultStrategies = new Array();
         addToVaultStrategies.push(mockS3CoinStrategy.address);
         await vault.addStrategy(addToVaultStrategies, {from: governance});
+
         const beforUsdt = new BigNumber(await underlying.balanceOf(vault.address)).div(10 ** tokenDecimals).toFixed();
         console.log("lend前vault的usdt的balance:", beforUsdt);
         console.log("lend前vault的usdc的balance:", new BigNumber(await usdcToken.balanceOf(vault.address)).div(10 ** usdcDecimals).toFixed());
