@@ -78,10 +78,6 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     /// @notice Name of strategy
     function name() external pure virtual returns (string memory);
 
-    function getWants() external view returns (address[] memory) {
-        return wants;
-    }
-
     /// @notice Provide the strategy need underlying token and ratio
     /// @dev If ratio is 0, it means that the ratio of the token is free.
     function getWantsInfo()
@@ -91,7 +87,7 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     returns (address[] memory _assets, uint256[] memory _ratios);
 
     /// @notice Provide the strategy need underlying token and ratio
-    function getWants() external view returns (address[] memory) {
+    function getWants() external view virtual returns (address[] memory) {
         return wants;
     }
 
@@ -289,8 +285,8 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     returns (uint256 valueInUSD)
     {
         valueInUSD = valueInterpreter
-            .calcCanonicalAssetValueInUsd(_token, _amount)
-            .scaleBy(18, 8);
+        .calcCanonicalAssetValueInUsd(_token, _amount)
+        .scaleBy(18, 8);
     }
 
     function decimalUnitOfToken(address _token)
