@@ -51,7 +51,7 @@ contract VaultStorage is Initializable, AccessControlMixin {
         address _srcAsset,
         uint256 _srcAmount,
         address _distAsset,
-        address _distAmount
+        uint256 _distAmount
     );
     event Redeem(address _strategy, uint256 _amount);
     event RemoveStrategyFromQueue(address[] _strategies);
@@ -86,7 +86,7 @@ contract VaultStorage is Initializable, AccessControlMixin {
     // emergency shutdown
     bool public emergencyShutdown;
     // Pausing bools
-    bool public rebasePaused = false;
+    bool public rebasePaused;
     // Mints over this amount automatically rebase. 18 decimals.
     uint256 public rebaseThreshold;
     // allow max supply diff

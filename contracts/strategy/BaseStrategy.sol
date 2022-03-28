@@ -85,17 +85,20 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     /// @notice Provide the strategy need underlying token and ratio
     /// @dev If ratio is 0, it means that the ratio of the token is free.
     function getWantsInfo()
-        external
-        view
-        virtual
-        returns (address[] memory _assets, uint256[] memory _ratios);
+    external
+    view
+    virtual
+    returns (address[] memory _assets, uint256[] memory _ratios);
+
+    /// @notice Provide the strategy need underlying token and ratio
+    function getWants()
+    external
+    view
+    virtual
+    returns (address[] memory _assets);
 
     /// @notice Returns the position details of the strategy.
-    function getPositionDetail()
-        external
-        view
-        virtual
-        returns (address[] memory _tokens, uint256[] memory _amounts);
+    function getPositionDetail() external view virtual returns (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue);
 
     /// @notice Total assets of strategy in USD.
     function estimatedTotalAssets() external view virtual returns (uint256);
@@ -108,25 +111,25 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     /// @param _rewardsTokens reward token.
     /// @param _pendingAmounts pending reward amount.
     function getPendingRewards()
-        public
-        view
-        virtual
-        returns (
-            address[] memory _rewardsTokens,
-            uint256[] memory _pendingAmounts
-        )
+    public
+    view
+    virtual
+    returns (
+        address[] memory _rewardsTokens,
+        uint256[] memory _pendingAmounts
+    )
     {
         //
     }
 
     /// @notice Collect the rewards from 3rd protocol
     function claimRewards()
-        internal
-        virtual
-        returns (
-            address[] memory _rewardsTokens,
-            uint256[] memory _claimAmounts
-        );
+    internal
+    virtual
+    returns (
+        address[] memory _rewardsTokens,
+        uint256[] memory _claimAmounts
+    );
 
     /// @notice Report asset change results and claim information
     function report(
@@ -176,8 +179,8 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     /// @param _assets borrow token address
     /// @param _amounts borrow token amount
     function borrow(address[] memory _assets, uint256[] memory _amounts)
-        external
-        onlyRole(BocRoles.VAULT_ROLE)
+    external
+    onlyRole(BocRoles.VAULT_ROLE)
     {
         require(_assets.length == wants.length);
         // statistics the actual number of tokens, because the strategy may have balance before
@@ -200,9 +203,9 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     /// @param _repayShares Numerator
     /// @param _totalShares Denominator
     function repay(uint256 _repayShares, uint256 _totalShares)
-        external
-        onlyRole(BocRoles.VAULT_ROLE)
-        returns (address[] memory _assets, uint256[] memory _amounts)
+    external
+    onlyRole(BocRoles.VAULT_ROLE)
+    returns (address[] memory _assets, uint256[] memory _amounts)
     {
         require(
             _repayShares > 0 && _totalShares >= _repayShares,
@@ -221,10 +224,10 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
             require(token == _assets[i], "keep the order");
             uint256 balanceAfter = balanceOfToken(token);
             _amounts[i] =
-                balanceAfter -
-                balancesBefore[i] +
-                (balancesBefore[i] * _repayShares) /
-                _totalShares;
+            balanceAfter -
+            balancesBefore[i] +
+            (balancesBefore[i] * _repayShares) /
+            _totalShares;
         }
         transferTokensToTarget(address(vault), _assets, _amounts);
 
@@ -243,14 +246,14 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     /// @param _withdrawShares Numerator
     /// @param _totalShares Denominator
     function withdrawFrom3rdPool(uint256 _withdrawShares, uint256 _totalShares)
-        internal
-        virtual
-        returns (address[] memory _assets, uint256[] memory _amounts);
+    internal
+    virtual
+    returns (address[] memory _assets, uint256[] memory _amounts);
 
     function balanceOfToken(address tokenAddress)
-        public
-        view
-        returns (uint256)
+    public
+    view
+    returns (uint256)
     {
         return IERC20Upgradeable(tokenAddress).balanceOf(address(this));
     }
@@ -266,13 +269,13 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     /// @notice Removes tokens from this Strategy that are not the type of token managed by this Strategy.
     /// @param _token： The token to transfer out of this vault.
     function sweep(address _token)
-        external
-        isKeeper
-        onlyRole(BocRoles.KEEPER_ROLE)
+    external
+    isKeeper
+    onlyRole(BocRoles.KEEPER_ROLE)
     {
         require(
             !(arrayContains(wants, _token) ||
-                arrayContains(protectedTokens(), _token)),
+        arrayContains(protectedTokens(), _token)),
             "protected token"
         );
         IERC20Upgradeable(_token).safeTransfer(
@@ -283,9 +286,9 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
 
     /// @notice Query the value of Token.
     function queryTokenValue(address _token, uint256 _amount)
-        internal
-        view
-        returns (uint256 valueInUSD)
+    internal
+    view
+    returns (uint256 valueInUSD)
     {
         valueInUSD = valueInterpreter
             .calcCanonicalAssetValueInUsd(_token, _amount)
@@ -293,11 +296,11 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     }
 
     function decimalUnitOfToken(address _token)
-        internal
-        view
-        returns (uint256)
+    internal
+    view
+    returns (uint256)
     {
-        return 10**IERC20MetadataUpgradeable(_token).decimals();
+        return 10 ** IERC20MetadataUpgradeable(_token).decimals();
     }
 
     function transferTokensToTarget(
@@ -315,9 +318,9 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     }
 
     function arrayContains(address[] memory array, address key)
-        internal
-        pure
-        returns (bool)
+    internal
+    pure
+    returns (bool)
     {
         for (uint256 i = 0; i < array.length; i++) {
             if (array[i] == key) {
