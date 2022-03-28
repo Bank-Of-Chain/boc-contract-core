@@ -9,6 +9,7 @@ import "../access-control/AccessControlMixin.sol";
 import "../library/StableMath.sol";
 
 import "hardhat/console.sol";
+import "../library/BocRoles.sol";
 
 contract USDi is
 IERC20Upgradeable,
@@ -24,6 +25,7 @@ IERC20Upgradeable,
     );
     event RebaseLocked(address _account);
     event RebaseUnlocked(address _account);
+    event SetVault(address _oldVault, address _newVault);
 
     enum RebaseOptions {
         NotSet,
@@ -65,15 +67,13 @@ IERC20Upgradeable,
         string memory nameArg,
         string memory symbolArg,
         uint8 decimalsArg,
-        address _accessControlProxy,
-        address _vault
+        address _accessControlProxy
     ) public initializer {
         _name = nameArg;
         _symbol = symbolArg;
         _decimals = decimalsArg;
         _initAccessControl(_accessControlProxy);
         _rebasingCreditsPerToken = 1e18;
-        vault = _vault;
     }
 
     /**
@@ -89,6 +89,12 @@ IERC20Upgradeable,
      */
     function symbol() public view returns (string memory) {
         return _symbol;
+    }
+
+    function setVault(address _vault) external onlyGovOrDelegate {
+        address oldVault = _vault;
+        vault = _vault;
+        emit SetVault(oldVault, _vault);
     }
 
     /**

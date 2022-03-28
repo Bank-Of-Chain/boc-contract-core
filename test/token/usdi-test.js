@@ -34,7 +34,8 @@ describe('USDi Test',function(){
         const USDi = await ethers.getContractFactory("USDi",accounts[19]);
         usdi = await USDi.deploy();
         await usdi.deployed();
-        await usdi.initialize('USDi','USDi',18,accessControlProxy.address,accounts[19].address);
+        await usdi.initialize('USDi','USDi',18,accessControlProxy.address,);
+        await usdi.setVault(accounts[19].address);
     });
 
     it('Mint USDi to external account1',async function(){
