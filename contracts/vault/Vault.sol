@@ -128,7 +128,7 @@ contract Vault is VaultStorage {
         emit TrusteeFeeBpsChanged(_basis);
     }
 
-    //提前队列
+    //advance queue
     function setWithdrawalQueue(address[] memory queues) external isKeeper {
         bool strategyExist = true;
         for (uint256 i = 0; i < queues.length; i++) {
@@ -790,17 +790,17 @@ contract Vault is VaultStorage {
                 break;
             }
         }
-        //定义规则 0 表示不受约束，不参与的币种不在返回wants里
+        //Definition rule 0 means unconstrained, currencies that do not participate are not in the returned wants
         uint256 minProductIndex = 0;
         if (_ratios.length > 1) {
             for (uint256 i = 0; i < _ratios.length; i++) {
                 //                 console.log('token %s amount %d aspect %d', _wants[i], toAmounts[i], _ratios[i]);
                 // console.log('token i+1  %s amount %d aspect %d', tokenDetails[i + 1].token, tokenDetails[i + 1].amount, tokenAspects[i + 1].aspect);
                 if (_ratios[i] == 0) {
-                    //允许wants中存在占比为0的token
+                    //0 is free
                     continue;
                 } else if (_ratios[minProductIndex] == 0) {
-                    //minProductIndex赋值给第一个占比不为0的index
+                    //minProductIndex is assigned to the first index whose proportion is not 0
                     minProductIndex = i;
                 } else if (toAmounts[minProductIndex] * _ratios[i] > toAmounts[i] * _ratios[minProductIndex]) {
                     minProductIndex = i;

@@ -55,7 +55,7 @@ contract MockS3CoinStrategy is BaseStrategy {
 
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
-    external
+    public
     view
     virtual
     override
@@ -66,20 +66,6 @@ contract MockS3CoinStrategy is BaseStrategy {
             _tokens[i] = wants[i];
             _amounts[i] = IERC20Upgradeable(_tokens[i]).balanceOf(address(this));
         }
-    }
-
-    function estimatedTotalAssets()
-    external
-    view
-    virtual
-    override
-    returns (uint256)
-    {
-        uint256 usdValue = 0;
-        for (uint i = 0; i < wants.length; i++) {
-            usdValue += IERC20Upgradeable(wants[i]).balanceOf(address(this)) * (10 ** 18) / (10 ** IERC20MetadataUpgradeable(wants[i]).decimals());
-        }
-        return usdValue;
     }
 
     function get3rdPoolAssets()

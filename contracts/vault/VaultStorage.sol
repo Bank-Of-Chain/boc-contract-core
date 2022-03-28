@@ -68,7 +68,7 @@ contract VaultStorage is Initializable, AccessControlMixin {
 
     address internal constant ZERO_ADDRESS = address(0);
 
-    //最大百分比100%
+    //max percentage 100%
     uint256 internal constant MAX_BPS = 10000;
 
     // usdi

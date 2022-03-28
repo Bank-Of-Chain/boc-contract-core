@@ -100,11 +100,11 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     }
 
     /// @notice Returns the position details of the strategy.
-    function getPositionDetail() external view virtual returns (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue);
+    function getPositionDetail() public view virtual returns (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue);
 
     /// @notice Total assets of strategy in USD.
     function estimatedTotalAssets() external view returns (uint256){
-        (address[] tokens, uint256[] amounts, bool isUsd, uint256 usdValue) = getPositionDetail();
+        (address[] memory tokens, uint256[] memory amounts, bool isUsd, uint256 usdValue) = getPositionDetail();
         if (isUsd) {
             return usdValue;
         } else {
