@@ -87,11 +87,9 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     returns (address[] memory _assets, uint256[] memory _ratios);
 
     /// @notice Provide the strategy need underlying token and ratio
-    function getWants()
-    external
-    view
-    virtual
-    returns (address[] memory _assets);
+    function getWants() external view returns (address[] memory) {
+        return wants;
+    }
 
     /// @notice Returns the position details of the strategy.
     function getPositionDetail() external view virtual returns (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue);
