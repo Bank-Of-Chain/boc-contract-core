@@ -51,7 +51,7 @@ contract MockStrategy is BaseStrategy {
 
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
-        external
+        public
         view
         virtual
         override
@@ -64,20 +64,6 @@ contract MockStrategy is BaseStrategy {
 
         usdValue =  (lpAmount * sharePrice) / 10**decimals;
 
-    }
-
-    function estimatedTotalAssets()
-        external
-        view
-        virtual
-        override
-        returns (uint256)
-    {
-        uint256 lpAmount = mock3rdPool.balanceOf(address(this));
-        uint256 sharePrice = mock3rdPool.pricePerShare();
-        uint256 decimals = mock3rdPool.decimals();
-
-        return (lpAmount * sharePrice) / 10**decimals;
     }
 
     function get3rdPoolAssets()
