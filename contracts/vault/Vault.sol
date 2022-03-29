@@ -242,16 +242,16 @@ contract Vault is VaultStorage {
         }
     }
 
-//    /**
-//     * @dev Internal to calculate total value of all assets held in Strategies.
-//     * @return _value Total value in USD (1e18)
-//     */
-//    function _totalAssetInStrategies() internal view returns (uint256 _value) {
-//        uint256[] memory _assetDecimals = _getAssetDecimals();
-//        for (uint256 i = 0; i < strategySet.length(); i++) {
-//            _value = _value + _checkBalanceInStrategy(strategySet.at(i), _assetDecimals);
-//        }
-//    }
+    //    /**
+    //     * @dev Internal to calculate total value of all assets held in Strategies.
+    //     * @return _value Total value in USD (1e18)
+    //     */
+    //    function _totalAssetInStrategies() internal view returns (uint256 _value) {
+    //        uint256[] memory _assetDecimals = _getAssetDecimals();
+    //        for (uint256 i = 0; i < strategySet.length(); i++) {
+    //            _value = _value + _checkBalanceInStrategy(strategySet.at(i), _assetDecimals);
+    //        }
+    //    }
 
     /// @notice All strategies
     function getStrategies() external view returns (address[] memory){
@@ -391,7 +391,7 @@ contract Vault is VaultStorage {
     /// @param _amounts Amount of the asset being deposited
     /// @param _minimumUsdiAmount Minimum USDI to mint
     /// @dev Support single asset or multi-assets
-    function mint(address[] memory _assets, uint256[] memory _amounts, uint256 _minimumUsdiAmount) external whenNotEmergency whenNotAdjustPosition defense {
+    function mint(address[] memory _assets, uint256[] memory _amounts, uint256 _minimumUsdiAmount) external whenNotEmergency whenNotAdjustPosition defense returns (uint256) {
         require(_assets.length > 0 && _amounts.length > 0 && _assets.length == _amounts.length, "Assets or amounts must not be empty and Assets length must equal amounts length");
         bool amountsGreaterThanZero = true;
         bool assetsExist = true;
@@ -439,6 +439,7 @@ contract Vault is VaultStorage {
         }
 
         emit Mint(msg.sender, _assets, _amounts, priceAdjustedDeposit);
+        return priceAdjustedDeposit;
     }
 
     /// @notice withdraw from strategy queue
@@ -730,34 +731,34 @@ contract Vault is VaultStorage {
         }
         return strategyAssetValue;
     }
-//
-//    /**
-//    * @notice Get the value of an asset held in strategy. by redeempirce
-//     * @param _strategy Address of strategy
-//     * @return balance Balance of strategy usd (1e18)
-//     */
-//    function _checkValueInStrategyByRedeem(address _strategy, uint256[] memory assetDecimals, uint256[] memory assetRedeemPrices) internal view returns (uint256){
-//        IStrategy strategy = IStrategy(_strategy);
-//        (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue) = strategy.getPositionDetail();
-//        uint256 strategyAssetValue = 0;
-//        if (isUsd) {
-//            strategyAssetValue = usdValue;
-//        } else {
-//            uint256 trackedAssetsLength = trackedAssetsMap.length();
-//            for (uint256 i = 0; i < _tokens.length; i++) {
-//                if (_amounts[i] > 0) {
-//                    for (uint256 j = 0; j < trackedAssetsLength; j++) {
-//                        (address trackedAsset,) = trackedAssetsMap.at(j);
-//                        if (trackedAsset == _tokens[i]) {
-//                            strategyAssetValue = strategyAssetValue + (_amounts[i].mulTruncateScale(assetRedeemPrices[j], 10 ** assetDecimals[j]));
-//                            break;
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//        return strategyAssetValue;
-//    }
+    //
+    //    /**
+    //    * @notice Get the value of an asset held in strategy. by redeempirce
+    //     * @param _strategy Address of strategy
+    //     * @return balance Balance of strategy usd (1e18)
+    //     */
+    //    function _checkValueInStrategyByRedeem(address _strategy, uint256[] memory assetDecimals, uint256[] memory assetRedeemPrices) internal view returns (uint256){
+    //        IStrategy strategy = IStrategy(_strategy);
+    //        (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue) = strategy.getPositionDetail();
+    //        uint256 strategyAssetValue = 0;
+    //        if (isUsd) {
+    //            strategyAssetValue = usdValue;
+    //        } else {
+    //            uint256 trackedAssetsLength = trackedAssetsMap.length();
+    //            for (uint256 i = 0; i < _tokens.length; i++) {
+    //                if (_amounts[i] > 0) {
+    //                    for (uint256 j = 0; j < trackedAssetsLength; j++) {
+    //                        (address trackedAsset,) = trackedAssetsMap.at(j);
+    //                        if (trackedAsset == _tokens[i]) {
+    //                            strategyAssetValue = strategyAssetValue + (_amounts[i].mulTruncateScale(assetRedeemPrices[j], 10 ** assetDecimals[j]));
+    //                            break;
+    //                        }
+    //                    }
+    //                }
+    //            }
+    //        }
+    //        return strategyAssetValue;
+    //    }
 
     /// @notice Change USDi supply with Vault total assets.
     function rebase() external isVaultManager defense {
