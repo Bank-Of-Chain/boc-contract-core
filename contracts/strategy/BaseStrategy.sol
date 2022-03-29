@@ -45,11 +45,17 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         uint256[] _amounts
     );
 
+    event SetIsWantRatioIgnorable(
+        bool oldValue,
+        bool newValue,
+    );
+
     IVault public vault;
     IValueInterpreter public valueInterpreter;
     address public harvester;
     uint16 public protocol;
     address[] public wants;
+    bool public isWantRatioIgnorable;
 
     uint256 public lastTotalAsset;
 
@@ -86,8 +92,17 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     /// @notice Name of strategy
     function name() external pure virtual returns (string memory);
 
+    /// @notice True means that can ignore ratios given by wants info
+    function setIsWantRatioIgnorable(bool _isWantRatioIgnorable)
+    external
+    isVaultManager
+    {
+        bool oldValue = isWantRatioIgnorable;
+        isWantRatioIgnorable = _isWantRatioIgnorable;
+        emit SetIsWantRatioIgnorable(oldValue, _isWantRatioIgnorable);
+    }
+
     /// @notice Provide the strategy need underlying token and ratio
-    /// @dev If ratio is 0, it means that the ratio of the token is free.
     function getWantsInfo()
     external
     view
