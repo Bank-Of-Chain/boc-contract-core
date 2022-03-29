@@ -99,7 +99,7 @@ interface IVault {
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
     /// @dev Support single asset or multi-assets
-    function mint(address[] memory _assets, uint256[] memory _amounts, uint256 _minimumUsdiAmount) external;
+    function mint(address[] memory _assets, uint256[] memory _amounts, uint256 _minimumUsdiAmount) external returns (uint256 usdiAmount);
 
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
