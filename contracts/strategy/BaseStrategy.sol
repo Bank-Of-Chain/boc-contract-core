@@ -47,7 +47,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
     event SetIsWantRatioIgnorable(
         bool oldValue,
-        bool newValue,
+        bool newValue
     );
 
     IVault public vault;
