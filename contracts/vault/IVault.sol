@@ -4,6 +4,13 @@ pragma solidity ^0.8.0;
 import "../exchanges/IExchangeAggregator.sol";
 
 interface IVault {
+
+    struct StrategyAdd {
+        address strategy;
+        uint256 profitLimitRatio;
+        uint256 lossLimitRatio;
+    }
+
     event AddAsset(address _asset);
     event RemoveAsset(address _asset);
     event AddStrategies(address[] _strategies);
@@ -82,7 +89,7 @@ interface IVault {
     /// @dev The strategy added to the strategy list,
     ///      Vault may invest funds into the strategy,
     ///      and the strategy will invest the funds in the 3rd protocol
-    function addStrategy(address[] memory _strategies) external;
+    function addStrategy(StrategyAdd[] memory strategyAdds) external;
 
     /// @notice Remove strategy from strategy list
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault

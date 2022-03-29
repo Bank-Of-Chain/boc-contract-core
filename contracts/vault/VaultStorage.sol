@@ -25,6 +25,22 @@ contract VaultStorage is Initializable, AccessControlMixin {
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
 
+    struct StrategyParams {
+        //last report timestamp
+        uint256 lastReport;
+        //total asset
+        uint256 totalDebt;
+        uint256 profitLimitRatio;
+        uint256 lossLimitRatio;
+        bool enforceChangeLimit;
+    }
+
+    struct StrategyAdd {
+        address strategy;
+        uint256 profitLimitRatio;
+        uint256 lossLimitRatio;
+    }
+
     event AddAsset(address _asset);
     event RemoveAsset(address _asset);
     event AddStrategies(address[] _strategies);
@@ -54,6 +70,7 @@ contract VaultStorage is Initializable, AccessControlMixin {
         uint256 _distAmount
     );
     event Redeem(address _strategy, uint256 _amount);
+    event LendToStrategy(address indexed strategy, address[] wants, uint256[] amouts, uint256 lendValue);
     event RemoveStrategyFromQueue(address[] _strategies);
     event SetEmergencyShutdown(bool _shutdown);
     event RebasePaused();
@@ -95,6 +112,8 @@ contract VaultStorage is Initializable, AccessControlMixin {
     uint256 public trusteeFeeBps;
     // Redemption fee in basis points
     uint256 public redeemFeeBps;
+    //all strategy asset
+    uint256 public totalDebt;
     // treasury contract that can collect a percentage of yield
     address public treasury;
     //valueInterpreter
@@ -103,6 +122,8 @@ contract VaultStorage is Initializable, AccessControlMixin {
     address public exchangeManager;
     //  Only whitelisted contracts can call our deposit
     mapping(address => bool) public whiteList;
+    // strategy info
+    mapping(address => StrategyParams) public strategies;
 
     //withdraw strategy set
     address[] public withdrawQueue;
