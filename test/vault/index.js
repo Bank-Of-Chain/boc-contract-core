@@ -155,6 +155,7 @@ describe("Vault", function () {
         console.log('deploy USDi');
         usdi = await USDi.new();
         await usdi.initialize('USDi', 'USDi', 18, accessControlProxy.address);
+        await usdi.setVault(vault.address);
 
         await vault.initialize(usdi.address, accessControlProxy.address, treasury.address, exchangeAggregator.address, valueInterpreter.address);
 
@@ -183,7 +184,12 @@ describe("Vault", function () {
 
     it('验证：Vault可正常添加移除所有策略', async function () {
         let addToVaultStrategies = new Array();
-        addToVaultStrategies.push(mockS3CoinStrategy.address);
+        addToVaultStrategies.push({
+            strategy: mockS3CoinStrategy.address,
+            profitLimitRatio: 100,
+            lossLimitRatio: 100
+        });
+
         await vault.addStrategy(addToVaultStrategies, {from: governance});
         let strategyAddresses = await vault.getStrategies();
         console.log('添加前策略的个数=', strategyAddresses.length);
@@ -320,7 +326,11 @@ describe("Vault", function () {
 
     it('验证：Vault可正常lend', async function () {
         let addToVaultStrategies = new Array();
-        addToVaultStrategies.push(mockS3CoinStrategy.address);
+        addToVaultStrategies.push({
+            strategy: mockS3CoinStrategy.address,
+            profitLimitRatio: 100,
+            lossLimitRatio: 100
+        });
         await vault.addStrategy(addToVaultStrategies, {from: governance});
 
         const beforUsdt = new BigNumber(await underlying.balanceOf(vault.address)).div(10 ** tokenDecimals).toFixed();
