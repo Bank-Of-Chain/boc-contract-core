@@ -105,12 +105,12 @@ contract Dripper is AccessControlMixin, Initializable {
     // @dev Transfer out ERC20 tokens held by the contract. Governor only.
     // @param _asset ERC20 token address
     // @param _amount amount to transfer
-    // function transferToken(address _asset, uint256 _amount)
-    //     external
-    //     onlyRole(BocRoles.GOV_ROLE)
-    // {
-    //     IERC20Upgradeable(_asset).safeTransfer(governor(), _amount);
-    // }
+    function transferToken(address _asset, uint256 _amount)
+        external
+        onlyRole(BocRoles.GOV_ROLE)
+    {
+        IERC20Upgradeable(_asset).safeTransfer(msg.sender, _amount);
+    }
 
     /// @dev Calculate available funds by taking the lower of either the
     ///  currently dripped out funds or the balance available.
