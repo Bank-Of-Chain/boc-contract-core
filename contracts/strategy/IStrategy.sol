@@ -39,7 +39,6 @@ interface IStrategy {
     function harvester() external view returns (address);
 
     /// @notice Provide the strategy need underlying token and ratio
-    /// @dev If ratio is 0, it means that the ratio of the token is free.
     function getWantsInfo()
         external
         view
