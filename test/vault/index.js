@@ -34,6 +34,7 @@ const ExchangeAggregator = hre.artifacts.require("ExchangeAggregator");
 const USDi = hre.artifacts.require("USDi");
 const Vault = hre.artifacts.require('Vault');
 const Harvester = hre.artifacts.require('Harvester');
+const Dripper = hre.artifacts.require('Dripper');
 const MockS3CoinStrategy = hre.artifacts.require('MockS3CoinStrategy');
 
 describe("Vault", function () {
@@ -160,8 +161,12 @@ describe("Vault", function () {
         await treasury.rebaseOptIn({from: governance});
         await vault.initialize(usdi.address, accessControlProxy.address, treasury.address, exchangeAggregator.address, valueInterpreter.address);
 
+        const dripper = await Dripper.new();
+        await dripper.initialize(accessControlProxy.address, vault.address, MFC.USDT_ADDRESS);
+        await dripper.setDripDuration(3600*24);
+
         const harvester = await Harvester.new();
-        await harvester.initialize(accessControlProxy.address, vault.address, MFC.USDT_ADDRESS, exchangeAggregator.address);
+        await harvester.initialize(accessControlProxy.address, dripper.address, MFC.USDT_ADDRESS, exchangeAggregator.address);
 
         console.log("USDT_PRICE:", new BigNumber(await valueInterpreter.price(MFC.USDT_ADDRESS)).toFixed());
         console.log("USDT_CALC:", new BigNumber(await valueInterpreter.calcCanonicalAssetValueInUsd(MFC.USDT_ADDRESS, 10 ** 6)).toFixed());
