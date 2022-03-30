@@ -163,6 +163,12 @@ describe("Vault", function () {
         const harvester = await Harvester.new();
         await harvester.initialize(accessControlProxy.address, vault.address, MFC.USDT_ADDRESS, exchangeAggregator.address);
 
+        console.log("USDT_PRICE:", new BigNumber(await valueInterpreter.price(MFC.USDT_ADDRESS)).toFixed());
+        console.log("USDT_CALC:", new BigNumber(await valueInterpreter.calcCanonicalAssetValueInUsd(MFC.USDT_ADDRESS, 10 ** 6)).toFixed());
+        console.log("USDC_PRICE:", new BigNumber(await valueInterpreter.price(MFC.USDC_ADDRESS)).toFixed());
+        console.log("USDC_CALC:", new BigNumber(await valueInterpreter.calcCanonicalAssetValueInUsd(MFC.USDC_ADDRESS, 10 ** 6)).toFixed());
+        console.log("DAI_PRICE:", new BigNumber(await valueInterpreter.price(MFC.DAI_ADDRESS)).toFixed());
+        console.log("DAI_CALC:", new BigNumber(await valueInterpreter.calcCanonicalAssetValueInUsd(MFC.DAI_ADDRESS, new BigNumber(10 ** 18))).toFixed());
         console.log('mockS3CoinStrategy USDi');
         // 策略
         mockS3CoinStrategy = await MockS3CoinStrategy.new();

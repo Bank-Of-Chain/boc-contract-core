@@ -103,6 +103,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
        * 资产的usd价值
        * _baseAsset: 源token地址
        * _amount: 源token数量
+    * @return usd(1e18)
        */
     function calcCanonicalAssetValueInUsd(
         address _baseAsset,
@@ -114,13 +115,15 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         bool isValid_;
         (value_, isValid_) = __calcAssetValueInUsd(_baseAsset, _amount);
         require(isValid_, 'Invalid rate');
+        value_ = _upScaleByTen(value_);
         return value_;
     }
 
     /*
-       * baseUnit数量资产的usd价值
-       * _baseAsset: 源token地址
-       */
+     * baseUnit数量资产的usd价值
+     * _baseAsset: 源token地址
+     * @return usd(1e18)
+     */
     function price(address _baseAsset) external view override returns (uint256 value_){
         // Handle case that asset is a primitive
         if (IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(_baseAsset)) {
@@ -130,6 +133,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
                 IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).getAssetUnit(_baseAsset)
             );
             require(isValid_, 'Invalid rate');
+            value_ = _upScaleByTen(value_);
             return value_;
         }
         revert(string(
@@ -140,8 +144,17 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         ));
     }
 
-    // PRIVATE FUNCTIONS
+    /*
+    * @notice upscale by 10
+    * @param _value  with base decimals
+    * @return  with 8 decimals so scale to 18
+    */
+    function _upScaleByTen(uint256 _value) internal pure returns (uint256) {
+        _value = _value * (10 ** 10);
+        return _value;
+    }
 
+    // PRIVATE FUNCTIONS
     /// @dev Helper to differentially calculate an asset value
     /// based on if it is a primitive or derivative asset.
     function __calcAssetValueInUsd(
@@ -208,11 +221,11 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         }
 
         revert(string(
-                abi.encodePacked(
-                    '__calcAssetValue: Unsupported _baseAsset ',
-                    Strings.toHexString(uint160(_baseAsset), 20)
-                )
-            ));
+            abi.encodePacked(
+                '__calcAssetValue: Unsupported _baseAsset ',
+                Strings.toHexString(uint160(_baseAsset), 20)
+            )
+        ));
     }
 
     /// @dev Helper to calculate the value of a derivative in an arbitrary asset.
