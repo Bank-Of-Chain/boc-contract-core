@@ -15,11 +15,12 @@ import "../util/Helpers.sol";
 import '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import '@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol';
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract VaultStorage is Initializable, AccessControlMixin {
+contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessControlMixin {
 
     using StableMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;

@@ -95,10 +95,6 @@ describe("Vault", function () {
         const accessControlProxy = await AccessControlProxy.new();
         accessControlProxy.initialize(governance, governance, vault.address, keeper);
 
-        console.log('deploy Treasury');
-        // 国库
-        treasury = await Treasury.new();
-        treasury.initialize(accessControlProxy.address);
 
         console.log('deploy ChainlinkPriceFeed');
         // 预言机
@@ -156,6 +152,11 @@ describe("Vault", function () {
         usdi = await USDi.new();
         await usdi.initialize('USDi', 'USDi', 18, accessControlProxy.address);
         await usdi.setVault(vault.address);
+
+        console.log('deploy Treasury');
+        // 国库
+        treasury = await Treasury.new();
+        treasury.initialize(accessControlProxy.address, usdi.address);
 
         await vault.initialize(usdi.address, accessControlProxy.address, treasury.address, exchangeAggregator.address, valueInterpreter.address);
 
