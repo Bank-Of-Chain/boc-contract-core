@@ -4,31 +4,23 @@ const ERC20 = hre.artifacts.require('@openzeppelin/contracts/token/ERC20/ERC20.s
 const MFC = require("../mainnet-fork-test-config");
 const {topUpUsdtByAddress} = require('../../utilities/top-up-utils');
 const { parseUnits } = require("ethers").utils;
-// const Vault = hre.artifacts.require('Vault');
-const Treasury = hre.artifacts.require('Treasury');
-const ValueInterpreter = hre.artifacts.require("ValueInterpreter");
-const ExchangeAggregator = hre.artifacts.require("ExchangeAggregator");
-const TestAdapter = hre.artifacts.require("TestAdapter");
-const ChainlinkPriceFeed = hre.artifacts.require('ChainlinkPriceFeed');
-const AggregatedDerivativePriceFeed = hre.artifacts.require('AggregatedDerivativePriceFeed');
+const MockVault = hre.artifacts.require('MockVault');
+
 
 
 describe("Dripper", async () => {
-  let dripper, usdt, usdi, vault;
+  let dripper, usdt, mockVault;
 
   let accounts;
   let governance;
   let governanceAddress;
   let accessControlProxy;
-  let user1;
 
 
   before('Init',async function(){
     accounts = await ethers.getSigners();
     governance = accounts[19];
     governanceAddress= accounts[19].address;
-    user1 = accounts[1].address;
-    // user2 = accounts[2].address;
     });
 
 
@@ -38,11 +30,6 @@ describe("Dripper", async () => {
     accessControlProxy = await AccessControlProxy.deploy();
     await accessControlProxy.deployed();
     await accessControlProxy.initialize(governanceAddress, governanceAddress, governanceAddress, governanceAddress);
-    
-    const USDi = await ethers.getContractFactory("USDi",governance);
-    usdi = await USDi.deploy();
-    await usdi.deployed();
-    await usdi.initialize('USDi','USDi',18,accessControlProxy.address);
 
     const DRIPPER = await ethers.getContractFactory("Dripper",governance);
     dripper = await DRIPPER.deploy();
@@ -52,74 +39,11 @@ describe("Dripper", async () => {
     usdt = await ERC20.at(MFC.USDT_ADDRESS);
     await topUpUsdtByAddress(usdtUnits("1000").toString(), dripper.address);
 
+    
+    console.log('deploy mockVault');
+    mockVault = await MockVault.new(accessControlProxy.address);
 
-
-    console.log('deploy Treasury');
-    // 国库
-    treasury = await Treasury.new();
-    treasury.initialize(accessControlProxy.address);
-
-    console.log('deploy ChainlinkPriceFeed');
-    // 预言机
-    const primitives = new Array();
-    const aggregators = new Array();
-    const heartbeats = new Array();
-    const rateAssets = new Array();
-    for (const key in MFC.CHAINLINK.aggregators) {
-        const value = MFC.CHAINLINK.aggregators[key];
-        primitives.push(value.primitive);
-        aggregators.push(value.aggregator);
-        heartbeats.push(value.heartbeat);
-        rateAssets.push(value.rateAsset);
-    }
-    const basePeggedPrimitives = new Array();
-    const basePeggedRateAssets = new Array();
-    for (const key in MFC.CHAINLINK.basePegged) {
-        const value = MFC.CHAINLINK.basePegged[key];
-        basePeggedPrimitives.push(value.primitive);
-        basePeggedRateAssets.push(value.rateAsset);
-    }
-    const chainlinkPriceFeed = await ChainlinkPriceFeed.new(
-        MFC.CHAINLINK.ETH_USD_AGGREGATOR,
-        MFC.CHAINLINK.ETH_USD_HEARTBEAT,
-        primitives,
-        aggregators,
-        heartbeats,
-        rateAssets,
-        basePeggedPrimitives,
-        basePeggedRateAssets,
-        accessControlProxy.address
-    );
-
-    console.log('deploy AggregatedDerivativePriceFeed');
-    let derivatives = new Array();
-    const priceFeeds = new Array();
-    const aggregatedDerivativePriceFeed = await AggregatedDerivativePriceFeed.new(derivatives, priceFeeds, accessControlProxy.address);
-
-
-    console.log('deploy ValueInterpreter');
-    const valueInterpreter = await ValueInterpreter.new(chainlinkPriceFeed.address, aggregatedDerivativePriceFeed.address);
-
-
-    console.log('deploy TestAdapter');
-    testAdapter = await TestAdapter.new(valueInterpreter.address);
-
-    console.log('deploy ExchangeAggregator');
-    const exchangeAggregator = await ExchangeAggregator.new([testAdapter.address], accessControlProxy.address);
-    const adapters = await exchangeAggregator.getExchangeAdapters();
-    let exchangePlatformAdapters = {};
-    for (let i = 0; i < adapters.identifiers_.length; i++) {
-        exchangePlatformAdapters[adapters.identifiers_[i]] = adapters.exchangeAdapters_[i];
-    }
-    console.log('deploy Vault');
-    // vault = await Vault.new();
-    const VAULT = await ethers.getContractFactory("Vault", governance);
-    vault = await VAULT.deploy();
-    await vault.deployed();
-
-    vault.initialize(usdi.address, accessControlProxy.address, treasury.address, exchangeAggregator.address, valueInterpreter.address);
-
-    await dripper.initialize(accessControlProxy.address, vault.address, MFC.USDT_ADDRESS);
+    await dripper.initialize(accessControlProxy.address, mockVault.address, MFC.USDT_ADDRESS);
 
   });
 
@@ -134,9 +58,9 @@ describe("Dripper", async () => {
   }
 
   async function expectApproxCollectOf(amount, fn) {
-    const before = (await usdt.balanceOf(vault.address));
+    const before = (await usdt.balanceOf(mockVault.address));
     await fn();
-    const after = (await usdt.balanceOf(vault.address));
+    const after = (await usdt.balanceOf(mockVault.address));
     const collected = parseUnits(after.sub(before).toString(), 0);
     console.log("collected = ", collected);
     console.log("usdtUnits(amount) = ", usdtUnits(amount));
@@ -249,23 +173,9 @@ describe("Dripper", async () => {
 
   describe("collectAndRebase()", async () => {
     it("transfers funds to the vault and rebases", async () => {
-      const vaultRole = await accessControlProxy.VAULT_ROLE();
-      // 授权valut 可以调用usdi.changeSupply的权限。
-      await accessControlProxy.grantRole(vaultRole, vault.address);
-      let mintAmount = BigInt(3e18);
-      // mint USDi for external account
-      await usdi.mint(user1,mintAmount.toString());
-
-      await vault.connect(governance).addAsset(MFC.USDT_ADDRESS);
-
-      const beforeRct = await usdi.rebasingCreditsPerToken();
-      console.log("beforeRct = ", beforeRct.toString());
       await dripper.setDripDuration("20000");
       await advanceTime(10000);
-      await expectApproxCollectOf("500", async () => {await dripper.connect(governance).collectAndRebase()});
-      const afterRct = await usdi.rebasingCreditsPerToken();
-      console.log("afterRct = ", afterRct.toString());
-      expect(afterRct).to.be.lt(beforeRct);
+      await expectApproxCollectOf("500", async () => {await dripper.collectAndRebase()});
     });
   });
 
