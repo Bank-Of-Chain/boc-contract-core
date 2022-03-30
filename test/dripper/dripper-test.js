@@ -20,13 +20,14 @@ describe("Dripper", async () => {
   let governance;
   let governanceAddress;
   let accessControlProxy;
+  let user1;
 
 
   before('Init',async function(){
     accounts = await ethers.getSigners();
     governance = accounts[19];
     governanceAddress= accounts[19].address;
-    // user1 = accounts[1].address;
+    user1 = accounts[1].address;
     // user2 = accounts[2].address;
     });
 
@@ -37,13 +38,11 @@ describe("Dripper", async () => {
     accessControlProxy = await AccessControlProxy.deploy();
     await accessControlProxy.deployed();
     await accessControlProxy.initialize(governanceAddress, governanceAddress, governanceAddress, governanceAddress);
-    contractAddr = accessControlProxy.address;
     
     const USDi = await ethers.getContractFactory("USDi",governance);
     usdi = await USDi.deploy();
     await usdi.deployed();
     await usdi.initialize('USDi','USDi',18,accessControlProxy.address);
-
 
     const DRIPPER = await ethers.getContractFactory("Dripper",governance);
     dripper = await DRIPPER.deploy();
@@ -250,28 +249,26 @@ describe("Dripper", async () => {
 
   describe("collectAndRebase()", async () => {
     it("transfers funds to the vault and rebases", async () => {
-      console.log("governanceAddress = ", governanceAddress);
-      console.log("dripperAddress = ", dripper.address);
+      const vaultRole = await accessControlProxy.VAULT_ROLE();
+      // 授权valut 可以调用usdi.changeSupply的权限。
+      await accessControlProxy.grantRole(vaultRole, vault.address);
+      let mintAmount = BigInt(3e18);
+      // mint USDi for external account
+      await usdi.mint(user1,mintAmount.toString());
+
+      await vault.connect(governance).addAsset(MFC.USDT_ADDRESS);
+
       const beforeRct = await usdi.rebasingCreditsPerToken();
+      console.log("beforeRct = ", beforeRct.toString());
       await dripper.setDripDuration("20000");
-      await advanceTime(1000);
-      await dripper.connect(governance).collectAndRebase();
-      // await expectApproxCollectOf("50", async () => dripper.connect(governance).collectAndRebase());
+      await advanceTime(10000);
+      await expectApproxCollectOf("500", async () => {await dripper.connect(governance).collectAndRebase()});
       const afterRct = await usdi.rebasingCreditsPerToken();
+      console.log("afterRct = ", afterRct.toString());
       expect(afterRct).to.be.lt(beforeRct);
     });
   });
 
 
 });
-
-
-
-
-
-
-
-
-
-
 
