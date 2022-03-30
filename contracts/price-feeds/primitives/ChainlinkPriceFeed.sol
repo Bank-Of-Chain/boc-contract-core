@@ -127,7 +127,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     /// @notice Calculates the value of a base asset in terms of a quote asset (using a canonical rate)
     /// @param _baseAsset The base asset
     /// @param _baseAssetAmount The base asset amount to convert
-    /// @return quoteAssetAmount_ The equivalent quote asset amount
+    /// @return quoteAssetAmount_ The equivalent quote asset amount (usd 1e8)
     /// @return isValid_ True if the rates used in calculations are deemed valid
     function calcValueInUsd(
         address _baseAsset,
