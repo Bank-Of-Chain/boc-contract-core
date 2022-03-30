@@ -15,15 +15,32 @@ import "../util/Helpers.sol";
 import '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import '@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol';
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract VaultStorage is Initializable, AccessControlMixin {
+contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessControlMixin {
 
     using StableMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
+
+    struct StrategyParams {
+        //last report timestamp
+        uint256 lastReport;
+        //total asset
+        uint256 totalDebt;
+        uint256 profitLimitRatio;
+        uint256 lossLimitRatio;
+        bool enforceChangeLimit;
+    }
+
+    struct StrategyAdd {
+        address strategy;
+        uint256 profitLimitRatio;
+        uint256 lossLimitRatio;
+    }
 
     event AddAsset(address _asset);
     event RemoveAsset(address _asset);
@@ -54,6 +71,7 @@ contract VaultStorage is Initializable, AccessControlMixin {
         uint256 _distAmount
     );
     event Redeem(address _strategy, uint256 _amount);
+    event LendToStrategy(address indexed strategy, address[] wants, uint256[] amouts, uint256 lendValue);
     event RemoveStrategyFromQueue(address[] _strategies);
     event SetEmergencyShutdown(bool _shutdown);
     event RebasePaused();
@@ -68,7 +86,7 @@ contract VaultStorage is Initializable, AccessControlMixin {
 
     address internal constant ZERO_ADDRESS = address(0);
 
-    //最大百分比100%
+    //max percentage 100%
     uint256 internal constant MAX_BPS = 10000;
 
     // usdi
@@ -95,6 +113,8 @@ contract VaultStorage is Initializable, AccessControlMixin {
     uint256 public trusteeFeeBps;
     // Redemption fee in basis points
     uint256 public redeemFeeBps;
+    //all strategy asset
+    uint256 public totalDebt;
     // treasury contract that can collect a percentage of yield
     address public treasury;
     //valueInterpreter
@@ -103,6 +123,8 @@ contract VaultStorage is Initializable, AccessControlMixin {
     address public exchangeManager;
     //  Only whitelisted contracts can call our deposit
     mapping(address => bool) public whiteList;
+    // strategy info
+    mapping(address => StrategyParams) public strategies;
 
     //withdraw strategy set
     address[] public withdrawQueue;

@@ -10,7 +10,7 @@ import "hardhat/console.sol";
 contract MockS3CoinStrategy is BaseStrategy {
 
 
-    function initialize(address _vault)
+    function initialize(address _vault, address _harvester)
     public
     initializer
     {
@@ -21,7 +21,7 @@ contract MockS3CoinStrategy is BaseStrategy {
         _wants[1] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
         // DAI
         _wants[2] = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-        super._initialize(_vault, 23, _wants);
+        super._initialize(_vault, _harvester, 23, _wants);
     }
 
     function getVersion()
@@ -53,18 +53,9 @@ contract MockS3CoinStrategy is BaseStrategy {
         _ratios[2] = 10 ** IERC20MetadataUpgradeable(wants[2]).decimals() * 4;
     }
 
-    function getWants()
-    external
-    view
-    virtual
-    override
-    returns (address[] memory _assets)    {
-        _assets = wants;
-    }
-
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
-    external
+    public
     view
     virtual
     override
@@ -75,20 +66,6 @@ contract MockS3CoinStrategy is BaseStrategy {
             _tokens[i] = wants[i];
             _amounts[i] = IERC20Upgradeable(_tokens[i]).balanceOf(address(this));
         }
-    }
-
-    function estimatedTotalAssets()
-    external
-    view
-    virtual
-    override
-    returns (uint256)
-    {
-        uint256 usdValue = 0;
-        for (uint i = 0; i < wants.length; i++) {
-            usdValue += IERC20Upgradeable(wants[i]).balanceOf(address(this)) * (10 ** 18) / (10 ** IERC20MetadataUpgradeable(wants[i]).decimals());
-        }
-        return usdValue;
     }
 
     function get3rdPoolAssets()

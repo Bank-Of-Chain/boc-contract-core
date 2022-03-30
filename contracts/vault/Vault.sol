@@ -7,6 +7,7 @@ pragma solidity ^0.8.0;
 
 
 import "./VaultStorage.sol";
+import "../library/BocRoles.sol";
 
 contract Vault is VaultStorage {
 
@@ -15,11 +16,6 @@ contract Vault is VaultStorage {
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
 
-    // Only smart contracts will be affected by this modifier
-    modifier defense() {
-        require((msg.sender == tx.origin) || whiteList[msg.sender]);
-        _;
-    }
 
     modifier whenNotEmergency() {
         require(!emergencyShutdown, 'ES');
@@ -128,7 +124,7 @@ contract Vault is VaultStorage {
         emit TrusteeFeeBpsChanged(_basis);
     }
 
-    //提前队列
+    //advance queue
     function setWithdrawalQueue(address[] memory queues) external isKeeper {
         bool strategyExist = true;
         for (uint256 i = 0; i < queues.length; i++) {
@@ -151,6 +147,19 @@ contract Vault is VaultStorage {
             withdrawQueue[i] = ZERO_ADDRESS;
         }
         emit SetWithdrawalQueue(queues);
+    }
+
+    function setStrategyEnforceChangeLimit(address _strategy, bool _enabled) external isVaultManager {
+        strategies[_strategy].enforceChangeLimit = _enabled;
+    }
+
+    function setStrategySetLimitRatio(
+        address _strategy,
+        uint256 _lossRatioLimit,
+        uint256 _profitLimitRatio
+    ) external isVaultManager {
+        strategies[_strategy].lossLimitRatio = _lossRatioLimit;
+        strategies[_strategy].profitLimitRatio = _profitLimitRatio;
     }
 
 
@@ -209,7 +218,8 @@ contract Vault is VaultStorage {
 
     /// @notice Vault total asset in USD(1e18)
     function totalAssets() external view returns (uint256){
-        return _totalAssetInVault() + _totalAssetInStrategies();
+        //return _totalAssetInVault() + _totalAssetInStrategies();
+        return _totalAssetInVault() + totalDebt;
     }
 
     /**
@@ -227,16 +237,16 @@ contract Vault is VaultStorage {
         }
     }
 
-    /**
-     * @dev Internal to calculate total value of all assets held in Strategies.
-     * @return _value Total value in USD (1e18)
-     */
-    function _totalAssetInStrategies() internal view returns (uint256 _value) {
-        uint256[] memory _assetDecimals = _getAssetDecimals();
-        for (uint256 i = 0; i < strategySet.length(); i++) {
-            _value = _value + _checkBalanceInStrategy(strategySet.at(i), _assetDecimals);
-        }
-    }
+    //    /**
+    //     * @dev Internal to calculate total value of all assets held in Strategies.
+    //     * @return _value Total value in USD (1e18)
+    //     */
+    //    function _totalAssetInStrategies() internal view returns (uint256 _value) {
+    //        uint256[] memory _assetDecimals = _getAssetDecimals();
+    //        for (uint256 i = 0; i < strategySet.length(); i++) {
+    //            _value = _value + _checkBalanceInStrategy(strategySet.at(i), _assetDecimals);
+    //        }
+    //    }
 
     /// @notice All strategies
     function getStrategies() external view returns (address[] memory){
@@ -244,7 +254,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Added support for specific asset.
-    function addAsset(address _asset) external isVaultManager whenNotEmergency whenNotAdjustPosition defense {
+    function addAsset(address _asset) external isVaultManager whenNotEmergency whenNotAdjustPosition {
         require(!assetSet.contains(_asset), "existed");
         assetSet.add(_asset);
         // Verify that our oracle supports the asset
@@ -255,7 +265,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Remove support for specific asset.
-    function removeAsset(address _asset) external isVaultManager whenNotEmergency whenNotAdjustPosition defense {
+    function removeAsset(address _asset) external isVaultManager whenNotEmergency whenNotAdjustPosition {
         require(assetSet.contains(_asset), "not exist");
         assetSet.remove(_asset);
         trackedAssetsMap.minus(_asset, 1);
@@ -269,29 +279,32 @@ contract Vault is VaultStorage {
     /// @dev The strategy added to the strategy list,
     ///      Vault may invest funds into the strategy,
     ///      and the strategy will invest the funds in the 3rd protocol
-    function addStrategy(address[] memory _strategies) external isVaultManager whenNotEmergency whenNotAdjustPosition defense {
+    function addStrategy(StrategyAdd[] memory strategyAdds) external isVaultManager whenNotEmergency whenNotAdjustPosition {
         bool addressValid = true;
         bool strategyNotExist = true;
         bool vaultValid = true;
-        for (uint256 i = 0; i < _strategies.length; i++) {
-            addressValid = (_strategies[i] != ZERO_ADDRESS);
+        for (uint256 i = 0; i < strategyAdds.length; i++) {
+            addressValid = (strategyAdds[i].strategy != ZERO_ADDRESS);
             if (addressValid == false) {
                 break;
             }
-            strategyNotExist = !strategySet.contains(_strategies[i]);
+            strategyNotExist = !strategySet.contains(strategyAdds[i].strategy);
             if (strategyNotExist == false) {
                 break;
             }
-            vaultValid = (IStrategy(_strategies[i]).vault() == address(this));
+            vaultValid = (IStrategy(strategyAdds[i].strategy).vault() == address(this));
             if (vaultValid == false) {
                 break;
             }
         }
         require(addressValid && strategyNotExist && vaultValid, "Strategy is invalid");
 
-        for (uint256 i = 0; i < _strategies.length; i++) {
-            strategySet.add(_strategies[i]);
-            address[] memory _wants = IStrategy(_strategies[i]).getWants();
+        address[] memory _strategies = new address[](strategyAdds.length);
+        for (uint256 i = 0; i < strategyAdds.length; i++) {
+            StrategyAdd memory strategyAdd = strategyAdds[i];
+            _strategies[i] = strategyAdd.strategy;
+            _addStrategy(strategyAdd.strategy, strategyAdd.profitLimitRatio, strategyAdd.lossLimitRatio);
+            address[] memory _wants = IStrategy(strategyAdd.strategy).getWants();
             for (uint j = 0; j < _wants.length; j++) {
                 trackedAssetsMap.plus(_wants[j], 1);
             }
@@ -299,11 +312,29 @@ contract Vault is VaultStorage {
 
         emit AddStrategies(_strategies);
     }
+    /**
+    * add strategy
+    **/
+    function _addStrategy(
+        address strategy,
+        uint256 _profitLimitRatio,
+        uint256 _lossLimitRatio
+    ) internal {
+        //Add strategy to approved strategies
+        strategies[strategy] = StrategyParams({
+        lastReport : block.timestamp,
+        totalDebt : 0,
+        profitLimitRatio : _profitLimitRatio,
+        lossLimitRatio : _lossLimitRatio,
+        enforceChangeLimit : true
+        });
+        strategySet.add(strategy);
+    }
 
 
     /// @notice Remove strategy from strategy list
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
-    function removeStrategy(address[] memory _strategies) external isVaultManager whenNotEmergency whenNotAdjustPosition defense {
+    function removeStrategy(address[] memory _strategies) external isVaultManager whenNotEmergency whenNotAdjustPosition {
         bool strategyExist = true;
         for (uint256 i = 0; i < _strategies.length; i++) {
             strategyExist = strategySet.contains(_strategies[i]);
@@ -344,16 +375,19 @@ contract Vault is VaultStorage {
                 trackedAssetsMap.remove(wantToken);
             }
         }
+        totalDebt -= strategies[_addr].totalDebt;
+        delete strategies[_addr];
         strategySet.remove(_addr);
         _removeStrategyFromQueue(_addr);
     }
 
-    /// @notice Minting USDi with stablecoins
+    /// @notice estimate Minting USDi with stablecoins
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
-    /// @param _minimumUsdiAmount Minimum USDI to mint
     /// @dev Support single asset or multi-assets
-    function mint(address[] memory _assets, uint256[] memory _amounts, uint256 _minimumUsdiAmount) external whenNotEmergency whenNotAdjustPosition defense {
+    /// @return unitAdjustedDeposit  assets amount by Scale up to 18 decimal
+    /// @return priceAdjustedDeposit   usdi amount
+    function estimateMint(address[] memory _assets, uint256[] memory _amounts) public view returns (uint256 unitAdjustedDeposit, uint256 priceAdjustedDeposit){
         require(_assets.length > 0 && _amounts.length > 0 && _assets.length == _amounts.length, "Assets or amounts must not be empty and Assets length must equal amounts length");
         bool amountsGreaterThanZero = true;
         bool assetsExist = true;
@@ -370,8 +404,6 @@ contract Vault is VaultStorage {
         }
         require(assetsExist, "Asset is not exist");
         require(amountsGreaterThanZero, "Amount must be greater than 0");
-        uint256 unitAdjustedDeposit = 0;
-        uint256 priceAdjustedDeposit = 0;
         for (uint256 i = 0; i < _assets.length; i++) {
             uint256 price = _priceUSDMint(_assets[i]);
             uint256 assetDecimals = Helpers.getDecimals(_assets[i]);
@@ -379,6 +411,19 @@ contract Vault is VaultStorage {
             unitAdjustedDeposit = unitAdjustedDeposit + (_amounts[i].scaleBy(18, assetDecimals));
             priceAdjustedDeposit = priceAdjustedDeposit + (_amounts[i].mulTruncateScale(price, 10 ** assetDecimals));
         }
+        return (unitAdjustedDeposit, priceAdjustedDeposit);
+    }
+
+    /// @notice Minting USDi with stablecoins
+    /// @param _assets Address of the asset being deposited
+    /// @param _amounts Amount of the asset being deposited
+    /// @param _minimumUsdiAmount Minimum USDI to mint
+    /// @dev Support single asset or multi-assets
+    function mint(address[] memory _assets, uint256[] memory _amounts, uint256 _minimumUsdiAmount) external whenNotEmergency whenNotAdjustPosition nonReentrant returns (uint256) {
+
+        uint256 unitAdjustedDeposit = 0;
+        uint256 priceAdjustedDeposit = 0;
+        (unitAdjustedDeposit, priceAdjustedDeposit) = estimateMint(_assets,_amounts);
         if (_minimumUsdiAmount > 0) {
             require(
                 priceAdjustedDeposit >= _minimumUsdiAmount,
@@ -401,6 +446,7 @@ contract Vault is VaultStorage {
         }
 
         emit Mint(msg.sender, _assets, _amounts, priceAdjustedDeposit);
+        return priceAdjustedDeposit;
     }
 
     /// @notice withdraw from strategy queue
@@ -412,7 +458,11 @@ contract Vault is VaultStorage {
             if (!strategySet.contains(_strategy)) {
                 continue;
             }
-            uint256 strategyTotalValue = _checkValueInStrategyByRedeem(_strategy, _assetDecimals, _assetRedeemPrices);
+            //            uint256 strategyTotalValue = _checkValueInStrategyByRedeem(_strategy, _assetDecimals, _assetRedeemPrices);
+            uint256 strategyTotalValue = strategies[_strategy].totalDebt;
+            if (strategyTotalValue <= 0) {
+                continue;
+            }
 
             uint256 strategyWithdrawValue;
             if (needWithdrawValue > strategyTotalValue) {
@@ -425,6 +475,9 @@ contract Vault is VaultStorage {
             IStrategy strategy = IStrategy(_strategy);
             // console.log('start withdrawn from %s numerator %d denominator %d', _strategy, strategyWithdrawValue, strategyTotalValue);
             strategy.repay(strategyWithdrawValue, strategyTotalValue);
+
+            strategies[_strategy].totalDebt -= strategyWithdrawValue;
+            totalDebt -= strategyWithdrawValue;
 
             if (needWithdrawValue <= 0) {
                 break;
@@ -534,7 +587,7 @@ contract Vault is VaultStorage {
         uint256 _minimumUnitAmount,
         bool _needExchange,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
-    ) external whenNotEmergency whenNotAdjustPosition defense returns (address[] memory _assets, uint256[] memory _amounts){
+    ) external whenNotEmergency whenNotAdjustPosition nonReentrant returns (address[] memory _assets, uint256[] memory _amounts){
         require(_amount > 0 && _amount <= usdi.balanceOf(msg.sender), "Amount must be greater than 0 and less than or equal to balance");
         require(assetSet.contains(_asset), "The asset not support");
         bool toTokenValid = true;
@@ -685,37 +738,37 @@ contract Vault is VaultStorage {
         }
         return strategyAssetValue;
     }
-
-    /**
-    * @notice Get the value of an asset held in strategy. by redeempirce
-     * @param _strategy Address of strategy
-     * @return balance Balance of strategy usd (1e18)
-     */
-    function _checkValueInStrategyByRedeem(address _strategy, uint256[] memory assetDecimals, uint256[] memory assetRedeemPrices) internal view returns (uint256){
-        IStrategy strategy = IStrategy(_strategy);
-        (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue) = strategy.getPositionDetail();
-        uint256 strategyAssetValue = 0;
-        if (isUsd) {
-            strategyAssetValue = usdValue;
-        } else {
-            uint256 trackedAssetsLength = trackedAssetsMap.length();
-            for (uint256 i = 0; i < _tokens.length; i++) {
-                if (_amounts[i] > 0) {
-                    for (uint256 j = 0; j < trackedAssetsLength; j++) {
-                        (address trackedAsset,) = trackedAssetsMap.at(j);
-                        if (trackedAsset == _tokens[i]) {
-                            strategyAssetValue = strategyAssetValue + (_amounts[i].mulTruncateScale(assetRedeemPrices[j], 10 ** assetDecimals[j]));
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        return strategyAssetValue;
-    }
+    //
+    //    /**
+    //    * @notice Get the value of an asset held in strategy. by redeempirce
+    //     * @param _strategy Address of strategy
+    //     * @return balance Balance of strategy usd (1e18)
+    //     */
+    //    function _checkValueInStrategyByRedeem(address _strategy, uint256[] memory assetDecimals, uint256[] memory assetRedeemPrices) internal view returns (uint256){
+    //        IStrategy strategy = IStrategy(_strategy);
+    //        (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue) = strategy.getPositionDetail();
+    //        uint256 strategyAssetValue = 0;
+    //        if (isUsd) {
+    //            strategyAssetValue = usdValue;
+    //        } else {
+    //            uint256 trackedAssetsLength = trackedAssetsMap.length();
+    //            for (uint256 i = 0; i < _tokens.length; i++) {
+    //                if (_amounts[i] > 0) {
+    //                    for (uint256 j = 0; j < trackedAssetsLength; j++) {
+    //                        (address trackedAsset,) = trackedAssetsMap.at(j);
+    //                        if (trackedAsset == _tokens[i]) {
+    //                            strategyAssetValue = strategyAssetValue + (_amounts[i].mulTruncateScale(assetRedeemPrices[j], 10 ** assetDecimals[j]));
+    //                            break;
+    //                        }
+    //                    }
+    //                }
+    //            }
+    //        }
+    //        return strategyAssetValue;
+    //    }
 
     /// @notice Change USDi supply with Vault total assets.
-    function rebase() external isVaultManager defense {
+    function rebase() external nonReentrant {
         _rebase();
     }
     /**
@@ -728,7 +781,8 @@ contract Vault is VaultStorage {
         if (usdiSupply == 0) {
             return;
         }
-        uint256 vaultValue = _totalAssetInVault() + _totalAssetInStrategies();
+        //        uint256 vaultValue = _totalAssetInVault() + _totalAssetInStrategies();
+        uint256 vaultValue = _totalAssetInVault() + totalDebt;
 
         // Yield fee collection
         address _treasureAddress = treasury;
@@ -751,7 +805,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Allocate funds in Vault to strategies.
-    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) external isVaultManager whenNotEmergency isActiveStrategy(_strategy) {
+    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) external isVaultManager whenNotEmergency isActiveStrategy(_strategy) nonReentrant {
         (address[] memory _wants, uint[] memory _ratios) = IStrategy(_strategy).getWantsInfo();
         uint256[] memory toAmounts = new uint256[](_wants.length);
         bool toTokenValid = true;
@@ -790,17 +844,17 @@ contract Vault is VaultStorage {
                 break;
             }
         }
-        //定义规则 0 表示不受约束，不参与的币种不在返回wants里
+        //Definition rule 0 means unconstrained, currencies that do not participate are not in the returned wants
         uint256 minProductIndex = 0;
         if (_ratios.length > 1) {
             for (uint256 i = 0; i < _ratios.length; i++) {
                 //                 console.log('token %s amount %d aspect %d', _wants[i], toAmounts[i], _ratios[i]);
                 // console.log('token i+1  %s amount %d aspect %d', tokenDetails[i + 1].token, tokenDetails[i + 1].amount, tokenAspects[i + 1].aspect);
                 if (_ratios[i] == 0) {
-                    //允许wants中存在占比为0的token
+                    //0 is free
                     continue;
                 } else if (_ratios[minProductIndex] == 0) {
-                    //minProductIndex赋值给第一个占比不为0的index
+                    //minProductIndex is assigned to the first index whose proportion is not 0
                     minProductIndex = i;
                 } else if (toAmounts[minProductIndex] * _ratios[i] > toAmounts[i] * _ratios[minProductIndex]) {
                     minProductIndex = i;
@@ -810,20 +864,38 @@ contract Vault is VaultStorage {
 
         uint256 minMount = toAmounts[minProductIndex];
         uint256 minAspect = _ratios[minProductIndex];
-        //        console.log("(minProductIndex,minAspect,minMount)", minProductIndex, minAspect, minMount);
+        uint256 lendValue;
         for (uint256 i = 0; i < toAmounts.length; i++) {
             if (toAmounts[i] > 0) {
+                uint256 decimals = Helpers.getDecimals(_wants[i]);
                 // console.log('token %s amount %d', _wants[i], toAmounts[i]);
                 // console.log(' minProductIndex %d minMount %d minAspect %d', minProductIndex, minMount, minAspect);
                 uint256 actualAmount = toAmounts[i];
                 if (_ratios[i] > 0) {
                     actualAmount = _ratios[i] * minMount / minAspect;
                 }
+                lendValue += actualAmount.scaleBy(18, decimals);
+
                 toAmounts[i] = actualAmount;
                 // console.log('token %s actual amount %d', _wants[i], actualAmount);
                 IERC20Upgradeable(_wants[i]).safeTransfer(_strategy, actualAmount);
             }
         }
+        IStrategy strategy = IStrategy(_strategy);
+        strategy.borrow(_wants, toAmounts);
+        strategies[_strategy].totalDebt += lendValue;
+        totalDebt += lendValue;
+
+        emit LendToStrategy(_strategy, _wants, toAmounts, lendValue);
+    }
+
+    function exchange(
+        address _fromToken,
+        address _toToken,
+        uint256 _amount,
+        IExchangeAggregator.ExchangeParam memory exchangeParam
+    ) external isKeeper returns (uint256) {
+        return _exchange(_fromToken, _toToken, _amount, exchangeParam);
     }
 
     function _exchange(
@@ -848,16 +920,53 @@ contract Vault is VaultStorage {
     }
 
     /// @notice redeem the funds from specified strategy.
-    function redeem(address _strategy, uint256 _amount) external isKeeper isActiveStrategy(_strategy) whenNotEmergency {
-        uint256[] memory _assetDecimals = _getAssetDecimals();
-        uint256 strategyAssetValue = _checkBalanceInStrategy(_strategy, _assetDecimals);
+    function redeem(address _strategy, uint256 _amount) external isKeeper isActiveStrategy(_strategy) whenNotEmergency nonReentrant {
+        uint256 strategyAssetValue = strategies[_strategy].totalDebt;
         require(_amount <= strategyAssetValue);
-        console.log("(amount,totalasset)",_amount,strategyAssetValue);
 
         IStrategy strategy = IStrategy(_strategy);
         strategy.repay(_amount, strategyAssetValue);
+
+        strategies[_strategy].totalDebt -= _amount;
+        totalDebt -= _amount;
+
         // console.log('[vault.redeem] %s redeem _amount %d totalDebt %d ', _strategy, _amount, strategyAssetValue);
         emit Redeem(_strategy, _amount);
+    }
+
+
+    function report(uint256 _strategyAsset) external {
+        require(strategySet.contains(msg.sender));
+
+        uint256 lastStrategyTotalDebt = strategies[msg.sender].totalDebt;
+        uint256 nowStrategyTotalDebt = _strategyAsset;
+        uint256 gain = 0;
+        uint256 loss = 0;
+
+        if (nowStrategyTotalDebt > lastStrategyTotalDebt) {
+            gain = nowStrategyTotalDebt - lastStrategyTotalDebt;
+        } else if (nowStrategyTotalDebt < lastStrategyTotalDebt) {
+            loss = lastStrategyTotalDebt - nowStrategyTotalDebt;
+        }
+
+        if (strategies[msg.sender].enforceChangeLimit) {
+            if (gain > 0) {
+                require(gain <= ((lastStrategyTotalDebt * strategies[msg.sender].profitLimitRatio) / MAX_BPS), 'GL');
+            } else if (loss > 0) {
+                require(loss <= ((lastStrategyTotalDebt * strategies[msg.sender].lossLimitRatio) / MAX_BPS), 'LL');
+            }
+        } else {
+            strategies[msg.sender].enforceChangeLimit = true;
+            // The check is turned off only once and turned back on.
+        }
+
+        strategies[msg.sender].totalDebt = nowStrategyTotalDebt;
+        totalDebt = totalDebt - lastStrategyTotalDebt + nowStrategyTotalDebt;
+
+        strategies[msg.sender].lastReport = block.timestamp;
+        //        lastReport = block.timestamp;
+
+        //        emit StrategyReported(msg.sender, gain, loss, lastStrategyTotalDebt, nowStrategyTotalDebt);
     }
 
     /***************************************
@@ -887,7 +996,7 @@ contract Vault is VaultStorage {
         return withdrawQueue;
     }
 
-    function removeStrategyFromQueue(address[] memory _strategies) external isVaultManager defense {
+    function removeStrategyFromQueue(address[] memory _strategies) external isVaultManager {
         for (uint256 i = 0; i < _strategies.length; i++) {
             _removeStrategyFromQueue(_strategies[i]);
         }

@@ -26,16 +26,16 @@ describe('USDi Test',function(){
         user2 = accounts[2].address;
         
         const AccessControlProxy = await ethers.getContractFactory("AccessControlProxy",accounts[19]);
-        accessControlProxy = await AccessControlProxy.deploy(governance, governance, governance, governance);
+        accessControlProxy = await AccessControlProxy.deploy();
         await accessControlProxy.deployed();
+        await accessControlProxy.initialize(governance, governance, governance, governance);
         contractAddr = accessControlProxy.address;
         
         const USDi = await ethers.getContractFactory("USDi",accounts[19]);
         usdi = await USDi.deploy();
         await usdi.deployed();
-        await usdi.initialize('USDi','USDi',18,accessControlProxy.address);
-        
-        
+        await usdi.initialize('USDi','USDi',18,accessControlProxy.address,);
+        await usdi.setVault(accounts[19].address);
     });
 
     it('Mint USDi to external account1',async function(){

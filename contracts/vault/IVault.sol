@@ -4,6 +4,13 @@ pragma solidity ^0.8.0;
 import "../exchanges/IExchangeAggregator.sol";
 
 interface IVault {
+
+    struct StrategyAdd {
+        address strategy;
+        uint256 profitLimitRatio;
+        uint256 lossLimitRatio;
+    }
+
     event AddAsset(address _asset);
     event RemoveAsset(address _asset);
     event AddStrategies(address[] _strategies);
@@ -82,17 +89,25 @@ interface IVault {
     /// @dev The strategy added to the strategy list,
     ///      Vault may invest funds into the strategy,
     ///      and the strategy will invest the funds in the 3rd protocol
-    function addStrategy(address[] memory _strategies) external;
+    function addStrategy(StrategyAdd[] memory strategyAdds) external;
 
     /// @notice Remove strategy from strategy list
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
     function removeStrategy(address[] memory _strategies) external;
 
+    /// @notice estimate Minting USDi with stablecoins
+    /// @param _assets Address of the asset being deposited
+    /// @param _amounts Amount of the asset being deposited
+    /// @dev Support single asset or multi-assets
+    /// @return unitAdjustedDeposit  assets amount by Scale up to 18 decimal
+    /// @return priceAdjustedDeposit   usdi amount
+    function estimateMint(address[] memory _assets, uint256[] memory _amounts) external view returns (uint256 unitAdjustedDeposit, uint256 priceAdjustedDeposit);
+
     /// @notice Minting USDi with stablecoins
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
     /// @dev Support single asset or multi-assets
-    function mint(address[] memory _assets, uint256[] memory _amounts, uint256 _minimumUsdiAmount) external;
+    function mint(address[] memory _assets, uint256[] memory _amounts, uint256 _minimumUsdiAmount) external returns (uint256 usdiAmount);
 
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn

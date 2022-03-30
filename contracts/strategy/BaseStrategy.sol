@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
 import "../library/StableMath.sol";
@@ -23,18 +23,21 @@ interface IVault {
     function valueInterpreter() external view returns (address);
 }
 
-abstract contract BaseStrategy is AccessControlMixin, Initializable {
+abstract contract BaseStrategy is Initializable, AccessControlMixin {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using StableMath for uint256;
 
-    event MigarteToNewVault(address _oldVault, address _newVault);
+    event MigrateToNewVault(address _oldVault, address _newVault);
+
     event Report(
         uint256 _beforeAssets,
         uint256 _afterAssets,
         address[] _rewardTokens,
         uint256[] _claimAmounts
     );
+
     event Borrow(address[] _assets, uint256[] _amounts);
+
     event Repay(
         uint256 _withdrawShares,
         uint256 _totalShares,
@@ -42,13 +45,24 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
         uint256[] _amounts
     );
 
+    event SetIsWantRatioIgnorable(
+        bool oldValue,
+        bool newValue
+    );
+
     IVault public vault;
     IValueInterpreter public valueInterpreter;
     address public harvester;
     uint16 public protocol;
     address[] public wants;
+    bool public isWantRatioIgnorable;
 
     uint256 public lastTotalAsset;
+
+    modifier onlyVault {
+        require(msg.sender == address(vault));
+        _;
+    }
 
     function _initialize(
         address _vault,
@@ -64,7 +78,7 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
         _initAccessControl(vault.accessControlProxy());
 
         require(_wants.length > 0, "wants is required");
-        for (uint8 i = 0; i < _wants.length; i++) {
+        for (uint i = 0; i < _wants.length; i++) {
             require(_wants[i] != address(0), "SAI");
         }
         wants = _wants;
@@ -78,8 +92,17 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     /// @notice Name of strategy
     function name() external pure virtual returns (string memory);
 
+    /// @notice True means that can ignore ratios given by wants info
+    function setIsWantRatioIgnorable(bool _isWantRatioIgnorable)
+    external
+    isVaultManager
+    {
+        bool oldValue = isWantRatioIgnorable;
+        isWantRatioIgnorable = _isWantRatioIgnorable;
+        emit SetIsWantRatioIgnorable(oldValue, _isWantRatioIgnorable);
+    }
+
     /// @notice Provide the strategy need underlying token and ratio
-    /// @dev If ratio is 0, it means that the ratio of the token is free.
     function getWantsInfo()
     external
     view
@@ -87,17 +110,26 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     returns (address[] memory _assets, uint256[] memory _ratios);
 
     /// @notice Provide the strategy need underlying token and ratio
-    function getWants()
-    external
-    view
-    virtual
-    returns (address[] memory _assets);
+    function getWants() external view returns (address[] memory) {
+        return wants;
+    }
 
     /// @notice Returns the position details of the strategy.
-    function getPositionDetail() external view virtual returns (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue);
+    function getPositionDetail() public view virtual returns (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue);
 
     /// @notice Total assets of strategy in USD.
-    function estimatedTotalAssets() external view virtual returns (uint256);
+    function estimatedTotalAssets() external virtual view returns (uint256){
+        (address[] memory tokens, uint256[] memory amounts, bool isUsd, uint256 usdValue) = getPositionDetail();
+        if (isUsd) {
+            return usdValue;
+        } else {
+            uint256 totalUsdValue = 0;
+            for (uint i = 0; i < tokens.length; i++) {
+                totalUsdValue = totalUsdValue + queryTokenValue(tokens[i], amounts[i]);
+            }
+            return totalUsdValue;
+        }
+    }
 
     /// @notice 3rd prototcol's pool total assets in USD.
     function get3rdPoolAssets() external view virtual returns (uint256);
@@ -131,7 +163,7 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     function report(
         address[] memory _rewardTokens,
         uint256[] memory _claimAmounts
-    ) private {
+    ) internal {
         uint256 prevTotalAsset = lastTotalAsset;
         uint256 currTotalAsset = this.estimatedTotalAssets();
         vault.report(currTotalAsset);
@@ -146,7 +178,7 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     }
 
     /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
-    function harvest() external {
+    function harvest() external virtual {
         address[] memory _rewardsTokens;
         uint256[] memory _pendingAmounts;
         uint256[] memory _claimAmounts;
@@ -176,7 +208,7 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     /// @param _amounts borrow token amount
     function borrow(address[] memory _assets, uint256[] memory _amounts)
     external
-    onlyRole(BocRoles.VAULT_ROLE)
+    onlyVault
     {
         require(_assets.length == wants.length);
         // statistics the actual number of tokens, because the strategy may have balance before
@@ -200,7 +232,7 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     /// @param _totalShares Denominator
     function repay(uint256 _repayShares, uint256 _totalShares)
     external
-    onlyRole(BocRoles.VAULT_ROLE)
+    onlyVault
     returns (address[] memory _assets, uint256[] memory _amounts)
     {
         require(
@@ -286,7 +318,9 @@ abstract contract BaseStrategy is AccessControlMixin, Initializable {
     view
     returns (uint256 valueInUSD)
     {
-        valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(_token, _amount).scaleBy(18, 8);
+        valueInUSD = valueInterpreter
+        .calcCanonicalAssetValueInUsd(_token, _amount)
+        .scaleBy(18, 8);
     }
 
     function decimalUnitOfToken(address _token)

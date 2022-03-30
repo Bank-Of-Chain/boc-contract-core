@@ -4,14 +4,20 @@ pragma solidity ^0.8.0;
 import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import '../access-control/AccessControlMixin.sol';
 import '../library/BocRoles.sol';
+import "../token/USDi.sol";
 
-contract Treasury is Initializable, AccessControlMixin {
+contract Treasury is Initializable, ReentrancyGuardUpgradeable, AccessControlMixin {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    function initialize(address _accessControlProxy) public initializer {
+    // usdi
+    USDi internal usdi;
+
+    function initialize(address _accessControlProxy, address _usdi) public initializer {
         _initAccessControl(_accessControlProxy);
+        usdi = USDi(_usdi);
     }
 
     // accepts ether
@@ -41,5 +47,14 @@ contract Treasury is Initializable, AccessControlMixin {
     payable
     onlyRole(BocRoles.GOV_ROLE) {
         _destination.transfer(_amount);
+    }
+    // --------------------
+    // Governance functions
+    // --------------------
+
+    /// @dev Opting into yield reduces the gas cost per transfer by about 4K, since
+    /// ousd needs to do less accounting and one less storage write.
+    function rebaseOptIn() external onlyGovOrDelegate nonReentrant {
+        usdi.rebaseOptIn();
     }
 }
