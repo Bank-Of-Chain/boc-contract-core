@@ -16,11 +16,6 @@ contract Vault is VaultStorage {
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
 
-    // Only smart contracts will be affected by this modifier
-    modifier defense() {
-        require((msg.sender == tx.origin) || whiteList[msg.sender]);
-        _;
-    }
 
     modifier whenNotEmergency() {
         require(!emergencyShutdown, 'ES');
@@ -259,7 +254,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Added support for specific asset.
-    function addAsset(address _asset) external isVaultManager whenNotEmergency whenNotAdjustPosition defense {
+    function addAsset(address _asset) external isVaultManager whenNotEmergency whenNotAdjustPosition {
         require(!assetSet.contains(_asset), "existed");
         assetSet.add(_asset);
         // Verify that our oracle supports the asset
@@ -270,7 +265,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Remove support for specific asset.
-    function removeAsset(address _asset) external isVaultManager whenNotEmergency whenNotAdjustPosition defense {
+    function removeAsset(address _asset) external isVaultManager whenNotEmergency whenNotAdjustPosition {
         require(assetSet.contains(_asset), "not exist");
         assetSet.remove(_asset);
         trackedAssetsMap.minus(_asset, 1);
@@ -284,7 +279,7 @@ contract Vault is VaultStorage {
     /// @dev The strategy added to the strategy list,
     ///      Vault may invest funds into the strategy,
     ///      and the strategy will invest the funds in the 3rd protocol
-    function addStrategy(StrategyAdd[] memory strategyAdds) external isVaultManager whenNotEmergency whenNotAdjustPosition defense {
+    function addStrategy(StrategyAdd[] memory strategyAdds) external isVaultManager whenNotEmergency whenNotAdjustPosition {
         bool addressValid = true;
         bool strategyNotExist = true;
         bool vaultValid = true;
@@ -339,7 +334,7 @@ contract Vault is VaultStorage {
 
     /// @notice Remove strategy from strategy list
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
-    function removeStrategy(address[] memory _strategies) external isVaultManager whenNotEmergency whenNotAdjustPosition defense {
+    function removeStrategy(address[] memory _strategies) external isVaultManager whenNotEmergency whenNotAdjustPosition {
         bool strategyExist = true;
         for (uint256 i = 0; i < _strategies.length; i++) {
             strategyExist = strategySet.contains(_strategies[i]);
@@ -386,12 +381,13 @@ contract Vault is VaultStorage {
         _removeStrategyFromQueue(_addr);
     }
 
-    /// @notice Minting USDi with stablecoins
+    /// @notice estimate Minting USDi with stablecoins
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
-    /// @param _minimumUsdiAmount Minimum USDI to mint
     /// @dev Support single asset or multi-assets
-    function mint(address[] memory _assets, uint256[] memory _amounts, uint256 _minimumUsdiAmount) external whenNotEmergency whenNotAdjustPosition defense returns (uint256) {
+    /// @return unitAdjustedDeposit  assets amount by Scale up to 18 decimal
+    /// @return priceAdjustedDeposit   usdi amount
+    function estimateMint(address[] memory _assets, uint256[] memory _amounts) public view returns (uint256 unitAdjustedDeposit, uint256 priceAdjustedDeposit){
         require(_assets.length > 0 && _amounts.length > 0 && _assets.length == _amounts.length, "Assets or amounts must not be empty and Assets length must equal amounts length");
         bool amountsGreaterThanZero = true;
         bool assetsExist = true;
@@ -408,8 +404,6 @@ contract Vault is VaultStorage {
         }
         require(assetsExist, "Asset is not exist");
         require(amountsGreaterThanZero, "Amount must be greater than 0");
-        uint256 unitAdjustedDeposit = 0;
-        uint256 priceAdjustedDeposit = 0;
         for (uint256 i = 0; i < _assets.length; i++) {
             uint256 price = _priceUSDMint(_assets[i]);
             uint256 assetDecimals = Helpers.getDecimals(_assets[i]);
@@ -417,6 +411,19 @@ contract Vault is VaultStorage {
             unitAdjustedDeposit = unitAdjustedDeposit + (_amounts[i].scaleBy(18, assetDecimals));
             priceAdjustedDeposit = priceAdjustedDeposit + (_amounts[i].mulTruncateScale(price, 10 ** assetDecimals));
         }
+        return (unitAdjustedDeposit, priceAdjustedDeposit);
+    }
+
+    /// @notice Minting USDi with stablecoins
+    /// @param _assets Address of the asset being deposited
+    /// @param _amounts Amount of the asset being deposited
+    /// @param _minimumUsdiAmount Minimum USDI to mint
+    /// @dev Support single asset or multi-assets
+    function mint(address[] memory _assets, uint256[] memory _amounts, uint256 _minimumUsdiAmount) external whenNotEmergency whenNotAdjustPosition nonReentrant returns (uint256) {
+
+        uint256 unitAdjustedDeposit = 0;
+        uint256 priceAdjustedDeposit = 0;
+        (unitAdjustedDeposit, priceAdjustedDeposit) = estimateMint(_assets,_amounts);
         if (_minimumUsdiAmount > 0) {
             require(
                 priceAdjustedDeposit >= _minimumUsdiAmount,
@@ -580,7 +587,7 @@ contract Vault is VaultStorage {
         uint256 _minimumUnitAmount,
         bool _needExchange,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
-    ) external whenNotEmergency whenNotAdjustPosition defense returns (address[] memory _assets, uint256[] memory _amounts){
+    ) external whenNotEmergency whenNotAdjustPosition nonReentrant returns (address[] memory _assets, uint256[] memory _amounts){
         require(_amount > 0 && _amount <= usdi.balanceOf(msg.sender), "Amount must be greater than 0 and less than or equal to balance");
         require(assetSet.contains(_asset), "The asset not support");
         bool toTokenValid = true;
@@ -761,7 +768,7 @@ contract Vault is VaultStorage {
     //    }
 
     /// @notice Change USDi supply with Vault total assets.
-    function rebase() external isVaultManager defense {
+    function rebase() external nonReentrant {
         _rebase();
     }
     /**
@@ -798,7 +805,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Allocate funds in Vault to strategies.
-    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) external isVaultManager whenNotEmergency isActiveStrategy(_strategy) {
+    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) external isVaultManager whenNotEmergency isActiveStrategy(_strategy) nonReentrant {
         (address[] memory _wants, uint[] memory _ratios) = IStrategy(_strategy).getWantsInfo();
         uint256[] memory toAmounts = new uint256[](_wants.length);
         bool toTokenValid = true;
@@ -913,7 +920,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice redeem the funds from specified strategy.
-    function redeem(address _strategy, uint256 _amount) external isKeeper isActiveStrategy(_strategy) whenNotEmergency {
+    function redeem(address _strategy, uint256 _amount) external isKeeper isActiveStrategy(_strategy) whenNotEmergency nonReentrant {
         uint256 strategyAssetValue = strategies[_strategy].totalDebt;
         require(_amount <= strategyAssetValue);
 
@@ -989,7 +996,7 @@ contract Vault is VaultStorage {
         return withdrawQueue;
     }
 
-    function removeStrategyFromQueue(address[] memory _strategies) external isVaultManager defense {
+    function removeStrategyFromQueue(address[] memory _strategies) external isVaultManager {
         for (uint256 i = 0; i < _strategies.length; i++) {
             _removeStrategyFromQueue(_strategies[i]);
         }

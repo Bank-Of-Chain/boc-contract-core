@@ -6,12 +6,17 @@ import '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import '../access-control/AccessControlMixin.sol';
 import '../library/BocRoles.sol';
+import "../token/USDi.sol";
 
 contract Treasury is Initializable, AccessControlMixin {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    function initialize(address _accessControlProxy) public initializer {
+    // usdi
+    USDi internal usdi;
+    function initialize(address _accessControlProxy,address _usdi) public initializer {
         _initAccessControl(_accessControlProxy);
+        usdi = USDi(_usdi);
+        usdi.rebaseOptIn();
     }
 
     // accepts ether

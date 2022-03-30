@@ -95,6 +95,14 @@ interface IVault {
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
     function removeStrategy(address[] memory _strategies) external;
 
+    /// @notice estimate Minting USDi with stablecoins
+    /// @param _assets Address of the asset being deposited
+    /// @param _amounts Amount of the asset being deposited
+    /// @dev Support single asset or multi-assets
+    /// @return unitAdjustedDeposit  assets amount by Scale up to 18 decimal
+    /// @return priceAdjustedDeposit   usdi amount
+    function estimateMint(address[] memory _assets, uint256[] memory _amounts) external view returns (uint256 unitAdjustedDeposit, uint256 priceAdjustedDeposit);
+
     /// @notice Minting USDi with stablecoins
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
