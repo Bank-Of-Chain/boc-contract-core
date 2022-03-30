@@ -84,7 +84,6 @@ contract MockStrategy is BaseStrategy {
         public
         view
         virtual
-        override
         returns (
             address[] memory _rewardsTokens,
             uint256[] memory _pendingAmounts
@@ -96,7 +95,6 @@ contract MockStrategy is BaseStrategy {
     function claimRewards()
         internal
         virtual
-        override
         returns (
             address[] memory _rewardsTokens,
             uint256[] memory _claimAmounts

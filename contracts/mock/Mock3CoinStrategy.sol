@@ -82,7 +82,6 @@ contract MockS3CoinStrategy is BaseStrategy {
     public
     view
     virtual
-    override
     returns (
         address[] memory _rewardsTokens,
         uint256[] memory _pendingAmounts
@@ -94,7 +93,6 @@ contract MockS3CoinStrategy is BaseStrategy {
     function claimRewards()
     internal
     virtual
-    override
     returns (
         address[] memory _rewardsTokens,
         uint256[] memory _claimAmounts
