@@ -805,7 +805,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Allocate funds in Vault to strategies.
-    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) external isVaultManager whenNotEmergency isActiveStrategy(_strategy) nonReentrant {
+    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) external isKeeper isActiveStrategy(_strategy) nonReentrant {
         (address[] memory _wants, uint[] memory _ratios) = IStrategy(_strategy).getWantsInfo();
         uint256[] memory toAmounts = new uint256[](_wants.length);
         bool toTokenValid = true;
@@ -920,7 +920,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice redeem the funds from specified strategy.
-    function redeem(address _strategy, uint256 _amount) external isKeeper isActiveStrategy(_strategy) whenNotEmergency nonReentrant {
+    function redeem(address _strategy, uint256 _amount) external isKeeper isActiveStrategy(_strategy) nonReentrant {
         uint256 strategyAssetValue = strategies[_strategy].totalDebt;
         require(_amount <= strategyAssetValue);
 
@@ -935,8 +935,7 @@ contract Vault is VaultStorage {
     }
 
 
-    function report(uint256 _strategyAsset) external {
-        require(strategySet.contains(msg.sender));
+    function report(uint256 _strategyAsset) external isActiveStrategy(msg.sender) {
 
         uint256 lastStrategyTotalDebt = strategies[msg.sender].totalDebt;
         uint256 nowStrategyTotalDebt = _strategyAsset;
