@@ -229,8 +229,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         }
 
         (_assets, _amounts) = withdrawFrom3rdPool(_repayShares, _totalShares);
-        transferTokensToTarget(address(vault), _assets, _amounts);
-
+        
         for (uint256 i = 0; i < wantsCopy.length; i++) {
             address token = wantsCopy[i];
             require(token == _assets[i], "keep the order");
@@ -241,6 +240,8 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
             (balancesBefore[i] * _repayShares) /
             _totalShares;
         }
+
+        transferTokensToTarget(address(vault), _assets, _amounts);
 
         emit Repay(_repayShares, _totalShares, _assets, _amounts);
     }
