@@ -10,6 +10,7 @@ import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
 import "../library/StableMath.sol";
 import "../price-feeds/IValueInterpreter.sol";
+import 'hardhat/console.sol';
 
 interface IVault {
     function accessControlProxy() external view returns (address);
@@ -152,7 +153,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
                 if (amount > 0) {
                     assetsInUSD += amount.scaleBy(
                         18,
-                        decimalUnitOfToken(_tokens[i])
+                        IERC20MetadataUpgradeable(_tokens[i]).decimals()
                     );
                 }
             }
