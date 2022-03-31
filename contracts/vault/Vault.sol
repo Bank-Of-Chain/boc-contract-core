@@ -805,7 +805,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Allocate funds in Vault to strategies.
-    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) external isKeeper isActiveStrategy(_strategy) nonReentrant {
+    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) external isKeeper whenNotEmergency isActiveStrategy(_strategy) nonReentrant {
         (address[] memory _wants, uint[] memory _ratios) = IStrategy(_strategy).getWantsInfo();
         uint256[] memory toAmounts = new uint256[](_wants.length);
         bool toTokenValid = true;
