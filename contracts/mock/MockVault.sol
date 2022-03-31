@@ -47,4 +47,8 @@ contract MockVault is AccessControlMixin {
 
     /// @notice Strategy report asset
     function report(uint256 _strategyAsset) external {}
+
+    function rebase() external {
+        
+    }
 }

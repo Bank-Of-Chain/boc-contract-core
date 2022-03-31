@@ -702,11 +702,11 @@ contract Vault is VaultStorage {
         for (uint256 i = 0; i < trackedAssetsMap.length(); i++) {
             (address trackedAsset,) = trackedAssetsMap.at(i);
             uint256 price = valueInterpreter.price(trackedAsset);
-            if (price < 1e8) {
-                price = 1e8;
+            if (price < 1e18) {
+                price = 1e18;
             }
             // Price from Oracle is returned with 8 decimals so scale to 18
-            assetPrices[i] = price.scaleBy(18, 8);
+            assetPrices[i] = price;
         }
     }
 
@@ -981,11 +981,11 @@ contract Vault is VaultStorage {
      */
     function _priceUSDMint(address asset) internal view returns (uint256) {
         uint256 price = IValueInterpreter(valueInterpreter).price(asset);
-        if (price > 1e8) {
-            price = 1e8;
+        if (price > 1e18) {
+            price = 1e18;
         }
         // Price from Oracle is returned with 8 decimals so scale to 18
-        return price.scaleBy(18, 8);
+        return price;
     }
 
 

@@ -29,6 +29,7 @@ interface IValueInterpreter {
     * 资产的usd价值
     * _baseAsset: 源token地址
     * _amount: 源token数量
+    * @return usd(1e18)
     */
     function calcCanonicalAssetValueInUsd(
         address _baseAsset,
@@ -38,6 +39,7 @@ interface IValueInterpreter {
     /*
     * baseUnit数量资产的usd价值
     * _baseAsset: 源token地址
+    * @return usd(1e18)
     */
     function price(address _baseAsset) external view returns (uint256);
 }

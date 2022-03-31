@@ -297,10 +297,8 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     view
     returns (uint256 valueInUSD)
     {
-        valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(
-            _token,
-            _amount
-        );
+        valueInUSD = valueInterpreter
+        .calcCanonicalAssetValueInUsd(_token, _amount);
     }
 
     function decimalUnitOfToken(address _token)
