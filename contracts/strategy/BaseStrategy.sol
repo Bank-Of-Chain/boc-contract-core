@@ -152,7 +152,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
                 if (amount > 0) {
                     assetsInUSD += amount.scaleBy(
                         18,
-                        decimalUnitOfToken(_tokens[i])
+                        IERC20MetadataUpgradeable(_tokens[i]).decimals()
                     );
                 }
             }
