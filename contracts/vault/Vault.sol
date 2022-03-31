@@ -423,7 +423,7 @@ contract Vault is VaultStorage {
 
         uint256 unitAdjustedDeposit = 0;
         uint256 priceAdjustedDeposit = 0;
-        (unitAdjustedDeposit, priceAdjustedDeposit) = estimateMint(_assets,_amounts);
+        (unitAdjustedDeposit, priceAdjustedDeposit) = estimateMint(_assets, _amounts);
         if (_minimumUsdiAmount > 0) {
             require(
                 priceAdjustedDeposit >= _minimumUsdiAmount,
@@ -806,8 +806,57 @@ contract Vault is VaultStorage {
 
     /// @notice Allocate funds in Vault to strategies.
     function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) external isVaultManager whenNotEmergency isActiveStrategy(_strategy) nonReentrant {
-        (address[] memory _wants, uint[] memory _ratios) = IStrategy(_strategy).getWantsInfo();
-        uint256[] memory toAmounts = new uint256[](_wants.length);
+        (address[] memory _wants, uint256[] memory _ratios,uint256[] memory toAmounts) = _checkAndExchange(_strategy, _exchangeTokens);
+        //Definition rule 0 means unconstrained, currencies that do not participate are not in the returned wants
+        uint256 minProductIndex = 0;
+        bool isWantRatioIgnorable = IStrategy(_strategy).isWantRatioIgnorable();
+        if (!isWantRatioIgnorable && _ratios.length > 1) {
+            for (uint256 i = 0; i < _ratios.length; i++) {
+                // console.log('token %s amount %d aspect %d', _wants[i], toAmounts[i], _ratios[i]);
+                // console.log('token i+1  %s amount %d aspect %d', tokenDetails[i + 1].token, tokenDetails[i + 1].amount, tokenAspects[i + 1].aspect);
+                if (_ratios[i] == 0) {
+                    //0 is free
+                    continue;
+                } else if (_ratios[minProductIndex] == 0) {
+                    //minProductIndex is assigned to the first index whose proportion is not 0
+                    minProductIndex = i;
+                } else if (toAmounts[minProductIndex] * _ratios[i] > toAmounts[i] * _ratios[minProductIndex]) {
+                    minProductIndex = i;
+                }
+            }
+        }
+
+        uint256 minMount = toAmounts[minProductIndex];
+        uint256 minAspect = _ratios[minProductIndex];
+        uint256 lendValue;
+        for (uint256 i = 0; i < toAmounts.length; i++) {
+            if (toAmounts[i] > 0) {
+                uint256 decimals = Helpers.getDecimals(_wants[i]);
+                // console.log('token %s amount %d', _wants[i], toAmounts[i]);
+                // console.log(' minProductIndex %d minMount %d minAspect %d', minProductIndex, minMount, minAspect);
+                uint256 actualAmount = toAmounts[i];
+                if (!isWantRatioIgnorable && _ratios[i] > 0) {
+                    actualAmount = _ratios[i] * minMount / minAspect;
+                }
+                lendValue += actualAmount.scaleBy(18, decimals);
+
+                toAmounts[i] = actualAmount;
+                // console.log('token %s actual amount %d', _wants[i], actualAmount);
+                IERC20Upgradeable(_wants[i]).safeTransfer(_strategy, actualAmount);
+            }
+        }
+        IStrategy strategy = IStrategy(_strategy);
+        strategy.borrow(_wants, toAmounts);
+        strategies[_strategy].totalDebt += lendValue;
+        totalDebt += lendValue;
+
+        emit LendToStrategy(_strategy, _wants, toAmounts, lendValue);
+    }
+
+    /// @notice check valid and exchange to want token
+    function _checkAndExchange(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) internal returns (address[] memory _wants, uint256[] memory _ratios, uint256[] memory toAmounts){
+        (_wants, _ratios) = IStrategy(_strategy).getWantsInfo();
+        toAmounts = new uint256[](_wants.length);
         bool toTokenValid = true;
         for (uint256 i = 0; i < _exchangeTokens.length; i++) {
             bool findToToken = false;
@@ -844,49 +893,6 @@ contract Vault is VaultStorage {
                 break;
             }
         }
-        //Definition rule 0 means unconstrained, currencies that do not participate are not in the returned wants
-        uint256 minProductIndex = 0;
-        if (_ratios.length > 1) {
-            for (uint256 i = 0; i < _ratios.length; i++) {
-                //                 console.log('token %s amount %d aspect %d', _wants[i], toAmounts[i], _ratios[i]);
-                // console.log('token i+1  %s amount %d aspect %d', tokenDetails[i + 1].token, tokenDetails[i + 1].amount, tokenAspects[i + 1].aspect);
-                if (_ratios[i] == 0) {
-                    //0 is free
-                    continue;
-                } else if (_ratios[minProductIndex] == 0) {
-                    //minProductIndex is assigned to the first index whose proportion is not 0
-                    minProductIndex = i;
-                } else if (toAmounts[minProductIndex] * _ratios[i] > toAmounts[i] * _ratios[minProductIndex]) {
-                    minProductIndex = i;
-                }
-            }
-        }
-
-        uint256 minMount = toAmounts[minProductIndex];
-        uint256 minAspect = _ratios[minProductIndex];
-        uint256 lendValue;
-        for (uint256 i = 0; i < toAmounts.length; i++) {
-            if (toAmounts[i] > 0) {
-                uint256 decimals = Helpers.getDecimals(_wants[i]);
-                // console.log('token %s amount %d', _wants[i], toAmounts[i]);
-                // console.log(' minProductIndex %d minMount %d minAspect %d', minProductIndex, minMount, minAspect);
-                uint256 actualAmount = toAmounts[i];
-                if (_ratios[i] > 0) {
-                    actualAmount = _ratios[i] * minMount / minAspect;
-                }
-                lendValue += actualAmount.scaleBy(18, decimals);
-
-                toAmounts[i] = actualAmount;
-                // console.log('token %s actual amount %d', _wants[i], actualAmount);
-                IERC20Upgradeable(_wants[i]).safeTransfer(_strategy, actualAmount);
-            }
-        }
-        IStrategy strategy = IStrategy(_strategy);
-        strategy.borrow(_wants, toAmounts);
-        strategies[_strategy].totalDebt += lendValue;
-        totalDebt += lendValue;
-
-        emit LendToStrategy(_strategy, _wants, toAmounts, lendValue);
     }
 
     function exchange(
