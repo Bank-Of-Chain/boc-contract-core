@@ -33,6 +33,7 @@ abstract contract BaseClaimableStrategy is BaseStrategy {
         virtual
         override
         returns (
+            uint256 _currTotalAsset,
             address[] memory _rewardsTokens,
             uint256[] memory _claimAmounts
         )
@@ -40,6 +41,6 @@ abstract contract BaseClaimableStrategy is BaseStrategy {
         (_rewardsTokens, _claimAmounts) = claimRewards();
         // transfer reward token to harvester
         transferTokensToTarget(harvester, _rewardsTokens, _claimAmounts);
-        report(_rewardsTokens, _claimAmounts);
+        _currTotalAsset = report(_rewardsTokens, _claimAmounts);
     }
 }
