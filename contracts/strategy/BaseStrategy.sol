@@ -10,7 +10,6 @@ import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
 import "../library/StableMath.sol";
 import "../price-feeds/IValueInterpreter.sol";
-import 'hardhat/console.sol';
 
 interface IVault {
     function accessControlProxy() external view returns (address);
