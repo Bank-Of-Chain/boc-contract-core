@@ -201,7 +201,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice withdraw from strategy queue
-    function _repayFromWithdrawQueue(uint256 needWithdrawValue, uint256[] memory _assetDecimals, uint256[] memory _assetRedeemPrices) internal {
+    function _repayFromWithdrawQueue(uint256 needWithdrawValue) internal {
         for (uint256 i = 0; i < withdrawQueue.length; i++) {
             address _strategy = withdrawQueue[i];
             if (_strategy == ZERO_ADDRESS) break;
@@ -401,7 +401,7 @@ contract Vault is VaultStorage {
 
         // vault not enough,withdraw from withdraw queue strategy
         if (_totalAssetInVault < _burnAmount) {
-            _repayFromWithdrawQueue(_burnAmount - _totalAssetInVault, _assetDecimals, _assetRedeemPrices);
+            _repayFromWithdrawQueue(_burnAmount - _totalAssetInVault);
         }
         // calculate need transfer amount from vault ,set to outputs
         uint256[] memory outputs = _calculateOutputs(_burnAmount, _assetRedeemPrices, _assetDecimals);
@@ -692,7 +692,7 @@ contract Vault is VaultStorage {
         emit Redeem(_strategy, _amount);
     }
 
-    function report(uint256 _strategyAsset) external isActiveStrategy(msg.sender){
+    function report(uint256 _strategyAsset) external isActiveStrategy(msg.sender) {
 
         uint256 lastStrategyTotalDebt = strategies[msg.sender].totalDebt;
         uint256 nowStrategyTotalDebt = _strategyAsset;
