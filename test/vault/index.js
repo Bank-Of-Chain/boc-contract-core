@@ -157,6 +157,9 @@ describe("Vault", function () {
         await usdi.initialize('USDi', 'USDi', 18, accessControlProxy.address);
         await usdi.setVault(vault.address);
 
+        const dripper = await Dripper.new();
+        await dripper.initialize(accessControlProxy.address, vault.address, MFC.USDT_ADDRESS);
+
         console.log('deploy Treasury');
         // 国库
         treasury = await Treasury.new();
