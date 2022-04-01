@@ -54,6 +54,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     }
 
     uint256 private constant ETH_UNIT = 10 ** 18;
+    uint256 private constant BASIC_UNIT = 10 ** 18;
     uint256 private constant USD_UNIT = 10 ** 8;
     uint256 private ethUsdHeartbeat;
     address private ethUsdAggregator;
@@ -241,7 +242,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         RateAsset baseAssetRateAsset = getRateAssetForPrimitive(_baseAsset);
 
         uint256 baseAssetUnit = getUnitForPrimitive(_baseAsset);
-        uint256 quoteAssetUnit = USD_UNIT;
+        uint256 quoteAssetUnit = BASIC_UNIT;
         uint256 _quoteAssetRate = USD_UNIT;
 
         // If base asset rates are in USD

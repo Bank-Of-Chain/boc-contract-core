@@ -19,6 +19,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import '@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol';
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessControlMixin {
 
@@ -121,11 +122,26 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     address public valueInterpreter;
     //exchangeManager
     address public exchangeManager;
-    //  Only whitelisted contracts can call our deposit
-    mapping(address => bool) public whiteList;
     // strategy info
     mapping(address => StrategyParams) public strategies;
 
     //withdraw strategy set
     address[] public withdrawQueue;
+    //keccak256("USDi.vault.governor.admin.impl");
+    bytes32 constant adminImplPosition = 0x3d78d3961e16fde088e2e26c1cfa163f5f8bb870709088dd68c87eb4091137e2;
+
+    /**
+     * @dev set the implementation for the admin, this needs to be in a base class else we cannot set it
+     * @param newImpl address of the implementation
+     */
+    function setAdminImpl(address newImpl) external onlyGovOrDelegate {
+        require(
+            Address.isContract(newImpl),
+            "new implementation is not a contract"
+        );
+        bytes32 position = adminImplPosition;
+        assembly {
+            sstore(position, newImpl)
+        }
+    }
 }
