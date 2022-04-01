@@ -744,35 +744,331 @@ contract Vault is VaultStorage {
         return price;
     }
 
+//
+//    /**
+//     * @dev Falldown to the admin implementation
+//     * @notice This is a catch all for all functions not declared in core
+//     */
+//    fallback() external payable {
+//        bytes32 slot = adminImplPosition;
+//
+//        assembly {
+//        // Copy msg.data. We take full control of memory in this inline assembly
+//        // block because it will not return to Solidity code. We overwrite the
+//        // Solidity scratch pad at memory position 0.
+//            calldatacopy(0, 0, calldatasize())
+//
+//        // Call the implementation.
+//        // out and outsize are 0 because we don't know the size yet.
+//            let result := delegatecall(gas(), sload(slot), 0, calldatasize(), 0, 0)
+//
+//        // Copy the returned data.
+//            returndatacopy(0, 0, returndatasize())
+//
+//            switch result
+//            // delegatecall returns 0 on error.
+//            case 0 {
+//                revert(0, returndatasize())
+//            }
+//            default {
+//                return (0, returndatasize())
+//            }
+//        }
+//    }
+
+
+    /***************************************
+                     admin impl
+     ****************************************/
+
+
+    /// @notice Shutdown the vault when an emergency occurs, cannot mint/burn.
+    function setEmergencyShutdown(bool active) external isVaultManager {
+        emergencyShutdown = active;
+        emit SetEmergencyShutdown(active);
+    }
+
+    /// @notice set adjustPositionPeriod true when adjust position occurs, cannot remove add asset/strategy and cannot mint/burn.
+    function setAdjustPositionPeriod(bool _adjustPositionPeriod) external isKeeper {
+        adjustPositionPeriod = _adjustPositionPeriod;
+        emit SetAdjustPositionPeriod(_adjustPositionPeriod);
+    }
 
     /**
-     * @dev Falldown to the admin implementation
-     * @notice This is a catch all for all functions not declared in core
+     * @dev Set a minimum amount of OUSD in a mint or redeem that triggers a
+         * rebase
+         * @param _threshold OUSD amount with 18 fixed decimals.
+         */
+    function setRebaseThreshold(uint256 _threshold) external isVaultManager {
+        rebaseThreshold = _threshold;
+        emit RebaseThresholdUpdated(_threshold);
+    }
+
+    /**
+     * @dev Set a fee in basis points to be charged for a redeem.
+         * @param _redeemFeeBps Basis point fee to be charged
+         */
+    function setRedeemFeeBps(uint256 _redeemFeeBps) external isVaultManager {
+        require(_redeemFeeBps <= 1000, "Redeem fee should not be over 10%");
+        redeemFeeBps = _redeemFeeBps;
+        emit RedeemFeeUpdated(_redeemFeeBps);
+    }
+
+    /**
+        * @dev Sets the maximum allowable difference between
+         * total supply and backing assets' value.
+         */
+    function setMaxSupplyDiff(uint256 _maxSupplyDiff) external isVaultManager {
+        maxSupplyDiff = _maxSupplyDiff;
+        emit MaxSupplyDiffChanged(_maxSupplyDiff);
+    }
+
+    /**
+     * @dev Sets the treasuryAddress that can receive a portion of yield.
+         *      Setting to the zero address disables this feature.
+         */
+    function setTreasuryAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
+        treasury = _address;
+        emit TreasuryAddressChanged(_address);
+    }
+
+    /**
+     * @dev Sets the TrusteeFeeBps to the percentage of yield that should be
+         *      received in basis points.
+         */
+    function setTrusteeFeeBps(uint256 _basis) external isVaultManager {
+        require(_basis <= 5000, "basis cannot exceed 50%");
+        trusteeFeeBps = _basis;
+        emit TrusteeFeeBpsChanged(_basis);
+    }
+
+    function setStrategyEnforceChangeLimit(address _strategy, bool _enabled) external isVaultManager {
+        strategies[_strategy].enforceChangeLimit = _enabled;
+    }
+
+    function setStrategySetLimitRatio(
+        address _strategy,
+        uint256 _lossRatioLimit,
+        uint256 _profitLimitRatio
+    ) external isVaultManager {
+        strategies[_strategy].lossLimitRatio = _lossRatioLimit;
+        strategies[_strategy].profitLimitRatio = _profitLimitRatio;
+    }
+
+    /***************************************
+                       Pause
+       ****************************************/
+
+    /**
+     * @dev Set the deposit paused flag to true to prevent rebasing.
      */
-    fallback() external payable {
-        bytes32 slot = adminImplPosition;
+    function pauseRebase() external isVaultManager {
+        rebasePaused = true;
+        emit RebasePaused();
+    }
 
-        assembly {
-        // Copy msg.data. We take full control of memory in this inline assembly
-        // block because it will not return to Solidity code. We overwrite the
-        // Solidity scratch pad at memory position 0.
-            calldatacopy(0, 0, calldatasize())
+    /**
+     * @dev Set the deposit paused flag to true to allow rebasing.
+     */
+    function unpauseRebase() external isVaultManager {
+        rebasePaused = false;
+        emit RebaseUnpaused();
+    }
 
-        // Call the implementation.
-        // out and outsize are 0 because we don't know the size yet.
-            let result := delegatecall(gas(), sload(slot), 0, calldatasize(), 0, 0)
 
-        // Copy the returned data.
-            returndatacopy(0, 0, returndatasize())
+    /// @notice Added support for specific asset.
+    function addAsset(address _asset) external isVaultManager {
+        require(!assetSet.contains(_asset), "existed");
+        assetSet.add(_asset);
+        // Verify that our oracle supports the asset
+        // slither-disable-next-line unused-return
+        IValueInterpreter(valueInterpreter).price(_asset);
+        trackedAssetsMap.plus(_asset, 1);
+        emit AddAsset(_asset);
+    }
 
-            switch result
-            // delegatecall returns 0 on error.
-            case 0 {
-                revert(0, returndatasize())
+    /// @notice Remove support for specific asset.
+    function removeAsset(address _asset) external isVaultManager {
+        require(assetSet.contains(_asset), "not exist");
+        assetSet.remove(_asset);
+        trackedAssetsMap.minus(_asset, 1);
+        if (trackedAssetsMap.get(_asset) <= 0 && IERC20Upgradeable(_asset).balanceOf(address(this)) == 0) {
+            trackedAssetsMap.remove(_asset);
+        }
+        emit RemoveAsset(_asset);
+    }
+
+    /// @notice Add strategy to strategy list
+    /// @dev The strategy added to the strategy list,
+    ///      Vault may invest funds into the strategy,
+    ///      and the strategy will invest the funds in the 3rd protocol
+    function addStrategy(StrategyAdd[] memory strategyAdds) external isVaultManager {
+        bool addressValid = true;
+        bool strategyNotExist = true;
+        bool vaultValid = true;
+        for (uint256 i = 0; i < strategyAdds.length; i++) {
+            addressValid = (strategyAdds[i].strategy != ZERO_ADDRESS);
+            if (addressValid == false) {
+                break;
             }
-            default {
-                return (0, returndatasize())
+            strategyNotExist = !strategySet.contains(strategyAdds[i].strategy);
+            if (strategyNotExist == false) {
+                break;
+            }
+            vaultValid = (IStrategy(strategyAdds[i].strategy).vault() == address(this));
+            if (vaultValid == false) {
+                break;
+            }
+        }
+        require(addressValid && strategyNotExist && vaultValid, "Strategy is invalid");
+
+        address[] memory _strategies = new address[](strategyAdds.length);
+        for (uint256 i = 0; i < strategyAdds.length; i++) {
+            StrategyAdd memory strategyAdd = strategyAdds[i];
+            _strategies[i] = strategyAdd.strategy;
+            _addStrategy(strategyAdd.strategy, strategyAdd.profitLimitRatio, strategyAdd.lossLimitRatio);
+            address[] memory _wants = IStrategy(strategyAdd.strategy).getWants();
+            for (uint j = 0; j < _wants.length; j++) {
+                trackedAssetsMap.plus(_wants[j], 1);
+            }
+        }
+
+        emit AddStrategies(_strategies);
+    }
+
+    /**
+    * add strategy
+    **/
+    function _addStrategy(
+        address strategy,
+        uint256 _profitLimitRatio,
+        uint256 _lossLimitRatio
+    ) internal {
+        //Add strategy to approved strategies
+        strategies[strategy] = StrategyParams({
+        lastReport : block.timestamp,
+        totalDebt : 0,
+        profitLimitRatio : _profitLimitRatio,
+        lossLimitRatio : _lossLimitRatio,
+        enforceChangeLimit : true
+        });
+        strategySet.add(strategy);
+    }
+
+
+    /// @notice Remove strategy from strategy list
+    /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
+    function removeStrategy(address[] memory _strategies) external isVaultManager {
+        bool strategyExist = true;
+        for (uint256 i = 0; i < _strategies.length; i++) {
+            strategyExist = strategySet.contains(_strategies[i]);
+            if (strategyExist == false) {
+                break;
+            }
+        }
+        require(strategyExist, "Strategy not exist");
+
+        for (uint256 i = 0; i < _strategies.length; i++) {
+            _removeStrategy(_strategies[i], false);
+        }
+        emit RemoveStrategies(_strategies);
+    }
+
+    function forceRemoveStrategy(address _strategy) external onlyGovOrDelegate {
+        _removeStrategy(_strategy, true);
+    }
+
+    /**
+    * @dev Remove a strategy from the Vault.
+     * @param _addr Address of the strategy to remove
+     */
+    function _removeStrategy(address _addr, bool _force) internal {
+        // Withdraw all assets
+        try IStrategy(_addr).repay(MAX_BPS, MAX_BPS) {
+        } catch {
+            if (!_force) {
+                revert();
+            }
+        }
+
+        address[] memory _wants = IStrategy(_addr).getWants();
+        for (uint i = 0; i < _wants.length; i++) {
+            address wantToken = _wants[i];
+            trackedAssetsMap.minus(wantToken, 1);
+            if (trackedAssetsMap.get(wantToken) <= 0 && IERC20Upgradeable(wantToken).balanceOf(address(this)) == 0) {
+                trackedAssetsMap.remove(wantToken);
+            }
+        }
+        totalDebt -= strategies[_addr].totalDebt;
+        delete strategies[_addr];
+        strategySet.remove(_addr);
+        _removeStrategyFromQueue(_addr);
+    }
+
+
+    /***************************************
+                     WithdrawalQueue
+     ****************************************/
+    function getWithdrawalQueue() external view returns (address[] memory) {
+        return withdrawQueue;
+    }
+
+    //advance queue
+    function setWithdrawalQueue(address[] memory queues) external isKeeper {
+        bool strategyExist = true;
+        for (uint256 i = 0; i < queues.length; i++) {
+            strategyExist = strategySet.contains(queues[i]);
+            if (strategyExist == false) {
+                break;
+            }
+        }
+        require(strategyExist, 'strategy not exist');
+        for (uint256 i = 0; i < queues.length; i++) {
+            address strategy = queues[i];
+            if (i < withdrawQueue.length) {
+                withdrawQueue[i] = strategy;
+            } else {
+                withdrawQueue.push(strategy);
+            }
+        }
+        for (uint256 i = queues.length; i < withdrawQueue.length; i++) {
+            if (withdrawQueue[i] == ZERO_ADDRESS) break;
+            withdrawQueue[i] = ZERO_ADDRESS;
+        }
+        emit SetWithdrawalQueue(queues);
+    }
+
+    function removeStrategyFromQueue(address[] memory _strategies) external isKeeper {
+        for (uint256 i = 0; i < _strategies.length; i++) {
+            _removeStrategyFromQueue(_strategies[i]);
+        }
+        emit RemoveStrategyFromQueue(_strategies);
+    }
+
+    function _removeStrategyFromQueue(address _strategy) internal {
+        for (uint256 i = 0; i < withdrawQueue.length; i++) {
+            address curStrategy = withdrawQueue[i];
+            if (curStrategy == ZERO_ADDRESS) break;
+            if (curStrategy == _strategy) {
+                withdrawQueue[i] = ZERO_ADDRESS;
+                _organizeWithdrawalQueue();
+                //                emit RemoveStrategyFromQueue(_strategy);
+                return;
             }
         }
     }
+
+    function _organizeWithdrawalQueue() internal {
+        uint256 offset = 0;
+        for (uint256 i = 0; i < withdrawQueue.length; i++) {
+            address strategy = withdrawQueue[i];
+            if (strategy == ZERO_ADDRESS) {
+                offset += 1;
+            } else if (offset > 0) {
+                withdrawQueue[i - offset] = strategy;
+                withdrawQueue[i] = ZERO_ADDRESS;
+            }
+        }
+    }
+
 }
