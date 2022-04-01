@@ -10,18 +10,7 @@ import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
 import "../library/StableMath.sol";
 import "../price-feeds/IValueInterpreter.sol";
-
-interface IVault {
-    function accessControlProxy() external view returns (address);
-
-    /// @notice Strategy report asset
-    function report(uint256 _strategyAsset) external;
-
-    /// @notice Address of treasury
-    function treasury() external view returns (address);
-
-    function valueInterpreter() external view returns (address);
-}
+import "../vault/IVault.sol";
 
 abstract contract BaseStrategy is Initializable, AccessControlMixin {
     using SafeERC20Upgradeable for IERC20Upgradeable;

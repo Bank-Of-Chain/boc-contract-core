@@ -16,6 +16,28 @@ contract Vault is VaultStorage {
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
 
+    function initialize(
+        address _usdi,
+        address _accessControlProxy,
+        address _treasury,
+        address _exchangeManager,
+        address _valueInterpreter
+    ) public initializer {
+        require(_usdi != address(0), "uSDi ad is 0");
+        _initAccessControl(_accessControlProxy);
+
+        treasury = _treasury;
+        exchangeManager = _exchangeManager;
+        valueInterpreter = _valueInterpreter;
+
+        usdi = USDi(_usdi);
+
+        rebasePaused = false;
+        // Initial redeem fee of 0 basis points
+        redeemFeeBps = 0;
+        // Threshold for rebasing
+        rebaseThreshold = 1000e18;
+    }
 
     modifier whenNotEmergency() {
         require(!emergencyShutdown, 'ES');
@@ -40,152 +62,9 @@ contract Vault is VaultStorage {
         _;
     }
 
-    function initialize(
-        address _usdi,
-        address _accessControlProxy,
-        address _treasury,
-        address _exchangeManager,
-        address _valueInterpreter
-    ) public initializer {
-        require(_usdi != address(0), "uSDi ad is 0");
-        _initAccessControl(_accessControlProxy);
-
-        treasury = _treasury;
-        exchangeManager = _exchangeManager;
-        valueInterpreter = _valueInterpreter;
-
-        usdi = USDi(_usdi);
-
-        rebasePaused = false;
-        // Initial redeem fee of 0 basis points
-        redeemFeeBps = 0;
-        // Threshold for rebasing
-        rebaseThreshold = 1000e18;
-    }
-
-
-    /// @notice Shutdown the vault when an emergency occurs, cannot mint/burn.
-    function setEmergencyShutdown(bool active) external isVaultManager {
-        emergencyShutdown = active;
-        emit SetEmergencyShutdown(active);
-    }
-
-    /// @notice set adjustPositionPeriod true when adjust position occurs, cannot remove add asset/strategy and cannot mint/burn.
-    function setAdjustPositionPeriod(bool _adjustPositionPeriod) external isVaultManager {
-        adjustPositionPeriod = _adjustPositionPeriod;
-        emit SetAdjustPositionPeriod(_adjustPositionPeriod);
-    }
-
-    /**
-     * @dev Set a minimum amount of OUSD in a mint or redeem that triggers a
-         * rebase
-         * @param _threshold OUSD amount with 18 fixed decimals.
-         */
-    function setRebaseThreshold(uint256 _threshold) external isVaultManager {
-        rebaseThreshold = _threshold;
-        emit RebaseThresholdUpdated(_threshold);
-    }
-
-    /**
-     * @dev Set a fee in basis points to be charged for a redeem.
-         * @param _redeemFeeBps Basis point fee to be charged
-         */
-    function setRedeemFeeBps(uint256 _redeemFeeBps) external isVaultManager {
-        require(_redeemFeeBps <= 1000, "Redeem fee should not be over 10%");
-        redeemFeeBps = _redeemFeeBps;
-        emit RedeemFeeUpdated(_redeemFeeBps);
-    }
-
-    /**
-        * @dev Sets the maximum allowable difference between
-         * total supply and backing assets' value.
-         */
-    function setMaxSupplyDiff(uint256 _maxSupplyDiff) external isVaultManager {
-        maxSupplyDiff = _maxSupplyDiff;
-        emit MaxSupplyDiffChanged(_maxSupplyDiff);
-    }
-
-    /**
-     * @dev Sets the treasuryAddress that can receive a portion of yield.
-         *      Setting to the zero address disables this feature.
-         */
-    function setTreasuryAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
-        treasury = _address;
-        emit TreasuryAddressChanged(_address);
-    }
-
-    /**
-     * @dev Sets the TrusteeFeeBps to the percentage of yield that should be
-         *      received in basis points.
-         */
-    function setTrusteeFeeBps(uint256 _basis) external isVaultManager {
-        require(_basis <= 5000, "basis cannot exceed 50%");
-        trusteeFeeBps = _basis;
-        emit TrusteeFeeBpsChanged(_basis);
-    }
-
-    //advance queue
-    function setWithdrawalQueue(address[] memory queues) external isKeeper {
-        bool strategyExist = true;
-        for (uint256 i = 0; i < queues.length; i++) {
-            strategyExist = strategySet.contains(queues[i]);
-            if (strategyExist == false) {
-                break;
-            }
-        }
-        require(strategyExist, 'strategy not exist');
-        for (uint256 i = 0; i < queues.length; i++) {
-            address strategy = queues[i];
-            if (i < withdrawQueue.length) {
-                withdrawQueue[i] = strategy;
-            } else {
-                withdrawQueue.push(strategy);
-            }
-        }
-        for (uint256 i = queues.length; i < withdrawQueue.length; i++) {
-            if (withdrawQueue[i] == ZERO_ADDRESS) break;
-            withdrawQueue[i] = ZERO_ADDRESS;
-        }
-        emit SetWithdrawalQueue(queues);
-    }
-
-    function setStrategyEnforceChangeLimit(address _strategy, bool _enabled) external isVaultManager {
-        strategies[_strategy].enforceChangeLimit = _enabled;
-    }
-
-    function setStrategySetLimitRatio(
-        address _strategy,
-        uint256 _lossRatioLimit,
-        uint256 _profitLimitRatio
-    ) external isVaultManager {
-        strategies[_strategy].lossLimitRatio = _lossRatioLimit;
-        strategies[_strategy].profitLimitRatio = _profitLimitRatio;
-    }
-
-
-    /***************************************
-                       Pause
-       ****************************************/
-
-    /**
-     * @dev Set the deposit paused flag to true to prevent rebasing.
-     */
-    function pauseRebase() external isVaultManager {
-        rebasePaused = true;
-        emit RebasePaused();
-    }
-
-    /**
-     * @dev Set the deposit paused flag to true to allow rebasing.
-     */
-    function unpauseRebase() external isVaultManager {
-        rebasePaused = false;
-        emit RebaseUnpaused();
-    }
-
     /// @notice Version of vault
     function getVersion() external pure returns (string memory){
-        return "1.5";
+        return "1.0.0";
     }
 
     /// @notice Minting USDi supported assets
@@ -251,134 +130,6 @@ contract Vault is VaultStorage {
     /// @notice All strategies
     function getStrategies() external view returns (address[] memory){
         return strategySet.values();
-    }
-
-    /// @notice Added support for specific asset.
-    function addAsset(address _asset) external isVaultManager whenNotEmergency whenNotAdjustPosition {
-        require(!assetSet.contains(_asset), "existed");
-        assetSet.add(_asset);
-        // Verify that our oracle supports the asset
-        // slither-disable-next-line unused-return
-        IValueInterpreter(valueInterpreter).price(_asset);
-        trackedAssetsMap.plus(_asset, 1);
-        emit AddAsset(_asset);
-    }
-
-    /// @notice Remove support for specific asset.
-    function removeAsset(address _asset) external isVaultManager whenNotEmergency whenNotAdjustPosition {
-        require(assetSet.contains(_asset), "not exist");
-        assetSet.remove(_asset);
-        trackedAssetsMap.minus(_asset, 1);
-        if (trackedAssetsMap.get(_asset) <= 0 && IERC20Upgradeable(_asset).balanceOf(address(this)) == 0) {
-            trackedAssetsMap.remove(_asset);
-        }
-        emit RemoveAsset(_asset);
-    }
-
-    /// @notice Add strategy to strategy list
-    /// @dev The strategy added to the strategy list,
-    ///      Vault may invest funds into the strategy,
-    ///      and the strategy will invest the funds in the 3rd protocol
-    function addStrategy(StrategyAdd[] memory strategyAdds) external isVaultManager whenNotEmergency whenNotAdjustPosition {
-        bool addressValid = true;
-        bool strategyNotExist = true;
-        bool vaultValid = true;
-        for (uint256 i = 0; i < strategyAdds.length; i++) {
-            addressValid = (strategyAdds[i].strategy != ZERO_ADDRESS);
-            if (addressValid == false) {
-                break;
-            }
-            strategyNotExist = !strategySet.contains(strategyAdds[i].strategy);
-            if (strategyNotExist == false) {
-                break;
-            }
-            vaultValid = (IStrategy(strategyAdds[i].strategy).vault() == address(this));
-            if (vaultValid == false) {
-                break;
-            }
-        }
-        require(addressValid && strategyNotExist && vaultValid, "Strategy is invalid");
-
-        address[] memory _strategies = new address[](strategyAdds.length);
-        for (uint256 i = 0; i < strategyAdds.length; i++) {
-            StrategyAdd memory strategyAdd = strategyAdds[i];
-            _strategies[i] = strategyAdd.strategy;
-            _addStrategy(strategyAdd.strategy, strategyAdd.profitLimitRatio, strategyAdd.lossLimitRatio);
-            address[] memory _wants = IStrategy(strategyAdd.strategy).getWants();
-            for (uint j = 0; j < _wants.length; j++) {
-                trackedAssetsMap.plus(_wants[j], 1);
-            }
-        }
-
-        emit AddStrategies(_strategies);
-    }
-    /**
-    * add strategy
-    **/
-    function _addStrategy(
-        address strategy,
-        uint256 _profitLimitRatio,
-        uint256 _lossLimitRatio
-    ) internal {
-        //Add strategy to approved strategies
-        strategies[strategy] = StrategyParams({
-        lastReport : block.timestamp,
-        totalDebt : 0,
-        profitLimitRatio : _profitLimitRatio,
-        lossLimitRatio : _lossLimitRatio,
-        enforceChangeLimit : true
-        });
-        strategySet.add(strategy);
-    }
-
-
-    /// @notice Remove strategy from strategy list
-    /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
-    function removeStrategy(address[] memory _strategies) external isVaultManager whenNotEmergency whenNotAdjustPosition {
-        bool strategyExist = true;
-        for (uint256 i = 0; i < _strategies.length; i++) {
-            strategyExist = strategySet.contains(_strategies[i]);
-            if (strategyExist == false) {
-                break;
-            }
-        }
-        require(strategyExist, "Strategy not exist");
-
-        for (uint256 i = 0; i < _strategies.length; i++) {
-            _removeStrategy(_strategies[i], false);
-        }
-        emit RemoveStrategies(_strategies);
-    }
-
-    function forceRemoveStrategy(address _strategy) external onlyGovOrDelegate {
-        _removeStrategy(_strategy, true);
-    }
-
-    /**
-    * @dev Remove a strategy from the Vault.
-     * @param _addr Address of the strategy to remove
-     */
-    function _removeStrategy(address _addr, bool _force) internal {
-        // Withdraw all assets
-        try IStrategy(_addr).repay(MAX_BPS, MAX_BPS) {
-        } catch {
-            if (!_force) {
-                revert();
-            }
-        }
-
-        address[] memory _wants = IStrategy(_addr).getWants();
-        for (uint i = 0; i < _wants.length; i++) {
-            address wantToken = _wants[i];
-            trackedAssetsMap.minus(wantToken, 1);
-            if (trackedAssetsMap.get(wantToken) <= 0 && IERC20Upgradeable(wantToken).balanceOf(address(this)) == 0) {
-                trackedAssetsMap.remove(wantToken);
-            }
-        }
-        totalDebt -= strategies[_addr].totalDebt;
-        delete strategies[_addr];
-        strategySet.remove(_addr);
-        _removeStrategyFromQueue(_addr);
     }
 
     /// @notice estimate Minting USDi with stablecoins
@@ -489,16 +240,16 @@ contract Vault is VaultStorage {
     function _calculateOutputs(uint256 _needTransferAmount, uint256[] memory _assetRedeemPrices, uint256[] memory _assetDecimals) internal returns (uint256[] memory){
         uint256[] memory outputs = new uint256[](trackedAssetsMap.length());
 
-        for (uint256 i = trackedAssetsMap.length() - 1; i >= 0; i--) {
-            (address trackedAsset,) = trackedAssetsMap.at(i);
+        for (uint256 i = trackedAssetsMap.length(); i > 0; i--) {
+            (address trackedAsset,) = trackedAssetsMap.at(i - 1);
             uint256 balance = IERC20Upgradeable(trackedAsset).balanceOf(address(this));
             if (balance > 0) {
-                uint256 _value = balance.mulTruncateScale(_assetRedeemPrices[i], 10 ** _assetDecimals[i]);
+                uint256 _value = balance.mulTruncateScale(_assetRedeemPrices[i - 1], 10 ** _assetDecimals[i - 1]);
                 if (_value >= _needTransferAmount) {
-                    outputs[i] = balance.scaleBy(18, _assetDecimals[i]) * _needTransferAmount / _value;
+                    outputs[i - 1] = balance.scaleBy(18, _assetDecimals[i - 1]) * _needTransferAmount / _value;
                     break;
                 } else {
-                    outputs[i] = balance.scaleBy(18, _assetDecimals[i]);
+                    outputs[i - 1] = balance.scaleBy(18, _assetDecimals[i - 1]);
                     _needTransferAmount = _needTransferAmount - _value;
                 }
             }
@@ -611,7 +362,7 @@ contract Vault is VaultStorage {
             uint256 _totalValueInStrategy = 0;
             uint256 strategyLength = strategySet.length();
             for (uint256 i = 0; i < strategyLength; i++) {
-                _totalValueInStrategy = _totalValueInStrategy + _checkBalanceInStrategy(strategySet.at(i), _assetDecimals);
+                _totalValueInStrategy = _totalValueInStrategy + IStrategy(strategySet.at(i)).checkBalance();
             }
 
             uint256 _totalValueInValue = 0;
@@ -709,35 +460,35 @@ contract Vault is VaultStorage {
             assetPrices[i] = price;
         }
     }
-
-    /**
-    * @notice Get the balance of an asset held in strategy.
-     * @param _strategy Address of strategy
-     * @param _assetDecimals Array of asset Decimals
-     * @return balance Balance of strategy usd (1e18)
-     */
-    function _checkBalanceInStrategy(address _strategy, uint256[] memory _assetDecimals) internal view returns (uint256){
-        IStrategy strategy = IStrategy(_strategy);
-        (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue) = strategy.getPositionDetail();
-        uint256 strategyAssetValue = 0;
-        if (isUsd) {
-            strategyAssetValue = usdValue;
-        } else {
-            uint256 trackedAssetsLength = trackedAssetsMap.length();
-            for (uint256 i = 0; i < _tokens.length; i++) {
-                if (_amounts[i] > 0) {
-                    for (uint256 j = 0; j < trackedAssetsLength; j++) {
-                        (address trackedAsset,) = trackedAssetsMap.at(j);
-                        if (trackedAsset == _tokens[i]) {
-                            strategyAssetValue = strategyAssetValue + (_amounts[i].scaleBy(18, _assetDecimals[j]));
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        return strategyAssetValue;
-    }
+    //
+    //    /**
+    //    * @notice Get the balance of an asset held in strategy.
+    //     * @param _strategy Address of strategy
+    //     * @param _assetDecimals Array of asset Decimals
+    //     * @return balance Balance of strategy usd (1e18)
+    //     */
+    //    function _checkBalanceInStrategy(address _strategy, uint256[] memory _assetDecimals) internal view returns (uint256){
+    //        IStrategy strategy = IStrategy(_strategy);
+    //        (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue) = strategy.checkBalance();
+    //        uint256 strategyAssetValue = 0;
+    //        if (isUsd) {
+    //            strategyAssetValue = usdValue;
+    //        } else {
+    //            uint256 trackedAssetsLength = trackedAssetsMap.length();
+    //            for (uint256 i = 0; i < _tokens.length; i++) {
+    //                if (_amounts[i] > 0) {
+    //                    for (uint256 j = 0; j < trackedAssetsLength; j++) {
+    //                        (address trackedAsset,) = trackedAssetsMap.at(j);
+    //                        if (trackedAsset == _tokens[i]) {
+    //                            strategyAssetValue = strategyAssetValue + (_amounts[i].scaleBy(18, _assetDecimals[j]));
+    //                            break;
+    //                        }
+    //                    }
+    //                }
+    //            }
+    //        }
+    //        return strategyAssetValue;
+    //    }
     //
     //    /**
     //    * @notice Get the value of an asset held in strategy. by redeempirce
@@ -771,6 +522,7 @@ contract Vault is VaultStorage {
     function rebase() external nonReentrant {
         _rebase();
     }
+
     /**
      * @dev Calculate the total value of assets held by the Vault and all
      *      strategies and update the supply of OUSD, optionally sending a
@@ -785,14 +537,14 @@ contract Vault is VaultStorage {
         uint256 vaultValue = _totalAssetInVault() + totalDebt;
 
         // Yield fee collection
-        address _treasureAddress = treasury;
+        address _treasuryAddress = treasury;
         // gas savings
-        if (trusteeFeeBps > 0 && _treasureAddress != address(0) && (vaultValue > usdiSupply)) {
+        if (trusteeFeeBps > 0 && _treasuryAddress != address(0) && (vaultValue > usdiSupply)) {
             uint256 yield = vaultValue - usdiSupply;
             uint256 fee = yield * trusteeFeeBps / 10000;
             require(yield > fee, "Fee must not be greater than yield");
             if (fee > 0) {
-                usdi.mint(_treasureAddress, fee);
+                usdi.mint(_treasuryAddress, fee);
             }
         }
 
@@ -805,7 +557,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Allocate funds in Vault to strategies.
-    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) external isVaultManager whenNotEmergency isActiveStrategy(_strategy) nonReentrant {
+    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) external isKeeper whenNotEmergency isActiveStrategy(_strategy) nonReentrant {
         (address[] memory _wants, uint256[] memory _ratios,uint256[] memory toAmounts) = _checkAndExchange(_strategy, _exchangeTokens);
         //Definition rule 0 means unconstrained, currencies that do not participate are not in the returned wants
         uint256 minProductIndex = 0;
@@ -926,7 +678,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice redeem the funds from specified strategy.
-    function redeem(address _strategy, uint256 _amount) external isKeeper isActiveStrategy(_strategy) whenNotEmergency nonReentrant {
+    function redeem(address _strategy, uint256 _amount) external isKeeper isActiveStrategy(_strategy) nonReentrant {
         uint256 strategyAssetValue = strategies[_strategy].totalDebt;
         require(_amount <= strategyAssetValue);
 
@@ -939,7 +691,6 @@ contract Vault is VaultStorage {
         // console.log('[vault.redeem] %s redeem _amount %d totalDebt %d ', _strategy, _amount, strategyAssetValue);
         emit Redeem(_strategy, _amount);
     }
-
 
     function report(uint256 _strategyAsset) external {
         require(strategySet.contains(msg.sender));
@@ -995,42 +746,33 @@ contract Vault is VaultStorage {
     }
 
 
-    /***************************************
-                     WithdrawalQueue
-     ****************************************/
-    function getWithdrawalQueue() external view returns (address[] memory) {
-        return withdrawQueue;
-    }
+    /**
+     * @dev Falldown to the admin implementation
+     * @notice This is a catch all for all functions not declared in core
+     */
+    fallback() external payable {
+        bytes32 slot = adminImplPosition;
 
-    function removeStrategyFromQueue(address[] memory _strategies) external isVaultManager {
-        for (uint256 i = 0; i < _strategies.length; i++) {
-            _removeStrategyFromQueue(_strategies[i]);
-        }
-        emit RemoveStrategyFromQueue(_strategies);
-    }
+        assembly {
+        // Copy msg.data. We take full control of memory in this inline assembly
+        // block because it will not return to Solidity code. We overwrite the
+        // Solidity scratch pad at memory position 0.
+            calldatacopy(0, 0, calldatasize())
 
-    function _removeStrategyFromQueue(address _strategy) internal {
-        for (uint256 i = 0; i < withdrawQueue.length; i++) {
-            address curStrategy = withdrawQueue[i];
-            if (curStrategy == ZERO_ADDRESS) break;
-            if (curStrategy == _strategy) {
-                withdrawQueue[i] = ZERO_ADDRESS;
-                _organizeWithdrawalQueue();
-                //                emit RemoveStrategyFromQueue(_strategy);
-                return;
+        // Call the implementation.
+        // out and outsize are 0 because we don't know the size yet.
+            let result := delegatecall(gas(), sload(slot), 0, calldatasize(), 0, 0)
+
+        // Copy the returned data.
+            returndatacopy(0, 0, returndatasize())
+
+            switch result
+            // delegatecall returns 0 on error.
+            case 0 {
+                revert(0, returndatasize())
             }
-        }
-    }
-
-    function _organizeWithdrawalQueue() internal {
-        uint256 offset = 0;
-        for (uint256 i = 0; i < withdrawQueue.length; i++) {
-            address strategy = withdrawQueue[i];
-            if (strategy == ZERO_ADDRESS) {
-                offset += 1;
-            } else if (offset > 0) {
-                withdrawQueue[i - offset] = strategy;
-                withdrawQueue[i] = ZERO_ADDRESS;
+            default {
+                return (0, returndatasize())
             }
         }
     }

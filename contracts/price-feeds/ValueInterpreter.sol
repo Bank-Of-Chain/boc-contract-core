@@ -115,7 +115,6 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         bool isValid_;
         (value_, isValid_) = __calcAssetValueInUsd(_baseAsset, _amount);
         require(isValid_, 'Invalid rate');
-        value_ = _upScaleByTen(value_);
         return value_;
     }
 
@@ -133,7 +132,6 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
                 IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).getAssetUnit(_baseAsset)
             );
             require(isValid_, 'Invalid rate');
-            value_ = _upScaleByTen(value_);
             return value_;
         }
         revert(string(
@@ -142,16 +140,6 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
                 Strings.toHexString(uint160(_baseAsset), 20)
             )
         ));
-    }
-
-    /*
-    * @notice upscale by 10
-    * @param _value  with base decimals
-    * @return  with 8 decimals so scale to 18
-    */
-    function _upScaleByTen(uint256 _value) internal pure returns (uint256) {
-        _value = _value * (10 ** 10);
-        return _value;
     }
 
     // PRIVATE FUNCTIONS
