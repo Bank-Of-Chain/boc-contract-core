@@ -692,8 +692,7 @@ contract Vault is VaultStorage {
         emit Redeem(_strategy, _amount);
     }
 
-    function report(uint256 _strategyAsset) external {
-        require(strategySet.contains(msg.sender));
+    function report(uint256 _strategyAsset) external isActiveStrategy(msg.sender){
 
         uint256 lastStrategyTotalDebt = strategies[msg.sender].totalDebt;
         uint256 nowStrategyTotalDebt = _strategyAsset;
