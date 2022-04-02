@@ -49,6 +49,9 @@ import "./../vault/IVault.sol";
 contract Dripper is AccessControlMixin, Initializable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    event DripDurationChanged(uint256 _durationSeconds);
+    event TokenChanged(address _token);
+
     struct Drip {
         uint64 lastCollect; // overflows 262 billion years after the sun dies
         uint192 perBlock; // drip rate per block
@@ -99,7 +102,16 @@ contract Dripper is AccessControlMixin, Initializable {
     function setDripDuration(uint256 _durationSeconds) external onlyRole(BocRoles.GOV_ROLE) {
         require(_durationSeconds > 0, "duration must be non-zero");
         dripDuration = uint192(_durationSeconds);
-        Dripper(this).collect(); // duration change take immediate effect
+        _collect(); // duration change take immediate effect
+        emit DripDurationChanged(dripDuration);
+    }
+
+    function setToken(address _token) external onlyRole(BocRoles.KEEPER_ROLE) {
+        require(_token != address(0), "Must be a non-zero address");
+        uint256 balance = IERC20Upgradeable(token).balanceOf(address(this));
+        require(balance == 0, "balance must be zero");
+        token = _token;
+        emit TokenChanged(token);
     }
 
     // @dev Transfer out ERC20 tokens held by the contract. Governor only.

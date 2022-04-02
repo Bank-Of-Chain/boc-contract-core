@@ -73,6 +73,23 @@ describe("Dripper", async () => {
     await hre.ethers.provider.send("evm_mine");
   };
 
+  describe("setToken()", async () => {
+    it("token cannot be set when last token's balance is not zero", async () => {
+      const balance = await usdt.balanceOf(dripper.address);
+      console.log("balance1 = ", balance);
+      await expect(
+        dripper.setToken(MFC.DAI_ADDRESS)
+      ).to.be.revertedWith("balance must be zero");
+    });
+    
+    it("token can be set when last token's balance is zero", async () => {
+      await emptyDripper();
+      expect(await dripper.token()).to.equal(MFC.USDT_ADDRESS);
+      await dripper.setToken(MFC.DAI_ADDRESS);
+      expect(await dripper.token()).to.equal(MFC.DAI_ADDRESS);
+    });
+  });
+
   describe("availableFunds()", async () => {
     it("shows zero available before any duration has been set", async () => {
       await advanceTime(1000);
