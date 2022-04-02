@@ -530,9 +530,10 @@ contract Vault is VaultStorage {
      */
     function _rebase() internal whenNotEmergency whenNotRebasePaused {
         uint256 usdiSupply = usdi.totalSupply();
-        if (usdiSupply == 0) {
+        if (usdiSupply == 0 || usdi.rebasingCredits() < 1e18) {
             return;
         }
+
         //        uint256 vaultValue = _totalAssetInVault() + _totalAssetInStrategies();
         uint256 vaultValue = _totalAssetInVault() + totalDebt;
 
