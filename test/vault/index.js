@@ -163,8 +163,7 @@ describe("Vault", function () {
         console.log('deploy Treasury');
         // 国库
         treasury = await Treasury.new();
-        await treasury.initialize(accessControlProxy.address, usdi.address);
-        await treasury.rebaseOptIn({from: governance});
+        await treasury.initialize(accessControlProxy.address);
 
         await vault.initialize(usdi.address, accessControlProxy.address, treasury.address, exchangeAggregator.address, valueInterpreter.address);
         vaultAdmin = await VaultAdmin.new();

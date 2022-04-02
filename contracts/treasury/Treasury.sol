@@ -12,12 +12,8 @@ import "../token/USDi.sol";
 contract Treasury is Initializable, ReentrancyGuardUpgradeable, AccessControlMixin {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    // usdi
-    USDi internal usdi;
-
-    function initialize(address _accessControlProxy, address _usdi) public initializer {
+    function initialize(address _accessControlProxy) public initializer {
         _initAccessControl(_accessControlProxy);
-        usdi = USDi(_usdi);
     }
 
     // accepts ether
@@ -47,14 +43,5 @@ contract Treasury is Initializable, ReentrancyGuardUpgradeable, AccessControlMix
     payable
     onlyRole(BocRoles.GOV_ROLE) {
         _destination.transfer(_amount);
-    }
-    // --------------------
-    // Governance functions
-    // --------------------
-
-    /// @dev Opting into yield reduces the gas cost per transfer by about 4K, since
-    /// ousd needs to do less accounting and one less storage write.
-    function rebaseOptIn() external onlyGovOrDelegate nonReentrant {
-        usdi.rebaseOptIn();
     }
 }
