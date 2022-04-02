@@ -17,9 +17,9 @@ import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import '@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol';
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessControlMixin {
 
@@ -136,7 +136,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
      */
     function setAdminImpl(address newImpl) external onlyGovOrDelegate {
         require(
-            Address.isContract(newImpl),
+            AddressUpgradeable.isContract(newImpl),
             "new implementation is not a contract"
         );
         bytes32 position = adminImplPosition;
