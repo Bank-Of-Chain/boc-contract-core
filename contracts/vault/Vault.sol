@@ -225,7 +225,8 @@ contract Vault is VaultStorage {
             }
             IStrategy strategy = IStrategy(_strategy);
             // console.log('start withdrawn from %s numerator %d denominator %d', _strategy, strategyWithdrawValue, strategyTotalValue);
-            strategy.repay(strategyWithdrawValue, strategyTotalValue);
+            (address[] memory _assets, uint256[] memory _amounts) = strategy.repay(strategyWithdrawValue, strategyTotalValue);
+            emit RepayFromStrategy(address(strategy), strategyWithdrawValue, strategyTotalValue, _assets, _amounts);
 
             strategies[_strategy].totalDebt -= strategyWithdrawValue;
             totalDebt -= strategyWithdrawValue;
@@ -723,7 +724,7 @@ contract Vault is VaultStorage {
         strategies[msg.sender].lastReport = block.timestamp;
         //        lastReport = block.timestamp;
 
-        //        emit StrategyReported(msg.sender, gain, loss, lastStrategyTotalDebt, nowStrategyTotalDebt);
+        emit StrategyReported(msg.sender, gain, loss, lastStrategyTotalDebt, nowStrategyTotalDebt);
     }
 
     /***************************************
