@@ -75,6 +75,8 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     );
     event Redeem(address _strategy, uint256 _debtChangeAmount, address[] _assets, uint256[] _amounts);
     event LendToStrategy(address indexed strategy, address[] wants, uint256[] amounts, uint256 lendValue);
+    event RepayFromStrategy(address indexed strategy, uint256 strategyWithdrawValue, uint256 strategyTotalValue, address[] _assets, uint256[] _amounts);
+    event StrategyReported(address strategy, uint256 gain, uint256 loss, uint256 lastStrategyTotalDebt, uint256 nowStrategyTotalDebt);
     event RemoveStrategyFromQueue(address[] _strategies);
     event SetEmergencyShutdown(bool _shutdown);
     event RebasePaused();
