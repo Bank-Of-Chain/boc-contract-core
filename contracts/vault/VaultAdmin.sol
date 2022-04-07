@@ -208,6 +208,7 @@ contract VaultAdmin is VaultStorage {
 
     function forceRemoveStrategy(address _strategy) external onlyGovOrDelegate {
         _removeStrategy(_strategy, true);
+        emit RemoveStrategyByForce(_strategy);
     }
 
     /**

@@ -125,6 +125,6 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         //             MAX_BPS,
         //     "OL"
         // );
-        emit Exchange(_fromToken, _amount, _toToken, exchangeAmount);
+        emit Exchange(exchangeParam.platform, _fromToken, _amount, _toToken, exchangeAmount);
     }
 }
