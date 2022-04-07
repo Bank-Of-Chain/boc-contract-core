@@ -232,7 +232,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
         transferTokensToTarget(address(vault), _assets, _amounts);
 
-        //emit Repay(_repayShares, _totalShares, _assets, _amounts);
+        emit Repay(_repayShares, _totalShares, _assets, _amounts);
     }
 
     /// @notice Strategy deposit funds to 3rd pool.
