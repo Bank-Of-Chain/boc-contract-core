@@ -675,7 +675,7 @@ contract Vault is VaultStorage {
         exchangeAmount = IExchangeAggregator(exchangeManager).swap(exchangeParam.platform, exchangeParam.method, exchangeParam.encodeExchangeArgs, swapDescription);
         uint256 oracleExpectedAmount = IValueInterpreter(valueInterpreter).calcCanonicalAssetValue(_fromToken, _amount, _toToken);
         require(exchangeAmount >= oracleExpectedAmount * (MAX_BPS - exchangeParam.slippage - exchangeParam.oracleAdditionalSlippage) / MAX_BPS, 'OL');
-        emit Exchange(_fromToken, _amount, _toToken, exchangeAmount);
+        emit Exchange(exchangeParam.platform, _fromToken, _amount, _toToken, exchangeAmount);
     }
 
     /// @notice redeem the funds from specified strategy.
@@ -684,13 +684,13 @@ contract Vault is VaultStorage {
         require(_amount <= strategyAssetValue);
 
         IStrategy strategy = IStrategy(_strategy);
-        strategy.repay(_amount, strategyAssetValue);
+        (address[] memory _assets, uint256[] memory _amounts) = strategy.repay(_amount, strategyAssetValue);
 
         strategies[_strategy].totalDebt -= _amount;
         totalDebt -= _amount;
 
         // console.log('[vault.redeem] %s redeem _amount %d totalDebt %d ', _strategy, _amount, strategyAssetValue);
-        emit Redeem(_strategy, _amount);
+        emit Redeem(_strategy, _amount, _assets, _amounts);
     }
 
     function report(uint256 _strategyAsset) external isActiveStrategy(msg.sender) {

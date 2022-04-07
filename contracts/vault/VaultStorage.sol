@@ -47,6 +47,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event RemoveAsset(address _asset);
     event AddStrategies(address[] _strategies);
     event RemoveStrategies(address[] _strategies);
+    event RemoveStrategyByForce(address _strategy);
     event Mint(
         address _account,
         address[] _assets,
@@ -66,13 +67,14 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         uint256 _burnAmount
     );
     event Exchange(
+        address _platform,
         address _srcAsset,
         uint256 _srcAmount,
         address _distAsset,
         uint256 _distAmount
     );
-    event Redeem(address _strategy, uint256 _amount);
-    event LendToStrategy(address indexed strategy, address[] wants, uint256[] amouts, uint256 lendValue);
+    event Redeem(address _strategy, uint256 _debtChangeAmount, address[] _assets, uint256[] _amounts);
+    event LendToStrategy(address indexed strategy, address[] wants, uint256[] amounts, uint256 lendValue);
     event RemoveStrategyFromQueue(address[] _strategies);
     event SetEmergencyShutdown(bool _shutdown);
     event RebasePaused();
