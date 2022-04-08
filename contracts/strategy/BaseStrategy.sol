@@ -204,6 +204,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     /// @param _totalShares Denominator
     function repay(uint256 _repayShares, uint256 _totalShares)
     external
+    virtual
     onlyVault
     returns (address[] memory _assets, uint256[] memory _amounts)
     {
