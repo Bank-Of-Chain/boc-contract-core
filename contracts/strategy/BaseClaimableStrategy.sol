@@ -70,11 +70,11 @@ abstract contract BaseClaimableStrategy is BaseStrategy {
             balancesBefore[i] = balanceOfToken(wantsCopy[i]);
         }
 
-        (_assets, _amounts) = withdrawFrom3rdPool(_repayShares, _totalShares);
-        
+        withdrawFrom3rdPool(_repayShares, _totalShares);
+        _assets = wants;
+        _amounts = new uint[](wants.length);
         for (uint256 i = 0; i < wantsCopy.length; i++) {
             address token = wantsCopy[i];
-            require(token == _assets[i], "keep the order");
             uint256 balanceAfter = balanceOfToken(token);
             _amounts[i] =
             balanceAfter -
