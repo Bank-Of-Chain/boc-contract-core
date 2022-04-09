@@ -9,10 +9,11 @@ import "hardhat/console.sol";
 contract MockStrategy is BaseStrategy {
     Mock3rdPool mock3rdPool;
 
-    function initialize(address _vault, address _harvester,address _mock3rdPool)
-        public
-        initializer
-    {
+    function initialize(
+        address _vault,
+        address _harvester,
+        address _mock3rdPool
+    ) public initializer {
         console.log("MockStrategy--initialize");
         mock3rdPool = Mock3rdPool(_mock3rdPool);
 
@@ -55,15 +56,19 @@ contract MockStrategy is BaseStrategy {
         view
         virtual
         override
-        returns (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue) {
-
+        returns (
+            address[] memory _tokens,
+            uint256[] memory _amounts,
+            bool isUsd,
+            uint256 usdValue
+        )
+    {
         isUsd = true;
         uint256 lpAmount = mock3rdPool.balanceOf(address(this));
         uint256 sharePrice = mock3rdPool.pricePerShare();
         uint256 decimals = mock3rdPool.decimals();
 
-        usdValue =  (lpAmount * sharePrice) / 10**decimals;
-
+        usdValue = (lpAmount * sharePrice) / 10**decimals;
     }
 
     function get3rdPoolAssets()
@@ -115,11 +120,10 @@ contract MockStrategy is BaseStrategy {
         internal
         virtual
         override
-        returns (address[] memory _assets, uint256[] memory _amounts)
     {
         uint256 lpAmount = mock3rdPool.balanceOf(address(this));
         uint256 withdrawAmount = (lpAmount * _withdrawShares) / _totalShares;
-        (_assets, _amounts) = mock3rdPool.withdraw(withdrawAmount);
+        mock3rdPool.withdraw(withdrawAmount);
     }
 
     function protectedTokens()

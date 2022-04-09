@@ -43,4 +43,48 @@ abstract contract BaseClaimableStrategy is BaseStrategy {
         transferTokensToTarget(harvester, _rewardsTokens, _claimAmounts);
         _currTotalAsset = report(_rewardsTokens, _claimAmounts);
     }
+
+    /// @notice Strategy repay the funds to vault
+    /// @param _repayShares Numerator
+    /// @param _totalShares Denominator
+    function repay(uint256 _repayShares, uint256 _totalShares)
+    external
+    virtual
+    override
+    onlyVault
+    returns (address[] memory _assets, uint256[] memory _amounts)
+    {
+        require(
+            _repayShares > 0 && _totalShares >= _repayShares,
+            "cannot repay 0 shares"
+        );
+        // if withdraw all need claim rewards
+        if (_repayShares == _totalShares){
+            (address[] memory _rewardsTokens, uint256[] memory _claimAmounts) = claimRewards();
+            // transfer reward token to harvester
+            transferTokensToTarget(harvester, _rewardsTokens, _claimAmounts);   
+        }
+        address[] memory wantsCopy = wants;
+        uint256[] memory balancesBefore = new uint256[](wantsCopy.length);
+        for (uint256 i = 0; i < wantsCopy.length; i++) {
+            balancesBefore[i] = balanceOfToken(wantsCopy[i]);
+        }
+
+        withdrawFrom3rdPool(_repayShares, _totalShares);
+        _assets = wants;
+        _amounts = new uint[](wants.length);
+        for (uint256 i = 0; i < wantsCopy.length; i++) {
+            address token = wantsCopy[i];
+            uint256 balanceAfter = balanceOfToken(token);
+            _amounts[i] =
+            balanceAfter -
+            balancesBefore[i] +
+            (balancesBefore[i] * _repayShares) /
+            _totalShares;
+        }
+
+        transferTokensToTarget(address(vault), _assets, _amounts);
+
+        emit Repay(_repayShares, _totalShares, _assets, _amounts);
+    }
 }

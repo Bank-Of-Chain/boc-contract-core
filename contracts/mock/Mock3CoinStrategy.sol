@@ -8,12 +8,7 @@ import "../strategy/BaseStrategy.sol";
 import "hardhat/console.sol";
 
 contract MockS3CoinStrategy is BaseStrategy {
-
-
-    function initialize(address _vault, address _harvester)
-    public
-    initializer
-    {
+    function initialize(address _vault, address _harvester) public initializer {
         address[] memory _wants = new address[](3);
         // USDT
         _wants[0] = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
@@ -25,11 +20,11 @@ contract MockS3CoinStrategy is BaseStrategy {
     }
 
     function getVersion()
-    external
-    pure
-    virtual
-    override
-    returns (string memory)
+        external
+        pure
+        virtual
+        override
+        returns (string memory)
     {
         return "0.0.1";
     }
@@ -39,64 +34,73 @@ contract MockS3CoinStrategy is BaseStrategy {
     }
 
     function getWantsInfo()
-    external
-    view
-    virtual
-    override
-    returns (address[] memory _assets, uint256[] memory _ratios)
+        external
+        view
+        virtual
+        override
+        returns (address[] memory _assets, uint256[] memory _ratios)
     {
         _assets = wants;
 
         _ratios = new uint256[](3);
-        _ratios[0] = 10 ** IERC20MetadataUpgradeable(wants[0]).decimals() * 1;
-        _ratios[1] = 10 ** IERC20MetadataUpgradeable(wants[1]).decimals() * 2;
-        _ratios[2] = 10 ** IERC20MetadataUpgradeable(wants[2]).decimals() * 4;
+        _ratios[0] = 10**IERC20MetadataUpgradeable(wants[0]).decimals() * 1;
+        _ratios[1] = 10**IERC20MetadataUpgradeable(wants[1]).decimals() * 2;
+        _ratios[2] = 10**IERC20MetadataUpgradeable(wants[2]).decimals() * 4;
     }
 
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
-    public
-    view
-    virtual
-    override
-    returns (address[] memory _tokens, uint256[] memory _amounts, bool isUsd, uint256 usdValue){
+        public
+        view
+        virtual
+        override
+        returns (
+            address[] memory _tokens,
+            uint256[] memory _amounts,
+            bool isUsd,
+            uint256 usdValue
+        )
+    {
         _tokens = new address[](wants.length);
         _amounts = new uint256[](_tokens.length);
-        for (uint i = 0; i < _tokens.length; i++) {
+        for (uint256 i = 0; i < _tokens.length; i++) {
             _tokens[i] = wants[i];
-            _amounts[i] = IERC20Upgradeable(_tokens[i]).balanceOf(address(this));
+            _amounts[i] = IERC20Upgradeable(_tokens[i]).balanceOf(
+                address(this)
+            );
         }
     }
 
     function get3rdPoolAssets()
-    external
-    view
-    virtual
-    override
-    returns (uint256)
+        external
+        view
+        virtual
+        override
+        returns (uint256)
     {
         return type(uint256).max;
     }
 
     function getPendingRewards()
-    public
-    view
-    virtual
-    returns (
-        address[] memory _rewardsTokens,
-        uint256[] memory _pendingAmounts
-    ){
+        public
+        view
+        virtual
+        returns (
+            address[] memory _rewardsTokens,
+            uint256[] memory _pendingAmounts
+        )
+    {
         _rewardsTokens = new address[](0);
         _pendingAmounts = new uint256[](0);
     }
 
     function claimRewards()
-    internal
-    virtual
-    returns (
-        address[] memory _rewardsTokens,
-        uint256[] memory _claimAmounts
-    )
+        internal
+        virtual
+        returns (
+            address[] memory _rewardsTokens,
+            uint256[] memory _claimAmounts
+        )
     {
         _rewardsTokens = new address[](0);
         _claimAmounts = new uint256[](0);
@@ -105,30 +109,30 @@ contract MockS3CoinStrategy is BaseStrategy {
     function depositTo3rdPool(
         address[] memory _assets,
         uint256[] memory _amounts
-    ) internal virtual override {
-
-    }
+    ) internal virtual override {}
 
     function withdrawFrom3rdPool(uint256 _withdrawShares, uint256 _totalShares)
-    internal
-    virtual
-    override
-    returns (address[] memory _assets, uint256[] memory _amounts)
+        internal
+        virtual
+        override
     {
-        _assets = new address[](wants.length);
-        _amounts = new uint256[](_assets.length);
-        for (uint i = 0; i < _assets.length; i++) {
-            _assets[i] = wants[i];
-            _amounts[i] = IERC20Upgradeable(_assets[i]).balanceOf(address(this)) * _withdrawShares / _totalShares;
-        }
+        // _assets = new address[](wants.length);
+        // _amounts = new uint256[](_assets.length);
+        // for (uint256 i = 0; i < _assets.length; i++) {
+        //     _assets[i] = wants[i];
+        //     _amounts[i] =
+        //         (IERC20Upgradeable(_assets[i]).balanceOf(address(this)) *
+        //             _withdrawShares) /
+        //         _totalShares;
+        // }
     }
 
     function protectedTokens()
-    internal
-    view
-    virtual
-    override
-    returns (address[] memory)
+        internal
+        view
+        virtual
+        override
+        returns (address[] memory)
     {
         return wants;
     }

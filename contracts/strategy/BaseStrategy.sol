@@ -73,8 +73,8 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
     /// @notice True means that can ignore ratios given by wants info
     function setIsWantRatioIgnorable(bool _isWantRatioIgnorable)
-    external
-    isVaultManager
+        external
+        isVaultManager
     {
         bool oldValue = isWantRatioIgnorable;
         isWantRatioIgnorable = _isWantRatioIgnorable;
@@ -83,10 +83,10 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
     /// @notice Provide the strategy need underlying token and ratio
     function getWantsInfo()
-    external
-    view
-    virtual
-    returns (address[] memory _assets, uint256[] memory _ratios);
+        external
+        view
+        virtual
+        returns (address[] memory _assets, uint256[] memory _ratios);
 
     /// @notice Provide the strategy need underlying tokens
     function getWants() external view returns (address[] memory) {
@@ -95,23 +95,23 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
-    public
-    view
-    virtual
-    returns (
-        address[] memory _tokens,
-        uint256[] memory _amounts,
-        bool isUsd,
-        uint256 usdValue
-    );
+        public
+        view
+        virtual
+        returns (
+            address[] memory _tokens,
+            uint256[] memory _amounts,
+            bool isUsd,
+            uint256 usdValue
+        );
 
     /// @notice Total assets of strategy in USD.
     function estimatedTotalAssets() external view virtual returns (uint256) {
         (
-        address[] memory tokens,
-        uint256[] memory amounts,
-        bool isUsd,
-        uint256 usdValue
+            address[] memory tokens,
+            uint256[] memory amounts,
+            bool isUsd,
+            uint256 usdValue
         ) = getPositionDetail();
         if (isUsd) {
             return usdValue;
@@ -119,8 +119,8 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
             uint256 totalUsdValue = 0;
             for (uint256 i = 0; i < tokens.length; i++) {
                 totalUsdValue =
-                totalUsdValue +
-                queryTokenValue(tokens[i], amounts[i]);
+                    totalUsdValue +
+                    queryTokenValue(tokens[i], amounts[i]);
             }
             return totalUsdValue;
         }
@@ -128,10 +128,10 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
     function checkBalance() external view returns (uint256 assetsInUSD) {
         (
-        address[] memory _tokens,
-        uint256[] memory _amounts,
-        bool isUsd,
-        uint256 usdValue
+            address[] memory _tokens,
+            uint256[] memory _amounts,
+            bool isUsd,
+            uint256 usdValue
         ) = getPositionDetail();
         if (isUsd) {
             assetsInUSD = usdValue;
@@ -155,7 +155,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     function report(
         address[] memory _rewardTokens,
         uint256[] memory _claimAmounts
-    ) internal returns (uint256 currTotalAsset_){
+    ) internal returns (uint256 currTotalAsset_) {
         currTotalAsset_ = this.checkBalance();
         vault.report(currTotalAsset_);
         emit Report(currTotalAsset_, _rewardTokens, _claimAmounts);
@@ -163,13 +163,13 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
     /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
     function harvest()
-    external
-    virtual
-    returns (
-        uint256 _currTotalAsset,
-        address[] memory _rewardsTokens,
-        uint256[] memory _claimAmounts
-    )
+        external
+        virtual
+        returns (
+            uint256 _currTotalAsset,
+            address[] memory _rewardsTokens,
+            uint256[] memory _claimAmounts
+        )
     {
         _currTotalAsset = report(_rewardsTokens, _claimAmounts);
     }
@@ -178,8 +178,8 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     /// @param _assets borrow token address
     /// @param _amounts borrow token amount
     function borrow(address[] memory _assets, uint256[] memory _amounts)
-    external
-    onlyVault
+        external
+        onlyVault
     {
         require(_assets.length == wants.length);
         // statistics the actual number of tokens, because the strategy may have balance before
@@ -203,9 +203,10 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     /// @param _repayShares Numerator
     /// @param _totalShares Denominator
     function repay(uint256 _repayShares, uint256 _totalShares)
-    external
-    onlyVault
-    returns (address[] memory _assets, uint256[] memory _amounts)
+        external
+        virtual
+        onlyVault
+        returns (address[] memory _assets, uint256[] memory _amounts)
     {
         require(
             _repayShares > 0 && _totalShares >= _repayShares,
@@ -217,17 +218,17 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
             balancesBefore[i] = balanceOfToken(wantsCopy[i]);
         }
 
-        (_assets, _amounts) = withdrawFrom3rdPool(_repayShares, _totalShares);
-        
+        withdrawFrom3rdPool(_repayShares, _totalShares);
+        _assets = wants;
+        _amounts = new uint256[](wants.length);
         for (uint256 i = 0; i < wantsCopy.length; i++) {
             address token = wantsCopy[i];
-            require(token == _assets[i], "keep the order");
             uint256 balanceAfter = balanceOfToken(token);
             _amounts[i] =
-            balanceAfter -
-            balancesBefore[i] +
-            (balancesBefore[i] * _repayShares) /
-            _totalShares;
+                balanceAfter -
+                balancesBefore[i] +
+                (balancesBefore[i] * _repayShares) /
+                _totalShares;
         }
 
         transferTokensToTarget(address(vault), _assets, _amounts);
@@ -247,14 +248,13 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     /// @param _withdrawShares Numerator
     /// @param _totalShares Denominator
     function withdrawFrom3rdPool(uint256 _withdrawShares, uint256 _totalShares)
-    internal
-    virtual
-    returns (address[] memory _assets, uint256[] memory _amounts);
+        internal
+        virtual;
 
     function balanceOfToken(address tokenAddress)
-    public
-    view
-    returns (uint256)
+        public
+        view
+        returns (uint256)
     {
         return IERC20Upgradeable(tokenAddress).balanceOf(address(this));
     }
@@ -272,7 +272,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     function sweep(address _token) external isKeeper {
         require(
             !(arrayContains(wants, _token) ||
-        arrayContains(protectedTokens(), _token)),
+                arrayContains(protectedTokens(), _token)),
             "protected token"
         );
         IERC20Upgradeable(_token).safeTransfer(
@@ -283,20 +283,22 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
     /// @notice Query the value of Token.
     function queryTokenValue(address _token, uint256 _amount)
-    internal
-    view
-    returns (uint256 valueInUSD)
+        internal
+        view
+        returns (uint256 valueInUSD)
     {
-        valueInUSD = valueInterpreter
-        .calcCanonicalAssetValueInUsd(_token, _amount);
+        valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(
+            _token,
+            _amount
+        );
     }
 
     function decimalUnitOfToken(address _token)
-    internal
-    view
-    returns (uint256)
+        internal
+        view
+        returns (uint256)
     {
-        return 10 ** IERC20MetadataUpgradeable(_token).decimals();
+        return 10**IERC20MetadataUpgradeable(_token).decimals();
     }
 
     function transferTokensToTarget(
@@ -316,9 +318,9 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     }
 
     function arrayContains(address[] memory array, address key)
-    internal
-    pure
-    returns (bool)
+        internal
+        pure
+        returns (bool)
     {
         for (uint256 i = 0; i < array.length; i++) {
             if (array[i] == key) {
