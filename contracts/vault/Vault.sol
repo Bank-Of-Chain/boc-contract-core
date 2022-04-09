@@ -390,7 +390,7 @@ contract Vault is VaultStorage {
         // Calculate redeem fee
         if (redeemFeeBps > 0) {
             _redeemFee = _amount * redeemFeeBps / 10000;
-            _burnAmount = _burnAmount - _redeemFee;
+            _burnAmount = _amount - _redeemFee;
         }
         //redeem price in vault
         uint256 _totalAssetInVault = 0;
@@ -425,13 +425,13 @@ contract Vault is VaultStorage {
 
     // @notice burn usdi and check rebase
     function _burnUSDIAndCheckRebase(address _asset, uint256 _amount, uint256 _burnAmount) internal {
-        usdi.burn(msg.sender, _burnAmount);
+        usdi.burn(msg.sender, _amount);
 
         // Until we can prove that we won't affect the prices of our assets
         // by withdrawing them, this should be here.
         // It's possible that a strategy was off on its asset total, perhaps
         // a reward token sold for more or for less than anticipated.
-        if (_burnAmount > rebaseThreshold && !rebasePaused) {
+        if (_amount > rebaseThreshold && !rebasePaused) {
             _rebase();
         }
         emit Burn(msg.sender, _asset, _amount, _burnAmount);
