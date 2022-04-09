@@ -385,12 +385,12 @@ contract Vault is VaultStorage {
             );
         }
 
-        uint256 _burnAmount = _amount;
+        uint256 _actualAmount = _amount;
         uint256 _redeemFee = 0;
         // Calculate redeem fee
         if (redeemFeeBps > 0) {
             _redeemFee = _amount * redeemFeeBps / 10000;
-            _burnAmount = _amount - _redeemFee;
+            _actualAmount = _amount - _redeemFee;
         }
         //redeem price in vault
         uint256 _totalAssetInVault = 0;
@@ -401,11 +401,11 @@ contract Vault is VaultStorage {
         }
 
         // vault not enough,withdraw from withdraw queue strategy
-        if (_totalAssetInVault < _burnAmount) {
-            _repayFromWithdrawQueue(_burnAmount - _totalAssetInVault);
+        if (_totalAssetInVault < _actualAmount) {
+            _repayFromWithdrawQueue(_actualAmount - _totalAssetInVault);
         }
         // calculate need transfer amount from vault ,set to outputs
-        uint256[] memory outputs = _calculateOutputs(_burnAmount, _assetRedeemPrices, _assetDecimals);
+        uint256[] memory outputs = _calculateOutputs(_actualAmount, _assetRedeemPrices, _assetDecimals);
 
         uint256 _actualAmount = 0;
         if (_needExchange) {
@@ -420,11 +420,11 @@ contract Vault is VaultStorage {
                 "amount lower than minimum"
             );
         }
-        _burnUSDIAndCheckRebase(_asset, _burnAmount + _redeemFee, _burnAmount);
+        _burnUSDIAndCheckRebase(_asset, _actualAmount + _redeemFee, _actualAmount);
     }
 
     // @notice burn usdi and check rebase
-    function _burnUSDIAndCheckRebase(address _asset, uint256 _amount, uint256 _burnAmount) internal {
+    function _burnUSDIAndCheckRebase(address _asset, uint256 _amount, uint256 _actualAmount) internal {
         usdi.burn(msg.sender, _amount);
 
         // Until we can prove that we won't affect the prices of our assets
@@ -434,7 +434,7 @@ contract Vault is VaultStorage {
         if (_amount > rebaseThreshold && !rebasePaused) {
             _rebase();
         }
-        emit Burn(msg.sender, _asset, _amount, _burnAmount);
+        emit Burn(msg.sender, _asset, _amount, _actualAmount);
     }
 
 
