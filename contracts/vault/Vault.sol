@@ -407,20 +407,20 @@ contract Vault is VaultStorage {
         // calculate need transfer amount from vault ,set to outputs
         uint256[] memory outputs = _calculateOutputs(_actualAmount, _assetRedeemPrices, _assetDecimals);
 
-        uint256 _actualAmount = 0;
+        uint256 _actuallyReceivedAmount = 0;
         if (_needExchange) {
-            (_assets, _amounts, _actualAmount) = _exchangeAndTransfer(_asset, outputs, _assetDecimals, _exchangeTokens);
+            (_assets, _amounts, _actuallyReceivedAmount) = _exchangeAndTransfer(_asset, outputs, _assetDecimals, _exchangeTokens);
         } else {
-            (_assets, _amounts, _actualAmount) = _withoutExchangeTransfer(outputs, _assetDecimals);
+            (_assets, _amounts, _actuallyReceivedAmount) = _withoutExchangeTransfer(outputs, _assetDecimals);
         }
 
         if (_minimumUnitAmount > 0) {
             require(
-                _actualAmount >= _minimumUnitAmount,
+                _actuallyReceivedAmount >= _minimumUnitAmount,
                 "amount lower than minimum"
             );
         }
-        _burnUSDIAndCheckRebase(_asset, _actualAmount + _redeemFee, _actualAmount);
+        _burnUSDIAndCheckRebase(_asset, _actualAmount + _redeemFee, _actuallyReceivedAmount);
     }
 
     // @notice burn usdi and check rebase
