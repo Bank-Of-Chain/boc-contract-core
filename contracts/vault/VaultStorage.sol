@@ -58,7 +58,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         address _account,
         address _asset,
         uint256 _amount,
-        uint256 _burnAmount
+        uint256 _actualAmount
     );
     event BurnWithoutExchange(
         address _account,
