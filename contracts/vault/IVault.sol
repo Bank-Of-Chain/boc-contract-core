@@ -65,6 +65,7 @@ interface IVault {
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
     event SetWithdrawalQueue(address[] queues);
+    event StrategyReported(address strategy, uint256 gain, uint256 loss, uint256 lastStrategyTotalDebt, uint256 nowStrategyTotalDebt);
 
     /// @notice Version of vault
     function getVersion() external pure returns (string memory);
