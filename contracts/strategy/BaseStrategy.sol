@@ -182,21 +182,10 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         onlyVault
     {
         require(_assets.length == wants.length);
-        // statistics the actual number of tokens, because the strategy may have balance before
-        uint256[] memory actualAmounts = new uint256[](_amounts.length);
-        uint256 totalBalance = 0;
 
-        for (uint256 i = 0; i < _assets.length; i++) {
-            address asset = _assets[i];
-            uint256 amount = balanceOfToken(asset);
-            actualAmounts[i] = amount;
-            totalBalance += amount;
-        }
-        if (totalBalance > 0) {
-            depositTo3rdPool(_assets, actualAmounts);
+        depositTo3rdPool(_assets, _amounts);
 
-            emit Borrow(_assets, _amounts);
-        }
+        emit Borrow(_assets, _amounts);
     }
 
     /// @notice Strategy repay the funds to vault
