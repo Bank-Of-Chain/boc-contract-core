@@ -51,6 +51,7 @@ contract Dripper is AccessControlMixin, Initializable {
 
     event DripDurationChanged(uint256 _durationSeconds);
     event TokenChanged(address _token);
+    event Collection(address token, uint256 amount);
 
     struct Drip {
         uint64 lastCollect; // overflows 262 billion years after the sun dies
@@ -154,5 +155,6 @@ contract Dripper is AccessControlMixin, Initializable {
         });
         // Send funds
         IERC20Upgradeable(token).safeTransfer(vault, amountToSend);
+        emit Collection(token, amountToSend);
     }
 }
