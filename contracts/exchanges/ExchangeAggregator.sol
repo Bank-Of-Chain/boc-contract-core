@@ -14,11 +14,11 @@ contract ExchangeAggregator is AccessControlMixin {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     event ExchangeAdapterAdded(
-        address indexed exchangeAdapter
+        address[] exchangeAdapters
     );
 
     event ExchangeAdapterRemoved(
-        address indexed exchangeAdapter
+        address[] exchangeAdapters
     );
 
     EnumerableSet.AddressSet private exchangeAdapters;
@@ -37,15 +37,15 @@ contract ExchangeAggregator is AccessControlMixin {
 
         for (uint256 i = 0; i < _exchangeAdapters.length; i++) {
             exchangeAdapters.remove(_exchangeAdapters[i]);
-            emit ExchangeAdapterRemoved(_exchangeAdapters[i]);
         }
+        emit ExchangeAdapterRemoved(_exchangeAdapters);
     }
 
     function __addExchangeAdapters(address[] memory _exchangeAdapters) private {
         for (uint256 i = 0; i < _exchangeAdapters.length; i++) {
             exchangeAdapters.add(_exchangeAdapters[i]);
-            emit ExchangeAdapterAdded(_exchangeAdapters[i]);
         }
+        emit ExchangeAdapterAdded(_exchangeAdapters);
     }
 
     // address platform：调用的兑换平台
@@ -63,15 +63,8 @@ contract ExchangeAggregator is AccessControlMixin {
     function getExchangeAdapters()
     external
     view
-    returns (address[] memory exchangeAdapters_, string[] memory identifiers_)
+    returns (address[] memory exchangeAdapters_)
     {
-        exchangeAdapters_ = new address[](exchangeAdapters.length());
-        identifiers_ = new string[](exchangeAdapters.length());
-        for (uint256 i = 0; i < exchangeAdapters_.length; i++) {
-            exchangeAdapters_[i] = exchangeAdapters.at(i);
-            identifiers_[i] = IExchangeAdapter(exchangeAdapters_[i]).identifier();
-        }
-
-        return (exchangeAdapters_, identifiers_);
+        exchangeAdapters_ = exchangeAdapters.values();
     }
 }
