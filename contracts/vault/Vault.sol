@@ -350,13 +350,13 @@ contract Vault is VaultStorage {
         }
 
         if (maxSupplyDiff > 0) {
-            uint256 _totalValueInStrategy = 0;
+            uint256 _totalValueInStrategy;
             uint256 strategyLength = strategySet.length();
             for (uint256 i = 0; i < strategyLength; i++) {
                 _totalValueInStrategy = _totalValueInStrategy + IStrategy(strategySet.at(i)).checkBalance();
             }
 
-            uint256 _totalValueInVault = 0;
+            uint256 _totalValueInVault;
             for (uint256 i = 0; i < _assetBalancesInVault.length; i++) {
                 if (_assetBalancesInVault[i] > 0) {
                     _totalValueInVault = _totalValueInVault + (_assetBalancesInVault[i].scaleBy(18, _assetDecimals[i]));

@@ -24,7 +24,7 @@ contract Treasury is
     fallback() external payable {}
 
     function version() public pure returns (string memory) {
-        return "V1.0.2";
+        return "V1.0.0";
     }
 
     function balance(address _token) public view returns (uint256) {
