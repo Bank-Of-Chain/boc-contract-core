@@ -78,7 +78,10 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         for (uint8 i = 0; i < _exchangeTokens.length; i++) {
             IExchangeAggregator.ExchangeToken
                 memory exchangeToken = _exchangeTokens[i];
-            require(exchangeToken.toToken == sellTo,"Rewards can only be sold as sellTo");
+            require(
+                exchangeToken.toToken == sellTo,
+                "Rewards can only be sold as sellTo"
+            );
             _exchange(
                 exchangeToken.fromToken,
                 exchangeToken.toToken,
@@ -87,9 +90,14 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
             );
         }
 
-        uint sellToBalance = IERC20Upgradeable(sellTo).balanceOf(address(this));
-        if (sellToBalance > 0){
-            IERC20Upgradeable(sellTo).safeTransfer(profitReceiver,sellToBalance);
+        uint256 sellToBalance = IERC20Upgradeable(sellTo).balanceOf(
+            address(this)
+        );
+        if (sellToBalance > 0) {
+            IERC20Upgradeable(sellTo).safeTransfer(
+                profitReceiver,
+                sellToBalance
+            );
         }
     }
 
@@ -99,7 +107,6 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         uint256 _amount,
         IExchangeAggregator.ExchangeParam memory exchangeParam
     ) internal returns (uint256 exchangeAmount) {
-
         IExchangeAdapter.SwapDescription
             memory swapDescription = IExchangeAdapter.SwapDescription({
                 amount: _amount,
@@ -114,17 +121,12 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
             exchangeParam.encodeExchangeArgs,
             swapDescription
         );
-        // uint256 oracleExpectedAmount = IValueInterpreter(valueInterpreter)
-        //     .calcCanonicalAssetValue(_fromToken, _amount, _toToken);
-        // require(
-        //     exchangeAmount >=
-        //         (oracleExpectedAmount *
-        //             (MAX_BPS -
-        //                 exchangeParam.slippage -
-        //                 exchangeParam.oracleAdditionalSlippage)) /
-        //             MAX_BPS,
-        //     "OL"
-        // );
-        emit Exchange(exchangeParam.platform, _fromToken, _amount, _toToken, exchangeAmount);
+        emit Exchange(
+            exchangeParam.platform,
+            _fromToken,
+            _amount,
+            _toToken,
+            exchangeAmount
+        );
     }
 }

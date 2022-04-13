@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/utils/Strings.sol';
-import './derivatives/IAggregatedDerivativePriceFeed.sol';
-import './derivatives/IDerivativePriceFeed.sol';
-import './primitives/IPrimitivePriceFeed.sol';
-import './../access-control/AccessControlMixin.sol';
-import './IValueInterpreter.sol';
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "./derivatives/IAggregatedDerivativePriceFeed.sol";
+import "./derivatives/IDerivativePriceFeed.sol";
+import "./primitives/IPrimitivePriceFeed.sol";
+import "./../access-control/AccessControlMixin.sol";
+import "./IValueInterpreter.sol";
 
-import 'hardhat/console.sol';
+import "hardhat/console.sol";
 
 /// @title ValueInterpreter Contract
 /// @author Enzyme Council <security@enzyme.finance>
@@ -20,14 +20,21 @@ import 'hardhat/console.sol';
 /// to explicitly define the types of values that they should (and will) be using in a future release.
 contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     event UpdatePrimitivePriceFeed(address primitivePriceFeed);
-    event UpdateAggregatedDerivativePriceFeed(address aggregatedDerivativePriceFeed);
+    event UpdateAggregatedDerivativePriceFeed(
+        address aggregatedDerivativePriceFeed
+    );
 
     address private AGGREGATED_DERIVATIVE_PRICE_FEED;
     address private PRIMITIVE_PRICE_FEED;
 
-    constructor(address _primitivePriceFeed, address _aggregatedDerivativePriceFeed) {
+    constructor(
+        address _primitivePriceFeed,
+        address _aggregatedDerivativePriceFeed,
+        address _accessControlProxy
+    ) {
         AGGREGATED_DERIVATIVE_PRICE_FEED = _aggregatedDerivativePriceFeed;
         PRIMITIVE_PRICE_FEED = _primitivePriceFeed;
+        _initAccessControl(_accessControlProxy);
     }
 
     // EXTERNAL FUNCTIONS
@@ -47,14 +54,18 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     ) external view override returns (uint256 value_) {
         require(
             _baseAssets.length == _amounts.length,
-            'calcCanonicalAssetsTotalValue: Arrays unequal lengths'
+            "calcCanonicalAssetsTotalValue: Arrays unequal lengths"
         );
         require(
-            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(_quoteAsset),
-            string(abi.encodePacked(
-                'calcCanonicalAssetsTotalValue: Unsupported _quoteAsset ',
-                Strings.toHexString(uint160(_quoteAsset), 20)
-            ))
+            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(
+                _quoteAsset
+            ),
+            string(
+                abi.encodePacked(
+                    "calcCanonicalAssetsTotalValue: Unsupported _quoteAsset ",
+                    Strings.toHexString(uint160(_quoteAsset), 20)
+                )
+            )
         );
 
         bool isValid_ = true;
@@ -69,7 +80,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
                 isValid_ = false;
             }
         }
-        require(isValid_, 'Invalid rate');
+        require(isValid_, "Invalid rate");
         return value_;
     }
 
@@ -95,26 +106,28 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         //        );
         bool isValid_;
         (value_, isValid_) = __calcAssetValue(_baseAsset, _amount, _quoteAsset);
-        require(isValid_, 'Invalid rate');
+        require(isValid_, "Invalid rate");
         return value_;
     }
 
     /*
-       * 资产的usd价值
-       * _baseAsset: 源token地址
-       * _amount: 源token数量
-    * @return usd(1e18)
-       */
-    function calcCanonicalAssetValueInUsd(
-        address _baseAsset,
-        uint256 _amount
-    ) external view override returns (uint256 value_){
+     * 资产的usd价值
+     * _baseAsset: 源token地址
+     * _amount: 源token数量
+     * @return usd(1e18)
+     */
+    function calcCanonicalAssetValueInUsd(address _baseAsset, uint256 _amount)
+        external
+        view
+        override
+        returns (uint256 value_)
+    {
         if (_amount == 0) {
             return _amount;
         }
         bool isValid_;
         (value_, isValid_) = __calcAssetValueInUsd(_baseAsset, _amount);
-        require(isValid_, 'Invalid rate');
+        require(isValid_, "Invalid rate");
         return value_;
     }
 
@@ -123,43 +136,62 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
      * _baseAsset: 源token地址
      * @return usd(1e18)
      */
-    function price(address _baseAsset) external view override returns (uint256 value_){
+    function price(address _baseAsset)
+        external
+        view
+        override
+        returns (uint256 value_)
+    {
         // Handle case that asset is a primitive
-        if (IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(_baseAsset)) {
+        if (
+            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(
+                _baseAsset
+            )
+        ) {
             bool isValid_;
-            (value_, isValid_) = IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).calcValueInUsd(
-                _baseAsset,
-                IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).getAssetUnit(_baseAsset)
-            );
-            require(isValid_, 'Invalid rate');
+            (value_, isValid_) = IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED)
+                .calcValueInUsd(
+                    _baseAsset,
+                    IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).getAssetUnit(
+                        _baseAsset
+                    )
+                );
+            require(isValid_, "Invalid rate");
             return value_;
         }
-        revert(string(
-            abi.encodePacked(
-                '__calcAssetValue: Unsupported _baseAsset ',
-                Strings.toHexString(uint160(_baseAsset), 20)
+        revert(
+            string(
+                abi.encodePacked(
+                    "__calcAssetValue: Unsupported _baseAsset ",
+                    Strings.toHexString(uint160(_baseAsset), 20)
+                )
             )
-        ));
+        );
     }
 
     // PRIVATE FUNCTIONS
     /// @dev Helper to differentially calculate an asset value
     /// based on if it is a primitive or derivative asset.
-    function __calcAssetValueInUsd(
-        address _baseAsset,
-        uint256 _amount
-    ) private view returns (uint256 value_, bool isValid_) {
+    function __calcAssetValueInUsd(address _baseAsset, uint256 _amount)
+        private
+        view
+        returns (uint256 value_, bool isValid_)
+    {
         if (_amount == 0) {
             return (_amount, true);
         }
 
         // Handle case that asset is a primitive
-        if (IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(_baseAsset)) {
+        if (
+            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(
+                _baseAsset
+            )
+        ) {
             return
-            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).calcValueInUsd(
-                _baseAsset,
-                _amount
-            );
+                IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).calcValueInUsd(
+                    _baseAsset,
+                    _amount
+                );
         }
 
         // Handle case that asset is a derivative
@@ -167,15 +199,22 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             AGGREGATED_DERIVATIVE_PRICE_FEED
         ).getPriceFeedForDerivative(_baseAsset);
         if (derivativePriceFeed != address(0)) {
-            return __calcDerivativeValueInUsd(derivativePriceFeed, _baseAsset, _amount);
+            return
+                __calcDerivativeValueInUsd(
+                    derivativePriceFeed,
+                    _baseAsset,
+                    _amount
+                );
         }
 
-        revert(string(
-            abi.encodePacked(
-                '__calcAssetValue: Unsupported _baseAsset ',
-                Strings.toHexString(uint160(_baseAsset), 20)
+        revert(
+            string(
+                abi.encodePacked(
+                    "__calcAssetValue: Unsupported _baseAsset ",
+                    Strings.toHexString(uint160(_baseAsset), 20)
+                )
             )
-        ));
+        );
     }
 
     /// @dev Helper to differentially calculate an asset value
@@ -190,14 +229,20 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         }
 
         // Handle case that asset is a primitive
-        if (IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(_baseAsset)
-            && IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(_quoteAsset)) {
-            return
-            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).calcCanonicalValue(
-                _baseAsset,
-                _amount,
+        if (
+            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(
+                _baseAsset
+            ) &&
+            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(
                 _quoteAsset
-            );
+            )
+        ) {
+            return
+                IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).calcCanonicalValue(
+                    _baseAsset,
+                    _amount,
+                    _quoteAsset
+                );
         }
 
         // Handle case that asset is a derivative
@@ -205,15 +250,23 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             AGGREGATED_DERIVATIVE_PRICE_FEED
         ).getPriceFeedForDerivative(_baseAsset);
         if (derivativePriceFeed != address(0)) {
-            return __calcDerivativeValue(derivativePriceFeed, _baseAsset, _amount, _quoteAsset);
+            return
+                __calcDerivativeValue(
+                    derivativePriceFeed,
+                    _baseAsset,
+                    _amount,
+                    _quoteAsset
+                );
         }
 
-        revert(string(
-            abi.encodePacked(
-                '__calcAssetValue: Unsupported _baseAsset ',
-                Strings.toHexString(uint160(_baseAsset), 20)
+        revert(
+            string(
+                abi.encodePacked(
+                    "__calcAssetValue: Unsupported _baseAsset ",
+                    Strings.toHexString(uint160(_baseAsset), 20)
+                )
             )
-        ));
+        );
     }
 
     /// @dev Helper to calculate the value of a derivative in an arbitrary asset.
@@ -224,23 +277,30 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         address _derivative,
         uint256 _amount
     ) private view returns (uint256 value_, bool isValid_) {
-        (address[] memory underlyings, uint256[] memory underlyingAmounts) = IDerivativePriceFeed(
-            _derivativePriceFeed
-        ).calcUnderlyingValues(_derivative, _amount);
+        (
+            address[] memory underlyings,
+            uint256[] memory underlyingAmounts
+        ) = IDerivativePriceFeed(_derivativePriceFeed).calcUnderlyingValues(
+                _derivative,
+                _amount
+            );
 
-        require(underlyings.length > 0, '__calcDerivativeValue: No underlyings');
+        require(
+            underlyings.length > 0,
+            "__calcDerivativeValue: No underlyings"
+        );
         require(
             underlyings.length == underlyingAmounts.length,
-            '__calcDerivativeValue: Arrays unequal lengths'
+            "__calcDerivativeValue: Arrays unequal lengths"
         );
 
         // Let validity be negated if any of the underlying value calculations are invalid
         isValid_ = true;
         for (uint256 i = 0; i < underlyings.length; i++) {
-            (uint256 underlyingValue, bool underlyingValueIsValid) = __calcAssetValueInUsd(
-                underlyings[i],
-                underlyingAmounts[i]
-            );
+            (
+                uint256 underlyingValue,
+                bool underlyingValueIsValid
+            ) = __calcAssetValueInUsd(underlyings[i], underlyingAmounts[i]);
 
             if (!underlyingValueIsValid) {
                 isValid_ = false;
@@ -258,24 +318,34 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         uint256 _amount,
         address _quoteAsset
     ) private view returns (uint256 value_, bool isValid_) {
-        (address[] memory underlyings, uint256[] memory underlyingAmounts) = IDerivativePriceFeed(
-            _derivativePriceFeed
-        ).calcUnderlyingValues(_derivative, _amount);
+        (
+            address[] memory underlyings,
+            uint256[] memory underlyingAmounts
+        ) = IDerivativePriceFeed(_derivativePriceFeed).calcUnderlyingValues(
+                _derivative,
+                _amount
+            );
 
-        require(underlyings.length > 0, '__calcDerivativeValue: No underlyings');
+        require(
+            underlyings.length > 0,
+            "__calcDerivativeValue: No underlyings"
+        );
         require(
             underlyings.length == underlyingAmounts.length,
-            '__calcDerivativeValue: Arrays unequal lengths'
+            "__calcDerivativeValue: Arrays unequal lengths"
         );
 
         // Let validity be negated if any of the underlying value calculations are invalid
         isValid_ = true;
         for (uint256 i = 0; i < underlyings.length; i++) {
-            (uint256 underlyingValue, bool underlyingValueIsValid) = __calcAssetValue(
-                underlyings[i],
-                underlyingAmounts[i],
-                _quoteAsset
-            );
+            (
+                uint256 underlyingValue,
+                bool underlyingValueIsValid
+            ) = __calcAssetValue(
+                    underlyings[i],
+                    underlyingAmounts[i],
+                    _quoteAsset
+                );
 
             if (!underlyingValueIsValid) {
                 isValid_ = false;
@@ -291,29 +361,40 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     /// @notice Gets the `AGGREGATED_DERIVATIVE_PRICE_FEED` variable
     /// @return aggregatedDerivativePriceFeed_ The `AGGREGATED_DERIVATIVE_PRICE_FEED` variable value
     function getAggregatedDerivativePriceFeed()
-    external
-    view
-    returns (address aggregatedDerivativePriceFeed_)
+        external
+        view
+        returns (address aggregatedDerivativePriceFeed_)
     {
         return AGGREGATED_DERIVATIVE_PRICE_FEED;
     }
 
     /// @notice Gets the `PRIMITIVE_PRICE_FEED` variable
     /// @return primitivePriceFeed_ The `PRIMITIVE_PRICE_FEED` variable value
-    function getPrimitivePriceFeed() external view returns (address primitivePriceFeed_) {
+    function getPrimitivePriceFeed()
+        external
+        view
+        returns (address primitivePriceFeed_)
+    {
         return PRIMITIVE_PRICE_FEED;
     }
 
     ///////////////////
     // STATE SETTERS //
     ///////////////////
-    function setPrimitivePriceFeed(address _primitivePriceFeed) external onlyGovOrDelegate {
+    function setPrimitivePriceFeed(address _primitivePriceFeed)
+        external
+        onlyGovOrDelegate
+    {
         PRIMITIVE_PRICE_FEED = _primitivePriceFeed;
         emit UpdatePrimitivePriceFeed(_primitivePriceFeed);
     }
 
-    function setAggregatedDerivativePriceFeed(address _aggregatedDerivativePriceFeed) external onlyGovOrDelegate {
+    function setAggregatedDerivativePriceFeed(
+        address _aggregatedDerivativePriceFeed
+    ) external onlyGovOrDelegate {
         AGGREGATED_DERIVATIVE_PRICE_FEED = _aggregatedDerivativePriceFeed;
-        emit UpdateAggregatedDerivativePriceFeed(_aggregatedDerivativePriceFeed);
+        emit UpdateAggregatedDerivativePriceFeed(
+            _aggregatedDerivativePriceFeed
+        );
     }
 }

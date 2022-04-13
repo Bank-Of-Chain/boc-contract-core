@@ -282,13 +282,8 @@ contract Vault is VaultStorage {
             }
         }
         uint256 _amount = _actualAmount.scaleBy(_toDecimals, 18);
+        IERC20Upgradeable(_asset).safeTransfer(msg.sender, _amount);
 
-        if (IERC20Upgradeable(_asset).balanceOf(address(this)) >= _amount) {
-            // Use Vault funds first if sufficient
-            IERC20Upgradeable(_asset).safeTransfer(msg.sender, _amount);
-        } else {
-            revert("Liquidity error");
-        }
         _assets = new address[](1);
         _assets[0] = _asset;
         _amounts = new uint256[](1);
@@ -303,12 +298,7 @@ contract Vault is VaultStorage {
             uint256 withdrawDecimals = _assetDecimals[i];
             outputs[i] = outputs[i].scaleBy(withdrawDecimals, 18);
             if (outputs[i] > 0) {
-                if (IERC20Upgradeable(withdrawToken).balanceOf(address(this)) >= outputs[i]) {
-                    // Use Vault funds first if sufficient
-                    IERC20Upgradeable(withdrawToken).safeTransfer(msg.sender, outputs[i]);
-                } else {
-                    revert("Liquidity error");
-                }
+                IERC20Upgradeable(withdrawToken).safeTransfer(msg.sender, outputs[i]);
             }
         }
         _assets = _getTrackedAssets();
@@ -366,10 +356,10 @@ contract Vault is VaultStorage {
                 _totalValueInStrategy = _totalValueInStrategy + IStrategy(strategySet.at(i)).checkBalance();
             }
 
-            uint256 _totalValueInValue = 0;
+            uint256 _totalValueInVault = 0;
             for (uint256 i = 0; i < _assetBalancesInVault.length; i++) {
                 if (_assetBalancesInVault[i] > 0) {
-                    _totalValueInValue = _totalValueInValue + (_assetBalancesInVault[i].scaleBy(18, _assetDecimals[i]));
+                    _totalValueInVault = _totalValueInVault + (_assetBalancesInVault[i].scaleBy(18, _assetDecimals[i]));
                 }
             }
 
@@ -377,7 +367,7 @@ contract Vault is VaultStorage {
             uint256 _totalSupply = usdi.totalSupply();
             // Allow a max difference of maxSupplyDiff% between
             // backing assets value and OUSD total supply
-            uint256 diff = _totalSupply.divPrecisely(_totalValueInValue + _totalValueInStrategy);
+            uint256 diff = _totalSupply.divPrecisely(_totalValueInVault + _totalValueInStrategy);
             require(
                 (diff > 1e18 ? (diff - (1e18)) : (uint256(1e18) - (diff))) <=
                 maxSupplyDiff,
