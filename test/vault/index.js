@@ -149,10 +149,8 @@ describe("Vault", function () {
         exchangeAggregator = await ExchangeAggregator.new([testAdapter.address], accessControlProxy.address);
         const adapters = await exchangeAggregator.getExchangeAdapters();
         exchangePlatformAdapters = {};
-        for (let i = 0; i < adapters.length; i++) {
-            const exchangeAdapter  = await IExchangeAdapter.at(adapters[i]);
-            const identifier = await exchangeAdapter.identifier();
-            exchangePlatformAdapters[identifier] = adapters[i];
+        for (let i = 0; i < adapters.identifiers_.length; i++) {
+            exchangePlatformAdapters[adapters.identifiers_[i]] = adapters.exchangeAdapters_[i];
         }
 
         console.log('deploy USDi');
