@@ -88,14 +88,12 @@ contract Harvester is AccessControlMixin, Initializable {
     }
 
     function collectAndSwapAndSend(address[] calldata _strategies, IExchangeAggregator.ExchangeToken[] memory _exchangeTokens) external isKeeper {
-        address[] memory rewardTokenArray = new address[](_exchangeTokens.length);
         address sellToCopy = sellTo;
         for (uint i = 0; i < _exchangeTokens.length; i++) {
             require(
                 _exchangeTokens[i].toToken == sellToCopy,
                 "Rewards can only be sold as sellTo"
             );
-            rewardTokenArray[i] = _exchangeTokens[i].fromToken;
             _exchangeTokens[i].fromAmount = 0;
         }
         for (uint i = 0; i < _strategies.length; i++) {
@@ -104,8 +102,8 @@ contract Harvester is AccessControlMixin, Initializable {
             (,address[] memory _rewardsTokens,uint256[] memory _claimAmounts) = IStrategy(strategy).harvest();
             for (uint j = 0; j < _rewardsTokens.length; j++) {
                 if (_claimAmounts[j] > 0) {
-                    for (uint k = 0; k < rewardTokenArray.length; k++) {
-                        if (rewardTokenArray[k] == _rewardsTokens[j]) {
+                    for (uint k = 0; k < _exchangeTokens.length; k++) {
+                        if (_exchangeTokens[k].fromToken == _rewardsTokens[j]) {
                             _exchangeTokens[k].fromAmount += _claimAmounts[j];
                             break;
                         }
