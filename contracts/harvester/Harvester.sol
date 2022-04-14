@@ -4,8 +4,10 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
+import "../vault/IVault.sol";
 import "./../strategy/IStrategy.sol";
 import "../exchanges/IExchangeAggregator.sol";
 
@@ -26,25 +28,27 @@ contract Harvester is AccessControlMixin, Initializable {
     address public exchangeManager;
     /// rewards sell to token.
     address public sellTo;
+    IVault public vault;
 
     function initialize(
         address _accessControlProxy,
         address _receiver,
         address _sellTo,
-        address _exchangeManager
+        address _vault
     ) external initializer {
         require(_receiver != address(0), "Must be a non-zero address");
+        require(_vault != address(0), "Must be a non-zero address");
         require(_sellTo != address(0), "Must be a non-zero address");
-        require(_exchangeManager != address(0), "Must be a non-zero address");
         profitReceiver = _receiver;
         sellTo = _sellTo;
-        exchangeManager = _exchangeManager;
+        vault = IVault(_vault);
+        exchangeManager = vault.exchangeManager();
         _initAccessControl(_accessControlProxy);
     }
 
     function setProfitReceiver(address _receiver)
-        external
-        onlyRole(BocRoles.GOV_ROLE)
+    external
+    onlyRole(BocRoles.GOV_ROLE)
     {
         require(_receiver != address(0), "Must be a non-zero address");
         profitReceiver = _receiver;
@@ -52,10 +56,9 @@ contract Harvester is AccessControlMixin, Initializable {
         emit ReceiverChanged(profitReceiver);
     }
 
-    //TODO 是否可以直接链外控制兑换成什么，但是兑换的目标币需要是vault里支持的稳定币
     function setSellTo(address _sellTo)
-        external
-        onlyRole(BocRoles.KEEPER_ROLE)
+    external
+    isVaultManager
     {
         require(_sellTo != address(0), "Must be a non-zero address");
         sellTo = _sellTo;
@@ -63,34 +66,74 @@ contract Harvester is AccessControlMixin, Initializable {
         emit SellToChanged(sellTo);
     }
 
-    // TODO 如果strategy是别人的地址，虚拟了一个harvest方法。
-    // 支持collectAndSwapAndSend
-    function collect(address[] calldata _strategies) external {
-        for (uint8 i = 0; i < _strategies.length; i++) {
-            address strategyAdd = _strategies[i];
-            IStrategy(strategyAdd).harvest();
+    /**
+    * @dev Transfer token to governor. Intended for recovering tokens stuck in
+     *      contract, i.e. mistaken sends.
+     * @param _asset Address for the asset
+     * @param _amount Amount of the asset to transfer
+     */
+    function transferToken(address _asset, uint256 _amount)
+    external
+    onlyRole(BocRoles.GOV_ROLE)
+    {
+        IERC20Upgradeable(_asset).safeTransfer(vault.treasury(), _amount);
+    }
+
+    function collect(address[] calldata _strategies) external isKeeper {
+        for (uint i = 0; i < _strategies.length; i++) {
+            address strategy = _strategies[i];
+            vault.checkActiveStrategy(strategy);
+            IStrategy(strategy).harvest();
         }
     }
 
-    // function sendAssetsToReceiver(
-    //     address[] memory _assets,
-    //     uint256[] memory _amounts
-    // ) external onlyRole(BocRoles.KEEPER_ROLE) {
-    //     for (uint8 i = 0; i < _assets.length; i++) {
-    //         address token = _assets[i];
-    //         uint256 amount = _amounts[i];
-    //         IERC20Upgradeable(token).safeTransfer(profitReceiver, amount);
-    //     }
-    // }
+    function collectAndSwapAndSend(address[] calldata _strategies, IExchangeAggregator.ExchangeToken[] memory _exchangeTokens) external isKeeper {
+        address[] memory rewardTokenArray = new address[](_exchangeTokens.length);
+        address sellToCopy = sellTo;
+        for (uint i = 0; i < _exchangeTokens.length; i++) {
+            require(
+                _exchangeTokens[i].toToken == sellToCopy,
+                "Rewards can only be sold as sellTo"
+            );
+            rewardTokenArray[i] = _exchangeTokens[i].fromToken;
+            _exchangeTokens[i].fromAmount = 0;
+        }
+        for (uint i = 0; i < _strategies.length; i++) {
+            address strategy = _strategies[i];
+            vault.checkActiveStrategy(strategy);
+            (,address[] memory _rewardsTokens,uint256[] memory _claimAmounts) = IStrategy(strategy).harvest();
+            for (uint j = 0; j < _rewardsTokens.length; j++) {
+                if (_claimAmounts[j] > 0) {
+                    for (uint k = 0; k < rewardTokenArray.length; k++) {
+                        if (rewardTokenArray[k] == _rewardsTokens[j]) {
+                            _exchangeTokens[k].fromAmount += _claimAmounts[j];
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        for (uint i = 0; i < _exchangeTokens.length; i++) {
+            IExchangeAggregator.ExchangeToken memory exchangeToken = _exchangeTokens[i];
+            if (exchangeToken.fromAmount > 0) {
+                _exchange(
+                    exchangeToken.fromToken,
+                    exchangeToken.toToken,
+                    exchangeToken.fromAmount,
+                    exchangeToken.exchangeParam
+                );
+            }
+        }
+    }
 
     function exchangeAndSend(
         IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens
-    ) external onlyRole(BocRoles.KEEPER_ROLE) {
-        for (uint8 i = 0; i < _exchangeTokens.length; i++) {
-            IExchangeAggregator.ExchangeToken
-                memory exchangeToken = _exchangeTokens[i];
+    ) external isKeeper {
+        address sellToCopy = sellTo;
+        for (uint i = 0; i < _exchangeTokens.length; i++) {
+            IExchangeAggregator.ExchangeToken memory exchangeToken = _exchangeTokens[i];
             require(
-                exchangeToken.toToken == sellTo,
+                exchangeToken.toToken == sellToCopy,
                 "Rewards can only be sold as sellTo"
             );
             _exchange(
@@ -98,16 +141,6 @@ contract Harvester is AccessControlMixin, Initializable {
                 exchangeToken.toToken,
                 exchangeToken.fromAmount,
                 exchangeToken.exchangeParam
-            );
-        }
-
-        uint256 sellToBalance = IERC20Upgradeable(sellTo).balanceOf(
-            address(this)
-        );
-        if (sellToBalance > 0) {
-            IERC20Upgradeable(sellTo).safeTransfer(
-                profitReceiver,
-                sellToBalance
             );
         }
     }
@@ -118,13 +151,12 @@ contract Harvester is AccessControlMixin, Initializable {
         uint256 _amount,
         IExchangeAggregator.ExchangeParam memory exchangeParam
     ) internal returns (uint256 exchangeAmount) {
-        IExchangeAdapter.SwapDescription
-            memory swapDescription = IExchangeAdapter.SwapDescription({
-                amount: _amount,
-                srcToken: _fromToken,
-                dstToken: _toToken,
-                receiver: address(this)
-            });
+        IExchangeAdapter.SwapDescription memory swapDescription = IExchangeAdapter.SwapDescription({
+        amount : _amount,
+        srcToken : _fromToken,
+        dstToken : _toToken,
+        receiver : profitReceiver
+        });
         IERC20Upgradeable(_fromToken).safeApprove(exchangeManager, _amount);
         exchangeAmount = IExchangeAggregator(exchangeManager).swap(
             exchangeParam.platform,

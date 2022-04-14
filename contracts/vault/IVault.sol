@@ -73,6 +73,8 @@ interface IVault {
     /// @notice Minting USDi supported assets
     function getSupportAssets() external view returns (address[] memory assets);
 
+    function checkIsSupportAsset(address asset) external view;
+
     /// @notice Assets held by Vault
     function getTrackedAssets() external view returns (address[] memory assets);
 
@@ -87,6 +89,8 @@ interface IVault {
     external
     view
     returns (address[] memory strategies);
+
+    function checkActiveStrategy(address strategy) external view;
 
     /// @notice estimate Minting USDi with stablecoins
     /// @param _assets Address of the asset being deposited

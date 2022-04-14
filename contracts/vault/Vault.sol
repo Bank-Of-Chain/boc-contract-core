@@ -64,7 +64,7 @@ contract Vault is VaultStorage {
     }
 
     modifier isActiveStrategy(address _strategy) {
-        require(strategySet.contains(_strategy), "strategy not exist");
+        checkActiveStrategy(_strategy);
         _;
     }
 
@@ -78,6 +78,9 @@ contract Vault is VaultStorage {
         return assetSet.values();
     }
 
+    function checkIsSupportAsset(address _asset) public view {
+        require(assetSet.contains(_asset), "The asset not support");
+    }
 
     /// @notice Assets held by Vault
     function getTrackedAssets() external view returns (address[] memory){
@@ -122,6 +125,10 @@ contract Vault is VaultStorage {
         return strategySet.values();
     }
 
+    function checkActiveStrategy(address _strategy) public view {
+        require(strategySet.contains(_strategy), "strategy not exist");
+    }
+
     /// @notice estimate Minting USDi with stablecoins
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
@@ -132,7 +139,7 @@ contract Vault is VaultStorage {
         require(_assets.length > 0 && _amounts.length > 0 && _assets.length == _amounts.length, "Assets or amounts must not be empty and Assets length must equal amounts length");
 
         for (uint256 i = 0; i < _assets.length; i++) {
-            require(assetSet.contains(_assets[i]), "Asset is not exist");
+            checkIsSupportAsset(_assets[i]);
             require(_amounts[i] > 0, "Amount must be greater than 0");
         }
 
@@ -309,7 +316,7 @@ contract Vault is VaultStorage {
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
     ) external whenNotEmergency whenNotAdjustPosition nonReentrant returns (address[] memory _assets, uint256[] memory _amounts){
         require(_amount > 0 && _amount <= usdi.balanceOf(msg.sender), "Amount must be greater than 0 and less than or equal to balance");
-        require(assetSet.contains(_asset), "The asset not support");
+        checkIsSupportAsset(_asset);
 
         for (uint256 i = 0; i < _exchangeTokens.length; i++) {
             require(_exchangeTokens[i].toToken == _asset, "toToken is invalid");
