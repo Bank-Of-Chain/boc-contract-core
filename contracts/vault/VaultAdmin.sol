@@ -11,6 +11,7 @@ import "../library/BocRoles.sol";
 
 import "../strategy/IStrategy.sol";
 import "../price-feeds/IValueInterpreter.sol";
+import "../util/Helpers.sol";
 
 contract VaultAdmin is VaultStorage {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -126,6 +127,7 @@ contract VaultAdmin is VaultStorage {
         // slither-disable-next-line unused-return
         IValueInterpreter(valueInterpreter).price(_asset);
         trackedAssetsMap.plus(_asset, 1);
+        trackedAssetDecimalsMap[_asset] = Helpers.getDecimals(_asset);
         emit AddAsset(_asset);
     }
 
@@ -139,6 +141,7 @@ contract VaultAdmin is VaultStorage {
             IERC20Upgradeable(_asset).balanceOf(address(this)) == 0
         ) {
             trackedAssetsMap.remove(_asset);
+            delete trackedAssetDecimalsMap[_asset];
         }
         emit RemoveAsset(_asset);
     }
@@ -170,6 +173,14 @@ contract VaultAdmin is VaultStorage {
             address[] memory _wants = IStrategy(_strategy).getWants();
             for (uint256 j = 0; j < _wants.length; j++) {
                 trackedAssetsMap.plus(_wants[j], 1);
+                if (trackedAssetDecimalsMap[_wants[j]] == 0) {
+                    console.log(_wants[j]);
+                    trackedAssetDecimalsMap[_wants[j]] = Helpers.getDecimals(
+                        _wants[j]
+                    );
+
+                    console.log(trackedAssetDecimalsMap[_wants[j]]);
+                }
             }
         }
 
