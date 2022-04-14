@@ -67,7 +67,7 @@ contract Dripper is AccessControlMixin, Initializable {
         address _accessControlProxy,
         address _vault,
         address _token
-    ) public initializer {
+    ) external initializer {
         require(_vault != address(0), "Must be a non-zero address");
         require(_token != address(0), "Must be a non-zero address");
 
@@ -100,16 +100,18 @@ contract Dripper is AccessControlMixin, Initializable {
     /// @dev Change the drip duration. Governor only.
     /// @param _durationSeconds the number of seconds to drip out the entire
     ///  balance over if no collects were called during that time.
-    function setDripDuration(uint256 _durationSeconds) external onlyRole(BocRoles.GOV_ROLE) {
+    function setDripDuration(uint256 _durationSeconds) external isVaultManager {
         require(_durationSeconds > 0, "duration must be non-zero");
         dripDuration = uint192(_durationSeconds);
         _collect(); // duration change take immediate effect
         emit DripDurationChanged(dripDuration);
     }
 
+    //TODO 是否由链外控制释放什么token，token是vault支持的即可
     function setToken(address _token) external onlyRole(BocRoles.KEEPER_ROLE) {
         require(_token != address(0), "Must be a non-zero address");
         uint256 balance = IERC20Upgradeable(token).balanceOf(address(this));
+        // TODO 如果别人给我转了币，就设置不了
         require(balance == 0, "balance must be zero");
         token = _token;
         emit TokenChanged(token);

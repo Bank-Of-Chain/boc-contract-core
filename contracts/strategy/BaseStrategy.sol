@@ -192,7 +192,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     /// @param _repayShares Numerator
     /// @param _totalShares Denominator
     function repay(uint256 _repayShares, uint256 _totalShares)
-        external
+        public
         virtual
         onlyVault
         returns (address[] memory _assets, uint256[] memory _amounts)
@@ -201,18 +201,16 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
             _repayShares > 0 && _totalShares >= _repayShares,
             "cannot repay 0 shares"
         );
-        address[] memory wantsCopy = wants;
-        uint256[] memory balancesBefore = new uint256[](wantsCopy.length);
-        for (uint256 i = 0; i < wantsCopy.length; i++) {
-            balancesBefore[i] = balanceOfToken(wantsCopy[i]);
+        _assets = wants;
+        uint256[] memory balancesBefore = new uint256[](_assets.length);
+        for (uint256 i = 0; i < _assets.length; i++) {
+            balancesBefore[i] = balanceOfToken(_assets[i]);
         }
 
         withdrawFrom3rdPool(_repayShares, _totalShares);
-        _assets = wants;
-        _amounts = new uint256[](wants.length);
-        for (uint256 i = 0; i < wantsCopy.length; i++) {
-            address token = wantsCopy[i];
-            uint256 balanceAfter = balanceOfToken(token);
+        _amounts = new uint256[](_assets.length);
+        for (uint256 i = 0; i < _assets.length; i++) {
+            uint256 balanceAfter = balanceOfToken(_assets[i]);
             _amounts[i] =
                 balanceAfter -
                 balancesBefore[i] +
@@ -241,7 +239,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         virtual;
 
     function balanceOfToken(address tokenAddress)
-        public
+        internal
         view
         returns (uint256)
     {

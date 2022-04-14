@@ -3,23 +3,15 @@ pragma solidity ^0.8.0;
 
 
 import "hardhat/console.sol";
-import "./IVault.sol";
 import "../access-control/AccessControlMixin.sol";
-import '../price-feeds/IValueInterpreter.sol';
-import '../strategy/IStrategy.sol';
 import '../library/IterableIntMap.sol';
 import "../library/StableMath.sol";
 import "../token/USDi.sol";
-import "../util/Helpers.sol";
 
-import '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import '@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol';
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessControlMixin {
 
