@@ -267,9 +267,20 @@ contract Vault is VaultStorage {
             address trackedAsset = _trackedAssets[index];
             uint256 balance = balanceOfToken(trackedAsset, address(this));
             if (balance > 0) {
+                uint256 _assetRedeemPrice = _getAssetRedeemPrice(
+                    _assetRedeemPrices,
+                        index,
+                    _trackedAssets[index]
+                );
+                uint256 _assetDecimal = _getAssetDecimals(
+                    _assetDecimals,
+                        index,
+                    _trackedAssets[index]
+                );
+
                 uint256 _value = balance.mulTruncateScale(
-                    _assetRedeemPrices[index],
-                    10**_assetDecimals[index]
+                    _assetRedeemPrice,
+                    10**_assetDecimal
                 );
                 if (_value >= _needTransferAmount) {
                     outputs[index] = (balance * _needTransferAmount) / _value;
@@ -364,21 +375,6 @@ contract Vault is VaultStorage {
         }
     }
 
-    /**
-     * @notice Get an array of the supported asset Decimals
-     * @return _assetDecimals Array of asset Decimals
-     */
-    function _getAssetDecimals(address[] memory _trackedAssets)
-        internal
-        view
-        returns (uint256[] memory _assetDecimals)
-    {
-        _assetDecimals = new uint256[](_trackedAssets.length);
-        for (uint256 i = 0; i < _trackedAssets.length; i++) {
-            _assetDecimals[i] = Helpers.getDecimals(_trackedAssets[i]);
-        }
-    }
-
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
     /// @param _asset one of StableCoin asset
@@ -407,10 +403,10 @@ contract Vault is VaultStorage {
         }
 
         address[] memory _trackedAssets = _getTrackedAssets();
-        uint256[] memory _assetRedeemPrices = _getAssetRedeemPrices(
-            _trackedAssets
+        uint256[] memory _assetRedeemPrices = new uint256[](
+            _trackedAssets.length
         );
-        uint256[] memory _assetDecimals = _getAssetDecimals(_trackedAssets);
+        uint256[] memory _assetDecimals = new uint256[](_trackedAssets.length);
 
         uint256[] memory _assetBalancesInVault = new uint256[](
             _trackedAssets.length
@@ -470,12 +466,22 @@ contract Vault is VaultStorage {
         uint256 _totalAssetInVault = 0;
         for (uint256 i = 0; i < _assetBalancesInVault.length; i++) {
             if (_assetBalancesInVault[i] > 0) {
+                uint256 _assetRedeemPrice = _getAssetRedeemPrice(
+                    _assetRedeemPrices,
+                    i,
+                    _trackedAssets[i]
+                );
+                uint256 _assetDecimal = _getAssetDecimals(
+                    _assetDecimals,
+                    i,
+                    _trackedAssets[i]
+                );
                 _totalAssetInVault =
                     _totalAssetInVault +
                     (
                         _assetBalancesInVault[i].mulTruncateScale(
-                            _assetRedeemPrices[i],
-                            10**_assetDecimals[i]
+                            _assetRedeemPrice,
+                            10**_assetDecimal
                         )
                     );
             }
@@ -544,29 +550,33 @@ contract Vault is VaultStorage {
     }
 
     /**
-     * @notice Get an array of the supported asset prices in USD.
-     * @return assetPrices Array of asset prices in USD (1e18)
+     * @notice Get the supported asset Decimal
+     * @return _assetDecimal asset Decimals
      */
-    function _getAssetRedeemPrices(address[] memory _trackedAssets)
-        internal
-        view
-        returns (uint256[] memory assetPrices)
-    {
-        assetPrices = new uint256[](_trackedAssets.length);
-
-        IValueInterpreter _valueInterpreter = IValueInterpreter(
-            valueInterpreter
-        );
-        // Price from Oracle is returned with 8 decimals
-        // _amount is in assetDecimals
-        for (uint256 i = 0; i < _trackedAssets.length; i++) {
-            uint256 price = _valueInterpreter.price(_trackedAssets[i]);
-            if (price < 1e18) {
-                price = 1e18;
-            }
-            // Price from Oracle is returned with 8 decimals so scale to 18
-            assetPrices[i] = price;
+    function _getAssetDecimals(
+        uint256[] memory _assetDecimals,
+        uint256 _assetIndex,
+        address _asset
+    ) internal view returns (uint256) {
+        if (_assetDecimals[_assetIndex] == 0) {
+            _assetDecimals[_assetIndex] = Helpers.getDecimals(_asset);
         }
+        return _assetDecimals[_assetIndex];
+    }
+
+    /**
+     * @notice Get an array of the supported asset prices in USD.
+     * @return assetPrice Array of asset prices in USD (1e18)
+     */
+    function _getAssetRedeemPrice(
+        uint256[] memory _assetRedeemPrices,
+        uint256 _assetIndex,
+        address _asset
+    ) internal view returns (uint256) {
+        if (_assetRedeemPrices[_assetIndex] == 0) {
+            _assetRedeemPrices[_assetIndex] = priceUSDRedeem(_asset);
+        }
+        return _assetRedeemPrices[_assetIndex];
     }
 
     /// @notice Change USDi supply with Vault total assets.
@@ -890,7 +900,20 @@ contract Vault is VaultStorage {
         if (price > 1e18) {
             price = 1e18;
         }
-        // Price from Oracle is returned with 8 decimals so scale to 18
+        return price;
+    }
+
+    /**
+     * @dev Returns the total price in 18 digit USD for a given asset.
+     *      Never goes below 1, since that is how we price redeems
+     * @param asset Address of the asset
+     * @return uint256 USD price of 1 of the asset, in 18 decimal fixed
+     */
+    function priceUSDRedeem(address asset) internal view returns (uint256) {
+        uint256 price = IValueInterpreter(valueInterpreter).price(asset);
+        if (price < 1e18) {
+            price = 1e18;
+        }
         return price;
     }
 
