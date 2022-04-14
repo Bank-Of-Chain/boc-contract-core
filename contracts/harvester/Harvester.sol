@@ -12,6 +12,16 @@ import "../exchanges/IExchangeAggregator.sol";
 contract Harvester is AccessControlMixin, Initializable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    event Exchange(
+        address _platform,
+        address fromToken,
+        uint256 fromAmount,
+        address toToken,
+        uint256 exchangeAmount
+    );
+    event ReceiverChanged(address _receiver);
+    event SellToChanged(address _sellTo);
+
     address public profitReceiver;
     address public exchangeManager;
     /// rewards sell to token.
