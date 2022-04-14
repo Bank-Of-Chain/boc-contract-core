@@ -34,6 +34,7 @@ const ExchangeAggregator = hre.artifacts.require("ExchangeAggregator");
 const USDi = hre.artifacts.require("USDi");
 const Vault = hre.artifacts.require('Vault');
 const IVault = hre.artifacts.require('IVault');
+const IExchangeAdapter = hre.artifacts.require('IExchangeAdapter');
 const VaultAdmin = hre.artifacts.require('VaultAdmin');
 const Harvester = hre.artifacts.require('Harvester');
 const Dripper = hre.artifacts.require('Dripper');
@@ -139,7 +140,7 @@ describe("Vault", function () {
 
 
         console.log('deploy ValueInterpreter');
-        valueInterpreter = await ValueInterpreter.new(chainlinkPriceFeed.address, aggregatedDerivativePriceFeed.address);
+        valueInterpreter = await ValueInterpreter.new(chainlinkPriceFeed.address, aggregatedDerivativePriceFeed.address, accessControlProxy.address);
 
         console.log('deploy TestAdapter');
         testAdapter = await TestAdapter.new(valueInterpreter.address);
@@ -148,8 +149,10 @@ describe("Vault", function () {
         exchangeAggregator = await ExchangeAggregator.new([testAdapter.address], accessControlProxy.address);
         const adapters = await exchangeAggregator.getExchangeAdapters();
         exchangePlatformAdapters = {};
-        for (let i = 0; i < adapters.identifiers_.length; i++) {
-            exchangePlatformAdapters[adapters.identifiers_[i]] = adapters.exchangeAdapters_[i];
+        for (let i = 0; i < adapters.length; i++) {
+            const exchangeAdapter  = await IExchangeAdapter.at(adapters[i]);
+            const identifier = await exchangeAdapter.identifier();
+            exchangePlatformAdapters[identifier] = adapters[i];
         }
 
         console.log('deploy USDi');

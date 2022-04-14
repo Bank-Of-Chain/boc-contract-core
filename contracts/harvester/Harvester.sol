@@ -21,7 +21,6 @@ contract Harvester is AccessControlMixin, Initializable {
         address toToken,
         uint256 exchangeAmount
     );
-
     event ReceiverChanged(address _receiver);
     event SellToChanged(address _sellTo);
 
