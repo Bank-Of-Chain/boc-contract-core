@@ -63,8 +63,14 @@ contract ExchangeAggregator is AccessControlMixin {
     function getExchangeAdapters()
     external
     view
-    returns (address[] memory exchangeAdapters_)
+    returns (address[] memory exchangeAdapters_, string[] memory identifiers_)
     {
-        exchangeAdapters_ = exchangeAdapters.values();
+        exchangeAdapters_ = new address[](exchangeAdapters.length());
+        identifiers_ = new string[](exchangeAdapters_.length);
+        for (uint256 i = 0; i < exchangeAdapters_.length; i++) {
+            exchangeAdapters_[i] = exchangeAdapters.at(i);
+            identifiers_[i] = IExchangeAdapter(exchangeAdapters_[i]).identifier();
+        }
+        return (exchangeAdapters_, identifiers_);
     }
 }
