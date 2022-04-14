@@ -170,7 +170,7 @@ describe("Vault", function () {
         await vault.setAdminImpl(vaultAdmin.address, {from: governance});
 
         const harvester = await Harvester.new();
-        await harvester.initialize(accessControlProxy.address, dripper.address, MFC.USDT_ADDRESS, exchangeAggregator.address);
+        await harvester.initialize(accessControlProxy.address, dripper.address, MFC.USDT_ADDRESS, vault.address);
 
         console.log("USDT_PRICE:", new BigNumber(await valueInterpreter.price(MFC.USDT_ADDRESS)).toFixed());
         console.log("USDT_CALC:", new BigNumber(await valueInterpreter.calcCanonicalAssetValueInUsd(MFC.USDT_ADDRESS, 10 ** 6)).toFixed());
