@@ -11,10 +11,7 @@ import "../library/StableMath.sol";
 import "hardhat/console.sol";
 import "../library/BocRoles.sol";
 
-contract USDi is
-IERC20Upgradeable,
-    ReentrancyGuardUpgradeable,
-    AccessControlMixin
+contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, AccessControlMixin
 {
     using StableMath for uint256;
 
@@ -64,11 +61,11 @@ IERC20Upgradeable,
      * @notice To avoid variable shadowing appended `Arg` after arguments name.
      */
     function initialize(
-        string memory nameArg,
-        string memory symbolArg,
+        string calldata nameArg,
+        string calldata symbolArg,
         uint8 decimalsArg,
         address _accessControlProxy
-    ) public initializer {
+    ) external initializer {
         _name = nameArg;
         _symbol = symbolArg;
         _decimals = decimalsArg;
@@ -91,7 +88,7 @@ IERC20Upgradeable,
         return _symbol;
     }
 
-    function setVault(address _vault) external onlyGovOrDelegate {
+    function setVault(address _vault) external onlyRole(BocRoles.GOV_ROLE) {
         address oldVault = _vault;
         vault = _vault;
         emit SetVault(oldVault, _vault);
@@ -141,14 +138,14 @@ IERC20Upgradeable,
      *         specified address.
      */
     function balanceOf(address _account)
-        public
-        view
-        override
-        returns (uint256)
+    public
+    view
+    override
+    returns (uint256)
     {
         if (_creditBalances[_account] == 0) return 0;
         return
-            _creditBalances[_account].divPrecisely(_creditsPerToken(_account));
+        _creditBalances[_account].divPrecisely(_creditsPerToken(_account));
     }
 
     /**
@@ -169,9 +166,9 @@ IERC20Upgradeable,
      * @return true on success.
      */
     function transfer(address _to, uint256 _value)
-        public
-        override
-        returns (bool)
+    public
+    override
+    returns (bool)
     {
         require(_to != address(0), "Transfer to zero address");
         require(
@@ -254,10 +251,10 @@ IERC20Upgradeable,
      * @return The number of tokens still available for the _spender.
      */
     function allowance(address _owner, address _spender)
-        public
-        view
-        override
-        returns (uint256)
+    public
+    view
+    override
+    returns (uint256)
     {
         return _allowances[_owner][_spender];
     }
@@ -276,9 +273,9 @@ IERC20Upgradeable,
      * @param _value The amount of tokens to be spent.
      */
     function approve(address _spender, uint256 _value)
-        public
-        override
-        returns (bool)
+    public
+    override
+    returns (bool)
     {
         _allowances[msg.sender][_spender] = _value;
         emit Approval(msg.sender, _spender, _value);
@@ -294,8 +291,8 @@ IERC20Upgradeable,
      * @param _addedValue The amount of tokens to increase the allowance by.
      */
     function increaseAllowance(address _spender, uint256 _addedValue)
-        public
-        returns (bool)
+    public
+    returns (bool)
     {
         _allowances[msg.sender][_spender] += _addedValue;
         emit Approval(msg.sender, _spender, _allowances[msg.sender][_spender]);
@@ -310,8 +307,8 @@ IERC20Upgradeable,
      *        by.
      */
     function decreaseAllowance(address _spender, uint256 _subtractedValue)
-        public
-        returns (bool)
+    public
+    returns (bool)
     {
         uint256 oldValue = _allowances[msg.sender][_spender];
         if (_subtractedValue >= oldValue) {
@@ -327,8 +324,8 @@ IERC20Upgradeable,
      * @dev Mints new tokens, increasing totalSupply.
      */
     function mint(address _account, uint256 _amount)
-        external
-        onlyVault
+    external
+    onlyVault
     {
         _mint(_account, _amount);
     }
@@ -374,8 +371,8 @@ IERC20Upgradeable,
      * @dev Burns tokens, decreasing totalSupply.
      */
     function burn(address account, uint256 amount)
-        external
-        onlyVault
+    external
+    onlyVault
     {
         _burn(account, amount);
     }
@@ -431,9 +428,9 @@ IERC20Upgradeable,
      * @param _account Address of the account.
      */
     function _creditsPerToken(address _account)
-        internal
-        view
-        returns (uint256)
+    internal
+    view
+    returns (uint256)
     {
         if (nonRebasingCreditsPerToken[_account] != 0) {
             return nonRebasingCreditsPerToken[_account];
@@ -488,7 +485,7 @@ IERC20Upgradeable,
 
         // Convert balance into the same amount at the current exchange rate
         uint256 newCreditBalance = (_creditBalances[msg.sender] *
-            _rebasingCreditsPerToken) / _creditsPerToken(msg.sender);
+        _rebasingCreditsPerToken) / _creditsPerToken(msg.sender);
 
         // Decreasing non rebasing supply
         nonRebasingSupply -= balanceOf(msg.sender);
@@ -534,9 +531,9 @@ IERC20Upgradeable,
      * @param _newTotalSupply New total supply of USDi.
      */
     function changeSupply(uint256 _newTotalSupply)
-        external
-        onlyVault
-        nonReentrant
+    external
+    onlyVault
+    nonReentrant
     {
         require(_totalSupply > 0, "Cannot increase 0 supply");
 
@@ -545,8 +542,8 @@ IERC20Upgradeable,
         }
 
         _totalSupply = _newTotalSupply > MAX_SUPPLY
-            ? MAX_SUPPLY
-            : _newTotalSupply;
+        ? MAX_SUPPLY
+        : _newTotalSupply;
 
         _rebasingCreditsPerToken = _rebasingCredits.divPrecisely(
             _totalSupply - nonRebasingSupply
@@ -555,8 +552,8 @@ IERC20Upgradeable,
         require(_rebasingCreditsPerToken > 0, "Invalid change in supply");
 
         _totalSupply =
-            _rebasingCredits.divPrecisely(_rebasingCreditsPerToken) +
-            nonRebasingSupply;
+        _rebasingCredits.divPrecisely(_rebasingCreditsPerToken) +
+        nonRebasingSupply;
 
         emit TotalSupplyChanged(
             _totalSupply,

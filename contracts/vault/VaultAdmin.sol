@@ -9,6 +9,9 @@ pragma solidity ^0.8.0;
 import "./VaultStorage.sol";
 import "../library/BocRoles.sol";
 
+import '../strategy/IStrategy.sol';
+import '../price-feeds/IValueInterpreter.sol';
+
 contract VaultAdmin is VaultStorage {
 
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -135,31 +138,14 @@ contract VaultAdmin is VaultStorage {
     ///      Vault may invest funds into the strategy,
     ///      and the strategy will invest the funds in the 3rd protocol
     function addStrategy(StrategyAdd[] memory strategyAdds) external isVaultManager {
-        bool addressValid = true;
-        bool strategyNotExist = true;
-        bool vaultValid = true;
-        for (uint256 i = 0; i < strategyAdds.length; i++) {
-            addressValid = (strategyAdds[i].strategy != ZERO_ADDRESS);
-            if (addressValid == false) {
-                break;
-            }
-            strategyNotExist = !strategySet.contains(strategyAdds[i].strategy);
-            if (strategyNotExist == false) {
-                break;
-            }
-            vaultValid = (IStrategy(strategyAdds[i].strategy).vault() == address(this));
-            if (vaultValid == false) {
-                break;
-            }
-        }
-        require(addressValid && strategyNotExist && vaultValid, "Strategy is invalid");
-
         address[] memory _strategies = new address[](strategyAdds.length);
         for (uint256 i = 0; i < strategyAdds.length; i++) {
             StrategyAdd memory strategyAdd = strategyAdds[i];
-            _strategies[i] = strategyAdd.strategy;
-            _addStrategy(strategyAdd.strategy, strategyAdd.profitLimitRatio, strategyAdd.lossLimitRatio);
-            address[] memory _wants = IStrategy(strategyAdd.strategy).getWants();
+            address _strategy = strategyAdd.strategy;
+            require((_strategy!= ZERO_ADDRESS) && (!strategySet.contains(_strategy)) && (IStrategy(_strategy).vault() == address(this)), "Strategy is invalid");
+            _strategies[i] = _strategy;
+            _addStrategy(_strategy, strategyAdd.profitLimitRatio, strategyAdd.lossLimitRatio);
+            address[] memory _wants = IStrategy(_strategy).getWants();
             for (uint j = 0; j < _wants.length; j++) {
                 trackedAssetsMap.plus(_wants[j], 1);
             }
@@ -191,16 +177,8 @@ contract VaultAdmin is VaultStorage {
     /// @notice Remove strategy from strategy list
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
     function removeStrategy(address[] memory _strategies) external isVaultManager {
-        bool strategyExist = true;
         for (uint256 i = 0; i < _strategies.length; i++) {
-            strategyExist = strategySet.contains(_strategies[i]);
-            if (strategyExist == false) {
-                break;
-            }
-        }
-        require(strategyExist, "Strategy not exist");
-
-        for (uint256 i = 0; i < _strategies.length; i++) {
+            require(strategySet.contains(_strategies[i]), "Strategy not exist");
             _removeStrategy(_strategies[i], false);
         }
         emit RemoveStrategies(_strategies);
@@ -248,16 +226,9 @@ contract VaultAdmin is VaultStorage {
 
     //advance queue
     function setWithdrawalQueue(address[] memory queues) external isKeeper {
-        bool strategyExist = true;
-        for (uint256 i = 0; i < queues.length; i++) {
-            strategyExist = strategySet.contains(queues[i]);
-            if (strategyExist == false) {
-                break;
-            }
-        }
-        require(strategyExist, 'strategy not exist');
         for (uint256 i = 0; i < queues.length; i++) {
             address strategy = queues[i];
+            require(strategySet.contains(strategy), 'strategy not exist');
             if (i < withdrawQueue.length) {
                 withdrawQueue[i] = strategy;
             } else {
