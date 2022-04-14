@@ -107,12 +107,8 @@ contract Dripper is AccessControlMixin, Initializable {
         emit DripDurationChanged(dripDuration);
     }
 
-    //TODO 是否由链外控制释放什么token，token是vault支持的即可
-    function setToken(address _token) external onlyRole(BocRoles.KEEPER_ROLE) {
+    function setToken(address _token) external isVaultManager {
         require(_token != address(0), "Must be a non-zero address");
-        uint256 balance = IERC20Upgradeable(token).balanceOf(address(this));
-        // TODO 如果别人给我转了币，就设置不了
-        require(balance == 0, "balance must be zero");
         token = _token;
         emit TokenChanged(token);
     }
@@ -124,7 +120,7 @@ contract Dripper is AccessControlMixin, Initializable {
         external
         onlyRole(BocRoles.GOV_ROLE)
     {
-        IERC20Upgradeable(_asset).safeTransfer(msg.sender, _amount);
+        IERC20Upgradeable(_asset).safeTransfer(IVault(vault).treasury(), _amount);
     }
 
     /// @dev Calculate available funds by taking the lower of either the
