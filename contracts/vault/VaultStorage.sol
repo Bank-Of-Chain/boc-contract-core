@@ -119,6 +119,8 @@ contract VaultStorage is
     EnumerableSet.AddressSet internal assetSet;
     // Assets held by Vault
     IterableIntMap.AddressToIntMap internal trackedAssetsMap;
+    // Decimals of the assets held by Vault
+    mapping(address => uint256) internal trackedAssetDecimalsMap;
 
     //adjust Position Period
     bool public adjustPositionPeriod;

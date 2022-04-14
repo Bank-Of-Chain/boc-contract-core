@@ -11,7 +11,6 @@ import "./VaultStorage.sol";
 import "../library/BocRoles.sol";
 import "../strategy/IStrategy.sol";
 import "../exchanges/IExchangeAggregator.sol";
-import "../util/Helpers.sol";
 import "../price-feeds/IValueInterpreter.sol";
 
 contract Vault is VaultStorage {
@@ -112,7 +111,12 @@ contract Vault is VaultStorage {
             if (balance > 0) {
                 _value =
                     _value +
-                    (balance.scaleBy(18, Helpers.getDecimals(trackedAsset)));
+                    (
+                        balance.scaleBy(
+                            18,
+                            trackedAssetDecimalsMap[trackedAsset]
+                        )
+                    );
             }
         }
     }
@@ -151,7 +155,7 @@ contract Vault is VaultStorage {
 
         for (uint256 i = 0; i < _assets.length; i++) {
             uint256 price = _priceUSDMint(_assets[i]);
-            uint256 assetDecimals = Helpers.getDecimals(_assets[i]);
+            uint256 assetDecimals = trackedAssetDecimalsMap[_assets[i]];
             // Scale up to 18 decimal
             unitAdjustedDeposit =
                 unitAdjustedDeposit +
@@ -269,12 +273,12 @@ contract Vault is VaultStorage {
             if (balance > 0) {
                 uint256 _assetRedeemPrice = _getAssetRedeemPrice(
                     _assetRedeemPrices,
-                        index,
+                    index,
                     _trackedAssets[index]
                 );
                 uint256 _assetDecimal = _getAssetDecimals(
                     _assetDecimals,
-                        index,
+                    index,
                     _trackedAssets[index]
                 );
 
@@ -343,7 +347,7 @@ contract Vault is VaultStorage {
         _amounts = new uint256[](1);
         _amounts[0] = _actualAmount;
 
-        uint256 _toDecimals = Helpers.getDecimals(_asset);
+        uint256 _toDecimals = trackedAssetDecimalsMap[_asset];
         _actualAmount = _actualAmount.scaleBy(18, _toDecimals);
     }
 
@@ -363,10 +367,10 @@ contract Vault is VaultStorage {
         _assets = _trackedAssets;
         _amounts = _outputs;
         for (uint256 i = 0; i < _assets.length; i++) {
-            _actualAmount =
-                _actualAmount +
-                _amounts[i].scaleBy(18, _assetDecimals[i]);
             if (_amounts[i] > 0) {
+                _actualAmount =
+                    _actualAmount +
+                    _amounts[i].scaleBy(18, _assetDecimals[i]);
                 IERC20Upgradeable(_assets[i]).safeTransfer(
                     msg.sender,
                     _amounts[i]
@@ -559,7 +563,7 @@ contract Vault is VaultStorage {
         address _asset
     ) internal view returns (uint256) {
         if (_assetDecimals[_assetIndex] == 0) {
-            _assetDecimals[_assetIndex] = Helpers.getDecimals(_asset);
+            _assetDecimals[_assetIndex] = trackedAssetDecimalsMap[_asset];
         }
         return _assetDecimals[_assetIndex];
     }
@@ -674,7 +678,7 @@ contract Vault is VaultStorage {
 
                 lendValue += actualAmount.scaleBy(
                     18,
-                    Helpers.getDecimals(_wants[i])
+                    trackedAssetDecimalsMap[_wants[i]]
                 );
 
                 toAmounts[i] = actualAmount;
