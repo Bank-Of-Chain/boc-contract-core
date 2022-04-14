@@ -5,6 +5,7 @@ import "../exchanges/IExchangeAggregator.sol";
 interface IHarvester {
     event Collected(address _strategy, address _rewardToken, uint256 _amount);
     event Exchange(
+        address _platform,
         address fromToken,
         uint256 fromAmount,
         address toToken,

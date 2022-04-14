@@ -26,6 +26,7 @@ interface IVault {
     event RemoveAsset(address _asset);
     event AddStrategies(address[] _strategies);
     event RemoveStrategies(address[] _strategies);
+    event RemoveStrategyByForce(address _strategy);
     event Mint(
         address _account,
         address[] _assets,
@@ -36,7 +37,7 @@ interface IVault {
         address _account,
         address _asset,
         uint256 _amount,
-        uint256 _burnAmount
+        uint256 _actualAmount
     );
     event BurnWithoutExchange(
         address _account,
@@ -45,12 +46,14 @@ interface IVault {
         uint256 _burnAmount
     );
     event Exchange(
+        address _platform,
         address _srcAsset,
         uint256 _srcAmount,
         address _distAsset,
         uint256 _distAmount
     );
-    event Redeem(address _strategy, uint256 _amount);
+    event Redeem(address _strategy, uint256 _debtChangeAmount, address[] _assets, uint256[] _amounts);
+    event LendToStrategy(address indexed strategy, address[] wants, uint256[] amounts, uint256 lendValue);
     event RemoveStrategyFromQueue(address[] _strategies);
     event SetEmergencyShutdown(bool _shutdown);
     event RebasePaused();
@@ -62,6 +65,7 @@ interface IVault {
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
     event SetWithdrawalQueue(address[] queues);
+    event StrategyReported(address strategy, uint256 gain, uint256 loss, uint256 lastStrategyTotalDebt, uint256 nowStrategyTotalDebt);
 
     /// @notice Version of vault
     function getVersion() external pure returns (string memory);
