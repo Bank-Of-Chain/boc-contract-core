@@ -22,7 +22,6 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
     );
     event RebaseLocked(address _account);
     event RebaseUnlocked(address _account);
-    event SetVault(address _oldVault, address _newVault);
 
     enum RebaseOptions {
         NotSet,
@@ -64,11 +63,13 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
         string calldata nameArg,
         string calldata symbolArg,
         uint8 decimalsArg,
+        address _vault,
         address _accessControlProxy
     ) external initializer {
         _name = nameArg;
         _symbol = symbolArg;
         _decimals = decimalsArg;
+        vault = _vault;
         _initAccessControl(_accessControlProxy);
         _rebasingCreditsPerToken = 1e18;
     }
@@ -86,12 +87,6 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
      */
     function symbol() public view returns (string memory) {
         return _symbol;
-    }
-
-    function setVault(address _vault) external onlyRole(BocRoles.GOV_ROLE) {
-        address oldVault = _vault;
-        vault = _vault;
-        emit SetVault(oldVault, _vault);
     }
 
     /**

@@ -20,20 +20,16 @@ contract Vault is VaultStorage {
     using IterableIntMap for IterableIntMap.AddressToIntMap;
 
     function initialize(
-        address _usdi,
         address _accessControlProxy,
         address _treasury,
         address _exchangeManager,
         address _valueInterpreter
     ) public initializer {
-        require(_usdi != address(0), "USDi ad is 0");
         _initAccessControl(_accessControlProxy);
 
         treasury = _treasury;
         exchangeManager = _exchangeManager;
         valueInterpreter = _valueInterpreter;
-
-        usdi = USDi(_usdi);
 
         rebasePaused = false;
         // Initial redeem fee of 0 basis points
