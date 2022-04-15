@@ -95,6 +95,41 @@ contract Vault is VaultStorage {
         return _totalAssetInVault() + totalDebt;
     }
 
+    /// @notice Vault total value(by chainlink price) in USD(1e18)
+    function totalValue() external view returns (uint256) {
+        return totalValueInVault() + totalValueInStrategies();
+    }
+
+    /**
+     * @dev Internal to calculate total value of all assets held in Vault.
+     * @return _value Total value(by chainlink price) in USD (1e18)
+     */
+    function totalValueInVault() public view returns (uint256 _value) {
+        address[] memory trackedAssets = _getTrackedAssets();
+        for (uint256 i = 0; i < trackedAssets.length; i++) {
+            address trackedAsset = trackedAssets[i];
+            uint256 balance = balanceOfToken(trackedAsset, address(this));
+            if (balance > 0) {
+                _value = _value +IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(trackedAsset,balance);
+            }
+        }
+    }
+
+    /**
+     * @dev Internal to calculate total value of all assets held in Strategies.
+     * @return _value Total value(by chainlink price) in USD (1e18)
+     */
+    function totalValueInStrategies() public view returns (uint256 _value) {
+        uint256 strategyLength = strategySet.length();
+        for (uint256 i = 0; i < strategyLength; i++) {
+            uint256 estimatedTotalAssets = IStrategy(strategySet.at(i)).estimatedTotalAssets();
+            if(estimatedTotalAssets>0){
+                _value = _value + estimatedTotalAssets;
+            }
+        }
+    }
+
+
     /**
      * @dev Internal to calculate total value of all assets held in Vault.
      * @return _value Total value in USD (1e18)
