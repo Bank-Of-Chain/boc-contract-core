@@ -1,12 +1,4 @@
-// SPDX-License-Identifier: MIT
-
-/*
-    This file is part of the Enzyme Protocol.
-    (c) Enzyme Council <council@enzyme.finance>
-    For the full license information, please view the LICENSE
-    file that was distributed with this source code.
-*/
-
+// SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/access/Ownable.sol';
@@ -14,7 +6,6 @@ import './IAggregatedDerivativePriceFeed.sol';
 import './../../access-control/AccessControlMixin.sol';
 
 /// @title AggregatedDerivativePriceFeed Contract
-/// @author Enzyme Council <security@enzyme.finance>
 /// @notice Aggregates multiple derivative price feeds (e.g., Compound, Chai) and dispatches
 /// rate requests to the appropriate feed
 contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, AccessControlMixin {
