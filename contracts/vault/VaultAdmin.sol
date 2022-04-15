@@ -73,6 +73,15 @@ contract VaultAdmin is VaultStorage {
         emit TreasuryAddressChanged(_address);
     }
 
+    function setUSDiAddress(address _address)
+        external
+        onlyRole(BocRoles.GOV_ROLE)
+    {
+        require(address(usdi) == address(0), "USDi has been set");
+        require(_address != address(0), "USDi ad is 0");
+        usdi = USDi(_address);
+    }
+
     /**
      * @dev Sets the TrusteeFeeBps to the percentage of yield that should be
      *      received in basis points.
