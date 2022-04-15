@@ -183,12 +183,9 @@ contract VaultAdmin is VaultStorage {
             for (uint256 j = 0; j < _wants.length; j++) {
                 trackedAssetsMap.plus(_wants[j], 1);
                 if (trackedAssetDecimalsMap[_wants[j]] == 0) {
-                    console.log(_wants[j]);
                     trackedAssetDecimalsMap[_wants[j]] = Helpers.getDecimals(
                         _wants[j]
                     );
-
-                    console.log(trackedAssetDecimalsMap[_wants[j]]);
                 }
             }
         }
