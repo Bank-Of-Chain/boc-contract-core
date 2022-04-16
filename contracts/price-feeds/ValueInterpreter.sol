@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -11,7 +11,6 @@ import "./IValueInterpreter.sol";
 import "hardhat/console.sol";
 
 /// @title ValueInterpreter Contract
-/// @author Enzyme Council <security@enzyme.finance>
 /// @notice Interprets price feeds to provide covert value between asset pairs
 /// @dev This contract contains several 'live' value calculations, which for this release are simply
 /// aliases to their 'canonical' value counterparts since the only primitive price feed (Chainlink)

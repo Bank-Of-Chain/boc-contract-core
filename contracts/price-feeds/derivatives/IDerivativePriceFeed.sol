@@ -1,9 +1,7 @@
-// SPDX-License-Identifier: MIT
-
+// SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.0;
 
 /// @title IDerivativePriceFeed Interface
-/// @author Enzyme Council <security@enzyme.finance>
 /// @notice Simple interface for derivative price source oracle implementations
 interface IDerivativePriceFeed {
     function calcUnderlyingValues(address, uint256)
