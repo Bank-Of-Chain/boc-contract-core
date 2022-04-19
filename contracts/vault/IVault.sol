@@ -94,7 +94,7 @@ interface IVault {
     function getTrackedAssets() external view returns (address[] memory assets);
 
     /// @notice Vault holds asset value directly in USD
-    function valueOfTrackedTokens() external view returns (uint256 totalValue);
+    function valueOfTrackedTokens() external view returns (uint256 _totalValue);
 
     /// @notice Vault total asset in USD
     function totalAssets() external view returns (uint256);
@@ -118,7 +118,7 @@ interface IVault {
     function getStrategies()
         external
         view
-        returns (address[] memory strategies);
+        returns (address[] memory _strategies);
 
     function checkActiveStrategy(address strategy) external view;
 
