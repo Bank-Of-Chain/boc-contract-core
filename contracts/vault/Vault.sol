@@ -792,7 +792,7 @@ contract Vault is VaultStorage {
         address _toToken,
         uint256 _amount,
         IExchangeAggregator.ExchangeParam memory exchangeParam
-    ) external isKeeper returns (uint256) {
+    ) external isKeeper nonReentrant returns (uint256) {
         return _exchange(_fromToken, _toToken, _amount, exchangeParam);
     }
 

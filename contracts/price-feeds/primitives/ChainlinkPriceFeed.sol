@@ -290,7 +290,9 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     ) private pure returns (uint256 quoteAssetAmount_) {
         // Only allows two consecutive multiplication operations to avoid potential overflow.
         // Intermediate step needed to resolve stack-too-deep error.
-        return _baseAssetAmount * _baseAssetRate * _ethPerUsdRate * _quoteAssetUnit / ETH_UNIT / _baseAssetUnit / _quoteAssetRate;
+        uint256 intermediateStep = _baseAssetAmount * _baseAssetRate * _ethPerUsdRate / ETH_UNIT;
+
+        return intermediateStep * _quoteAssetUnit / _baseAssetUnit / _quoteAssetRate;
     }
 
     /// @dev Helper to convert amounts where base and quote assets both have ETH rates or both have USD rates
@@ -317,7 +319,9 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     ) private pure returns (uint256 quoteAssetAmount_) {
         // Only allows two consecutive multiplication operations to avoid potential overflow
         // Intermediate step needed to resolve stack-too-deep error.
-        return _baseAssetAmount * _baseAssetRate * _quoteAssetUnit * ETH_UNIT / _ethPerUsdRate / _baseAssetUnit / _quoteAssetRate;
+        uint256 intermediateStep = _baseAssetAmount * _baseAssetRate * _quoteAssetUnit / _ethPerUsdRate;
+
+        return intermediateStep * ETH_UNIT / _baseAssetUnit / _quoteAssetRate;
     }
 
     /// @dev Helper to get the latest rate for a given primitive
