@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -71,7 +72,7 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
         _decimals = decimalsArg;
         vault = _vault;
         _initAccessControl(_accessControlProxy);
-        _rebasingCreditsPerToken = 1e18;
+        _rebasingCreditsPerToken = 1e27;
     }
 
     /**
@@ -456,7 +457,7 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
             if (_creditBalances[_account] == 0) {
                 // Since there is no existing balance, we can directly set to
                 // high resolution, and do not have to do any other bookkeeping
-                nonRebasingCreditsPerToken[_account] = 1e18;
+                nonRebasingCreditsPerToken[_account] = 1e27;
             } else {
                 // Migrate an existing account:
 
