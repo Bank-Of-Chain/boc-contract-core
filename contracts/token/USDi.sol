@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+
+
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -218,8 +220,10 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
 
         // Credits deducted and credited might be different due to the
         // differing creditsPerToken used by each account
-        uint256 creditsCredited = _value.mulTruncate(_creditsPerToken(_to));
-        uint256 creditsDeducted = _value.mulTruncate(_creditsPerToken(_from));
+//        uint256 creditsCredited = _value.mulTruncate(_creditsPerToken(_to));
+        uint256 creditsCredited = _calCreditsIncreased(_to, _value);
+//        uint256 creditsDeducted = _value.mulTruncate(_creditsPerToken(_from));
+        uint256 creditsDeducted = _calCreditsDeducted(_from, _value);
 
         _creditBalances[_from] = _creditBalances[_from] - creditsDeducted;
         _creditBalances[_to] = _creditBalances[_to] + creditsCredited;
@@ -236,7 +240,21 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
             nonRebasingSupply = nonRebasingSupply - _value;
             // Update rebasingCredits by adding the credited amount
             _rebasingCredits = _rebasingCredits + creditsCredited;
+        }else if(!isNonRebasingTo && !isNonRebasingFrom){
+            _rebasingCredits = _rebasingCredits  + creditsCredited - creditsDeducted;
         }
+    }
+
+    function _calCreditsIncreased(address _account, uint256 _amount) internal view returns (uint256 _creditsIncreased){
+        uint256 _creditBalances = _creditBalances[_account];
+        uint256 _creditsPerToken = _creditsPerToken(_account);
+        _creditsIncreased = (_creditBalances.divPrecisely(_creditsPerToken) + _amount).mulTruncateCeil(_creditsPerToken) - _creditBalances;
+    }
+
+    function _calCreditsDeducted(address _account, uint256 _amount) internal view returns (uint256 _creditsDeducted){
+        uint256 _creditBalances = _creditBalances[_account];
+        uint256 _creditsPerToken = _creditsPerToken(_account);
+        _creditsDeducted =_creditBalances - (_creditBalances.divPrecisely(_creditsPerToken) - _amount).mulTruncateCeil(_creditsPerToken) ;
     }
 
     /**
@@ -340,7 +358,8 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
         require(_account != address(0), "Mint to the zero address");
 
         bool isNonRebasingAccount = _isNonRebasingAccount(_account);
-        uint256 creditAmount = _amount.mulTruncate(_creditsPerToken(_account));
+//        uint256 creditAmount = _amount.mulTruncate(_creditsPerToken(_account));
+        uint256 creditAmount = _calCreditsIncreased(_account, _amount);
         _creditBalances[_account] += creditAmount;
         // console.log(
         //     "mint %s,amount:%d,creditBalances:%d",
@@ -391,7 +410,8 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
         }
 
         bool isNonRebasingAccount = _isNonRebasingAccount(_account);
-        uint256 creditAmount = _amount.mulTruncate(_creditsPerToken(_account));
+//        uint256 creditAmount = _amount.mulTruncate(_creditsPerToken(_account));
+        uint256 creditAmount = _calCreditsDeducted(_account, _amount);
         uint256 currentCredits = _creditBalances[_account];
 
         // Remove the credits, burning rounding errors
