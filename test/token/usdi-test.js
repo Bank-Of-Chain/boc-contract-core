@@ -30,12 +30,16 @@ describe('USDi Test',function(){
         await accessControlProxy.deployed();
         await accessControlProxy.initialize(governance, governance, governance, governance);
         contractAddr = accessControlProxy.address;
+
+        const MockVault = await ethers.getContractFactory("MockVault",accounts[19]);
+        const vault = await MockVault.deploy(contractAddr);
+        // await vault.initialize(contractAddr);
         
         const USDi = await ethers.getContractFactory("USDi",accounts[19]);
         usdi = await USDi.deploy();
         await usdi.deployed();
-        await usdi.initialize('USDi','USDi',18,accessControlProxy.address,);
-        await usdi.setVault(accounts[19].address);
+        await usdi.initialize('USDi','USDi',18,accounts[19].address,accessControlProxy.address);
+        // await usdi.setVault(accounts[19].address);
     });
 
     it('Mint USDi to external account1',async function(){
@@ -71,13 +75,13 @@ describe('USDi Test',function(){
         let newSupply =  BigInt(currSupply * 1.2);
         let rebasingCreditsPerToken = await usdi.rebasingCreditsPerToken();
         let rebasingCredits = await usdi.rebasingCredits();
-        console.log('before rebase rebasingCreditsPerToken:',rebasingCreditsPerToken.toString());
+        console.log('before rebase rebasingCreditsPerToken:',BigInt(rebasingCreditsPerToken));
         console.log('before rebase rebasingCredits:',rebasingCredits.toString());
         // go to rebase
         await usdi.changeSupply(newSupply);
         rebasingCreditsPerToken = await usdi.rebasingCreditsPerToken();
         rebasingCredits = await usdi.rebasingCredits();
-        console.log('after rebase rebasingCreditsPerToken:',rebasingCreditsPerToken.toString());
+        console.log('after rebase rebasingCreditsPerToken:',BigInt(rebasingCreditsPerToken));
         console.log('after rebase rebasingCredits:',rebasingCredits.toString());
         
         currSupply = await usdi.totalSupply();

@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: SEE LICENSE IN LICENSE
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 pragma solidity ^0.8.0;
 
 import "../strategy/BaseStrategy.sol";

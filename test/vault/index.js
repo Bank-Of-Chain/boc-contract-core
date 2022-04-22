@@ -149,16 +149,13 @@ describe("Vault", function () {
         exchangeAggregator = await ExchangeAggregator.new([testAdapter.address], accessControlProxy.address);
         const adapters = await exchangeAggregator.getExchangeAdapters();
         exchangePlatformAdapters = {};
-        for (let i = 0; i < adapters.length; i++) {
-            const exchangeAdapter  = await IExchangeAdapter.at(adapters[i]);
-            const identifier = await exchangeAdapter.identifier();
-            exchangePlatformAdapters[identifier] = adapters[i];
+        for (let i = 0; i < adapters.identifiers_.length; i++) {
+            exchangePlatformAdapters[adapters.identifiers_[i]] = adapters.exchangeAdapters_[i];
         }
 
         console.log('deploy USDi');
         usdi = await USDi.new();
-        await usdi.initialize('USDi', 'USDi', 18, accessControlProxy.address);
-        await usdi.setVault(vault.address);
+        await usdi.initialize('USDi', 'USDi', 18, vault.address, accessControlProxy.address);
 
         const dripper = await Dripper.new();
         await dripper.initialize(accessControlProxy.address, vault.address, MFC.USDT_ADDRESS);
@@ -168,12 +165,12 @@ describe("Vault", function () {
         treasury = await Treasury.new();
         await treasury.initialize(accessControlProxy.address);
 
-        await vault.initialize(usdi.address, accessControlProxy.address, treasury.address, exchangeAggregator.address, valueInterpreter.address);
+        await vault.initialize(accessControlProxy.address, treasury.address, exchangeAggregator.address, valueInterpreter.address);
         vaultAdmin = await VaultAdmin.new();
         await vault.setAdminImpl(vaultAdmin.address, {from: governance});
 
         const harvester = await Harvester.new();
-        await harvester.initialize(accessControlProxy.address, dripper.address, MFC.USDT_ADDRESS, exchangeAggregator.address);
+        await harvester.initialize(accessControlProxy.address, dripper.address, MFC.USDT_ADDRESS, vault.address);
 
         console.log("USDT_PRICE:", new BigNumber(await valueInterpreter.price(MFC.USDT_ADDRESS)).toFixed());
         console.log("USDT_CALC:", new BigNumber(await valueInterpreter.calcCanonicalAssetValueInUsd(MFC.USDT_ADDRESS, 10 ** 6)).toFixed());
@@ -188,6 +185,7 @@ describe("Vault", function () {
         await mockS3CoinStrategy.initialize(vault.address, harvester.address);
 
         iVault = await IVault.at(vault.address);
+        await iVault.setUSDiAddress(usdi.address);
     });
 
     it('验证：Vault可正常添加和移除Asset', async function () {
@@ -279,6 +277,10 @@ describe("Vault", function () {
         console.log("投资前farmer1的dai的balance:", new BigNumber(await daiToken.balanceOf(farmer1)).div(10 ** daiDecimals).toFixed());
 
         await iVault.mint(_assets, _amounts, 0, {from: farmer1});
+
+        console.log("投资后vault池总资金:%d,总价值：%d", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
+        console.log("投资后vault策略总资金:%d,总价值：%d", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
+        console.log("投资后vault缓存池总资金:%d,总价值：%d", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed(), new BigNumber(await iVault.totalValueInVault()).toFixed());
 
         // 充一亿
         const amount = new BigNumber(10).pow(14);
@@ -380,6 +382,10 @@ describe("Vault", function () {
         );
 
         await iVault.lend(mockS3CoinStrategy.address, exchangeArray);
+
+        console.log("lend后vault池总资金:%d,总价值：%d", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
+        console.log("lend后vault策略总资金:%d,总价值：%d", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
+        console.log("lend后vault缓存池总资金:%d,总价值：%d", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed(), new BigNumber(await iVault.totalValueInVault()).toFixed());
 
         const afterUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).div(10 ** tokenDecimals).toFixed();
         console.log("lend后vault的usdt的balance:", afterUsdt);

@@ -6,6 +6,7 @@ require('@nomiclabs/hardhat-truffle5');
 require("hardhat-gas-reporter");
 require("solidity-coverage");
 require('hardhat-contract-sizer');
+require('hardhat-spdx-license-identifier');
 const {
   removeConsoleLog
 } = require('hardhat-preprocessor');
@@ -120,4 +121,8 @@ module.exports = {
     cache: './cache',
     artifacts: './artifacts',
   },
+  spdxLicenseIdentifier: {
+    overwrite: true,
+    runOnCompile: true,
+  }
 };

@@ -1,20 +1,23 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
+pragma solidity ^0.8.0;
 
 import "hardhat/console.sol";
 import "../access-control/AccessControlMixin.sol";
-import '../library/IterableIntMap.sol';
+import "../library/IterableIntMap.sol";
 import "../library/StableMath.sol";
 import "../token/USDi.sol";
 
-import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessControlMixin {
-
+contract VaultStorage is
+    Initializable,
+    ReentrancyGuardUpgradeable,
+    AccessControlMixin
+{
     using StableMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
@@ -65,10 +68,32 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         address _distAsset,
         uint256 _distAmount
     );
-    event Redeem(address _strategy, uint256 _debtChangeAmount, address[] _assets, uint256[] _amounts);
-    event LendToStrategy(address indexed strategy, address[] wants, uint256[] amounts, uint256 lendValue);
-    event RepayFromStrategy(address indexed strategy, uint256 strategyWithdrawValue, uint256 strategyTotalValue, address[] _assets, uint256[] _amounts);
-    event StrategyReported(address strategy, uint256 gain, uint256 loss, uint256 lastStrategyTotalDebt, uint256 nowStrategyTotalDebt);
+    event Redeem(
+        address _strategy,
+        uint256 _debtChangeAmount,
+        address[] _assets,
+        uint256[] _amounts
+    );
+    event LendToStrategy(
+        address indexed strategy,
+        address[] wants,
+        uint256[] amounts,
+        uint256 lendValue
+    );
+    event RepayFromStrategy(
+        address indexed strategy,
+        uint256 strategyWithdrawValue,
+        uint256 strategyTotalValue,
+        address[] _assets,
+        uint256[] _amounts
+    );
+    event StrategyReported(
+        address strategy,
+        uint256 gain,
+        uint256 loss,
+        uint256 lastStrategyTotalDebt,
+        uint256 nowStrategyTotalDebt
+    );
     event RemoveStrategyFromQueue(address[] _strategies);
     event SetEmergencyShutdown(bool _shutdown);
     event RebasePaused();
@@ -95,6 +120,8 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     EnumerableSet.AddressSet internal assetSet;
     // Assets held by Vault
     IterableIntMap.AddressToIntMap internal trackedAssetsMap;
+    // Decimals of the assets held by Vault
+    mapping(address => uint256) internal trackedAssetDecimalsMap;
 
     //adjust Position Period
     bool public adjustPositionPeriod;
@@ -124,7 +151,8 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     //withdraw strategy set
     address[] public withdrawQueue;
     //keccak256("USDi.vault.governor.admin.impl");
-    bytes32 constant adminImplPosition = 0x3d78d3961e16fde088e2e26c1cfa163f5f8bb870709088dd68c87eb4091137e2;
+    bytes32 constant adminImplPosition =
+        0x3d78d3961e16fde088e2e26c1cfa163f5f8bb870709088dd68c87eb4091137e2;
 
     /**
      * @dev set the implementation for the admin, this needs to be in a base class else we cannot set it

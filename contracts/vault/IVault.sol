@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "../exchanges/IExchangeAggregator.sol";
 
 interface IVault {
-
     struct StrategyParams {
         //last report timestamp
         uint256 lastReport;
@@ -52,8 +52,18 @@ interface IVault {
         address _distAsset,
         uint256 _distAmount
     );
-    event Redeem(address _strategy, uint256 _debtChangeAmount, address[] _assets, uint256[] _amounts);
-    event LendToStrategy(address indexed strategy, address[] wants, uint256[] amounts, uint256 lendValue);
+    event Redeem(
+        address _strategy,
+        uint256 _debtChangeAmount,
+        address[] _assets,
+        uint256[] _amounts
+    );
+    event LendToStrategy(
+        address indexed strategy,
+        address[] wants,
+        uint256[] amounts,
+        uint256 lendValue
+    );
     event RemoveStrategyFromQueue(address[] _strategies);
     event SetEmergencyShutdown(bool _shutdown);
     event RebasePaused();
@@ -65,7 +75,13 @@ interface IVault {
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
     event SetWithdrawalQueue(address[] queues);
-    event StrategyReported(address strategy, uint256 gain, uint256 loss, uint256 lastStrategyTotalDebt, uint256 nowStrategyTotalDebt);
+    event StrategyReported(
+        address strategy,
+        uint256 gain,
+        uint256 loss,
+        uint256 lastStrategyTotalDebt,
+        uint256 nowStrategyTotalDebt
+    );
 
     /// @notice Version of vault
     function getVersion() external pure returns (string memory);
@@ -73,20 +89,39 @@ interface IVault {
     /// @notice Minting USDi supported assets
     function getSupportAssets() external view returns (address[] memory assets);
 
+    function checkIsSupportAsset(address asset) external view;
+
     /// @notice Assets held by Vault
     function getTrackedAssets() external view returns (address[] memory assets);
 
     /// @notice Vault holds asset value directly in USD
-    function valueOfTrackedTokens() external view returns (uint256 totalValue);
+    function valueOfTrackedTokens() external view returns (uint256 _totalValue);
 
     /// @notice Vault total asset in USD
     function totalAssets() external view returns (uint256);
 
+    /// @notice Vault total value(by chainlink price) in USD(1e18)
+    function totalValue() external view returns (uint256);
+
+    /**
+     * @dev Internal to calculate total value of all assets held in Vault.
+     * @return _value Total value(by chainlink price) in USD (1e18)
+     */
+    function totalValueInVault() external view returns (uint256 _value);
+
+    /**
+    * @dev Internal to calculate total value of all assets held in Strategies.
+     * @return _value Total value(by chainlink price) in USD (1e18)
+     */
+    function totalValueInStrategies() external view returns (uint256 _value);
+
     /// @notice All strategies
     function getStrategies()
-    external
-    view
-    returns (address[] memory strategies);
+        external
+        view
+        returns (address[] memory _strategies);
+
+    function checkActiveStrategy(address strategy) external view;
 
     /// @notice estimate Minting USDi with stablecoins
     /// @param _assets Address of the asset being deposited
@@ -94,19 +129,27 @@ interface IVault {
     /// @dev Support single asset or multi-assets
     /// @return unitAdjustedDeposit  assets amount by Scale up to 18 decimal
     /// @return priceAdjustedDeposit   usdi amount
-    function estimateMint(address[] memory _assets, uint256[] memory _amounts) external view returns (uint256 unitAdjustedDeposit, uint256 priceAdjustedDeposit);
+    function estimateMint(address[] memory _assets, uint256[] memory _amounts)
+        external
+        view
+        returns (uint256 unitAdjustedDeposit, uint256 priceAdjustedDeposit);
 
     /// @notice Minting USDi with stablecoins
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
     /// @dev Support single asset or multi-assets
-    function mint(address[] memory _assets, uint256[] memory _amounts, uint256 _minimumUsdiAmount) external returns (uint256 usdiAmount);
+    function mint(
+        address[] memory _assets,
+        uint256[] memory _amounts,
+        uint256 _minimumUsdiAmount
+    ) external returns (uint256 usdiAmount);
 
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
     /// @param _asset one of StableCoin asset
     /// @param _minimumUnitAmount Minimum stablecoin units to receive in return
-    function burn(uint256 _amount,
+    function burn(
+        uint256 _amount,
         address _asset,
         uint256 _minimumUnitAmount,
         bool _needExchange,
@@ -133,6 +176,7 @@ interface IVault {
     ) external returns (uint256);
 
     function report(uint256 _strategyAsset) external;
+
     /// @notice Shutdown the vault when an emergency occurs, cannot mint/burn.
     function setEmergencyShutdown(bool active) external;
 
@@ -141,38 +185,45 @@ interface IVault {
 
     /**
      * @dev Set a minimum amount of OUSD in a mint or redeem that triggers a
-         * rebase
-         * @param _threshold OUSD amount with 18 fixed decimals.
-         */
+     * rebase
+     * @param _threshold OUSD amount with 18 fixed decimals.
+     */
     function setRebaseThreshold(uint256 _threshold) external;
 
     /**
      * @dev Set a fee in basis points to be charged for a redeem.
-         * @param _redeemFeeBps Basis point fee to be charged
-         */
+     * @param _redeemFeeBps Basis point fee to be charged
+     */
     function setRedeemFeeBps(uint256 _redeemFeeBps) external;
 
     /**
-        * @dev Sets the maximum allowable difference between
-         * total supply and backing assets' value.
-         */
+     * @dev Sets the maximum allowable difference between
+     * total supply and backing assets' value.
+     */
     function setMaxSupplyDiff(uint256 _maxSupplyDiff) external;
+
     /**
      * @dev Sets the treasuryAddress that can receive a portion of yield.
-         *      Setting to the zero address disables this feature.
-         */
+     *      Setting to the zero address disables this feature.
+     */
     function setTreasuryAddress(address _address) external;
 
     /**
+     * @dev Set the USDi address after initialization(only once)
+     */
+    function setUSDiAddress(address _address) external;
+
+    /**
      * @dev Sets the TrusteeFeeBps to the percentage of yield that should be
-         *      received in basis points.
-         */
+     *      received in basis points.
+     */
     function setTrusteeFeeBps(uint256 _basis) external;
 
     //advance queue
     function setWithdrawalQueue(address[] memory queues) external;
 
-    function setStrategyEnforceChangeLimit(address _strategy, bool _enabled) external;
+    function setStrategyEnforceChangeLimit(address _strategy, bool _enabled)
+        external;
 
     function setStrategySetLimitRatio(
         address _strategy,
@@ -194,7 +245,6 @@ interface IVault {
      */
     function unpauseRebase() external;
 
-
     /// @notice Added support for specific asset.
     function addAsset(address _asset) external;
 
@@ -207,13 +257,11 @@ interface IVault {
     ///      and the strategy will invest the funds in the 3rd protocol
     function addStrategy(StrategyAdd[] memory strategyAdds) external;
 
-
     /// @notice Remove strategy from strategy list
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
     function removeStrategy(address[] memory _strategies) external;
 
     function forceRemoveStrategy(address _strategy) external;
-
 
     /***************************************
                      WithdrawalQueue
@@ -224,25 +272,36 @@ interface IVault {
 
     //adjust Position Period
     function adjustPositionPeriod() external view returns (bool);
+
     // emergency shutdown
     function emergencyShutdown() external view returns (bool);
+
     // Pausing bools
     function rebasePaused() external view returns (bool);
+
     // Mints over this amount automatically rebase. 18 decimals.
     function rebaseThreshold() external view returns (uint256);
+
     // allow max supply diff
     function maxSupplyDiff() external view returns (uint256);
+
     // Amount of yield collected in basis points
     function trusteeFeeBps() external view returns (uint256);
+
     // Redemption fee in basis points
     function redeemFeeBps() external view returns (uint256);
+
     //all strategy asset
     function totalDebt() external view returns (uint256);
 
     //exchangeManager
     function exchangeManager() external view returns (address);
+
     // strategy info
-    function strategies(address _strategy) external view returns (StrategyParams memory);
+    function strategies(address _strategy)
+        external
+        view
+        returns (StrategyParams memory);
 
     //withdraw strategy set
     function withdrawQueue() external view returns (address[] memory);
@@ -254,5 +313,4 @@ interface IVault {
     function valueInterpreter() external view returns (address);
 
     function accessControlProxy() external view returns (address);
-
 }

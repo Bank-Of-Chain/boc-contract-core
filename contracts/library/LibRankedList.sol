@@ -1,12 +1,11 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
+pragma solidity ^0.8.0;
 
 /**
  * @title RankedList
  * @dev Doubly linked list of ranked objects. The head will always have the highest rank and
  * elements will be ordered down towards the tail.
- * @author Alberto Cuesta Cañada
  */
 library LibRankedList {
 

@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: agpl-3.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 pragma solidity ^0.8.0;
 
 import { IBasicToken } from "../interface/IBasicToken.sol";

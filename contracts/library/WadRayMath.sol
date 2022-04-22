@@ -1,12 +1,11 @@
-// SPDX-License-Identifier: agpl-3.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 pragma solidity ^0.8.0;
 
 /**
  * @title WadRayMath library
- * @author Aave
  * @dev Provides mul and div function for wads (decimal numbers with 18 digits precision) and rays (decimals with 27 digits)
  **/
-
 library WadRayMath {
   uint256 internal constant WAD = 1e18;
   uint256 internal constant halfWAD = WAD / 2;

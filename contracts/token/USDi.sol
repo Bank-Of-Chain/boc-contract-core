@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -22,7 +23,6 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
     );
     event RebaseLocked(address _account);
     event RebaseUnlocked(address _account);
-    event SetVault(address _oldVault, address _newVault);
 
     enum RebaseOptions {
         NotSet,
@@ -64,13 +64,15 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
         string calldata nameArg,
         string calldata symbolArg,
         uint8 decimalsArg,
+        address _vault,
         address _accessControlProxy
     ) external initializer {
         _name = nameArg;
         _symbol = symbolArg;
         _decimals = decimalsArg;
+        vault = _vault;
         _initAccessControl(_accessControlProxy);
-        _rebasingCreditsPerToken = 1e18;
+        _rebasingCreditsPerToken = 1e27;
     }
 
     /**
@@ -86,12 +88,6 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
      */
     function symbol() public view returns (string memory) {
         return _symbol;
-    }
-
-    function setVault(address _vault) external onlyRole(BocRoles.GOV_ROLE) {
-        address oldVault = _vault;
-        vault = _vault;
-        emit SetVault(oldVault, _vault);
     }
 
     /**
@@ -461,7 +457,7 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
             if (_creditBalances[_account] == 0) {
                 // Since there is no existing balance, we can directly set to
                 // high resolution, and do not have to do any other bookkeeping
-                nonRebasingCreditsPerToken[_account] = 1e18;
+                nonRebasingCreditsPerToken[_account] = 1e27;
             } else {
                 // Migrate an existing account:
 

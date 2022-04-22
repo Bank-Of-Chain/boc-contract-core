@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 pragma solidity ^0.8.0;
 
 interface IStrategy {
@@ -63,17 +64,6 @@ interface IStrategy {
 
     /// @notice 3rd protocol's pool total assets in USD.
     function get3rdPoolAssets() external view returns (uint256);
-
-    /// @notice Provide a signal to the keeper that `harvest()` should be called.
-    /// @param _rewardsTokens reward token.
-    /// @param _pendingAmounts pending reward amount.
-    function getPendingRewards()
-    external
-    view
-    returns (
-        address[] memory _rewardsTokens,
-        uint256[] memory _pendingAmounts
-    );
 
     /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
     function harvest()
