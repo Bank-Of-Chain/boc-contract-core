@@ -241,7 +241,9 @@ contract USDi is Initializable, IERC20Upgradeable, ReentrancyGuardUpgradeable, A
             // Update rebasingCredits by adding the credited amount
             _rebasingCredits = _rebasingCredits + creditsCredited;
         }else if(!isNonRebasingTo && !isNonRebasingFrom){
-            _rebasingCredits = _rebasingCredits  + creditsCredited - creditsDeducted;
+            if(creditsCredited - creditsDeducted != 0){
+                _rebasingCredits = _rebasingCredits  + creditsCredited - creditsDeducted;
+            }
         }
     }
 
