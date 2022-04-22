@@ -130,6 +130,23 @@ describe('USDi Test',function(){
         expect(Number(user1CreditsBalance)).to.gt(Number(user2CreditsBalance));
     });
 
+    it('Transfer ',async function(){
+        let user1BalanceBeforeTransfer = BigInt(await usdi.balanceOf(user1));
+        let user2BalanceBeforeTransfer = BigInt(await usdi.balanceOf(user2));
+        console.log('user1BalanceBeforeTransfer:%d,user2BalanceBeforeTransfer:%d',user1BalanceBeforeTransfer,user2BalanceBeforeTransfer);
+        
+
+        let signedUsdi = await usdi.connect(accounts[1])
+        const transferAmount = BigInt(1);
+        await signedUsdi.transfer(user2,transferAmount);
+        let user1BalanceAfterTransfer = BigInt(await usdi.balanceOf(user1));
+        let user2BalanceAfterTransfer = BigInt(await usdi.balanceOf(user2));
+        console.log('user1BalanceAfterTransfer:%s,user2BalanceAfterTransfer:%s',user1BalanceAfterTransfer.toString(),user2BalanceAfterTransfer.toString());
+
+        expect((user1BalanceBeforeTransfer - transferAmount)).to.eq((user1BalanceAfterTransfer));
+        expect((user2BalanceBeforeTransfer + transferAmount)).to.eq((user2BalanceAfterTransfer));
+    });
+
     it('Change totoal supply to 2x',async function(){
         let currSupply = await usdi.totalSupply();
         let newSupply =  BigInt(currSupply * 2);
