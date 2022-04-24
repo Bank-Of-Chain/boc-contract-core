@@ -112,7 +112,10 @@ contract Vault is VaultStorage {
             address trackedAsset = trackedAssets[i];
             uint256 balance = balanceOfToken(trackedAsset, address(this));
             if (balance > 0) {
-                _value = _value +IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(trackedAsset,balance);
+                _value =
+                    _value +
+                    IValueInterpreter(valueInterpreter)
+                        .calcCanonicalAssetValueInUsd(trackedAsset, balance);
             }
         }
     }
@@ -124,13 +127,13 @@ contract Vault is VaultStorage {
     function totalValueInStrategies() public view returns (uint256 _value) {
         uint256 strategyLength = strategySet.length();
         for (uint256 i = 0; i < strategyLength; i++) {
-            uint256 estimatedTotalAssets = IStrategy(strategySet.at(i)).estimatedTotalAssets();
-            if(estimatedTotalAssets>0){
+            uint256 estimatedTotalAssets = IStrategy(strategySet.at(i))
+                .estimatedTotalAssets();
+            if (estimatedTotalAssets > 0) {
                 _value = _value + estimatedTotalAssets;
             }
         }
     }
-
 
     /**
      * @dev Internal to calculate total value of all assets held in Vault.
@@ -862,13 +865,13 @@ contract Vault is VaultStorage {
         emit Redeem(_strategy, _amount, _assets, _amounts);
     }
 
-    function report(uint256 _strategyAsset)
-        external
-        isActiveStrategy(msg.sender)
-    {
+    function report(
+        address[] memory _rewardTokens,
+        uint256[] memory _claimAmounts
+    ) external isActiveStrategy(msg.sender) {
         StrategyParams memory strategyParam = strategies[msg.sender];
         uint256 lastStrategyTotalDebt = strategyParam.totalDebt;
-        uint256 nowStrategyTotalDebt = _strategyAsset;
+        uint256 nowStrategyTotalDebt = IStrategy(msg.sender).checkBalance();
         uint256 gain = 0;
         uint256 loss = 0;
 
@@ -910,7 +913,9 @@ contract Vault is VaultStorage {
             gain,
             loss,
             lastStrategyTotalDebt,
-            nowStrategyTotalDebt
+            nowStrategyTotalDebt,
+            _rewardTokens,
+            _claimAmounts
         );
     }
 

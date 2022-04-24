@@ -41,23 +41,23 @@ interface IStrategy {
 
     /// @notice Provide the strategy need underlying token and ratio
     function getWantsInfo()
-    external
-    view
-    returns (address[] memory _assets, uint256[] memory _ratios);
+        external
+        view
+        returns (address[] memory _assets, uint256[] memory _ratios);
 
     /// @notice Provide the strategy need underlying token
     function getWants() external view returns (address[] memory _wants);
 
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
-    external
-    view
-    returns (
-        address[] memory _tokens,
-        uint256[] memory _amounts,
-        bool isUsd,
-        uint256 usdValue
-    );
+        external
+        view
+        returns (
+            address[] memory _tokens,
+            uint256[] memory _amounts,
+            bool isUsd,
+            uint256 usdValue
+        );
 
     /// @notice Total assets of strategy in USD.
     function estimatedTotalAssets() external view returns (uint256);
@@ -67,12 +67,11 @@ interface IStrategy {
 
     /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
     function harvest()
-    external
-    returns (
-        uint256 _currTotalAsset,
-        address[] memory _rewardsTokens,
-        uint256[] memory _claimAmounts
-    );
+        external
+        returns (
+            address[] memory _rewardsTokens,
+            uint256[] memory _claimAmounts
+        );
 
     /// @notice asset in usd (1e18)
     function checkBalance() external view returns (uint256 assetsInUSD);
@@ -81,14 +80,14 @@ interface IStrategy {
     /// @param _assets borrow token address
     /// @param _amounts borrow token amount
     function borrow(address[] memory _assets, uint256[] memory _amounts)
-    external;
+        external;
 
     /// @notice Strategy repay the funds to vault
     /// @param _withdrawShares Numerator
     /// @param _totalShares Denominator
     function repay(uint256 _withdrawShares, uint256 _totalShares)
-    external
-    returns (address[] memory _assets, uint256[] memory _amounts);
+        external
+        returns (address[] memory _assets, uint256[] memory _amounts);
 
     /// @notice getter isWantRatioIgnorable
     function isWantRatioIgnorable() external view returns (bool);

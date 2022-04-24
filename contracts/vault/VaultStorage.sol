@@ -88,11 +88,13 @@ contract VaultStorage is
         uint256[] _amounts
     );
     event StrategyReported(
-        address strategy,
+        address indexed strategy,
         uint256 gain,
         uint256 loss,
         uint256 lastStrategyTotalDebt,
-        uint256 nowStrategyTotalDebt
+        uint256 nowStrategyTotalDebt,
+        address[] _rewardTokens,
+        uint256[] _claimAmounts
     );
     event RemoveStrategyFromQueue(address[] _strategies);
     event SetEmergencyShutdown(bool _shutdown);
