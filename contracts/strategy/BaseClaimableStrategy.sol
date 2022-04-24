@@ -27,7 +27,7 @@ abstract contract BaseClaimableStrategy is BaseStrategy {
         (_rewardsTokens, _claimAmounts) = claimRewards();
         // transfer reward token to harvester
         transferTokensToTarget(harvester, _rewardsTokens, _claimAmounts);
-        report(_rewardsTokens, _claimAmounts);
+        vault.report(_rewardsTokens, _claimAmounts);
     }
 
     /// @notice Strategy repay the funds to vault
