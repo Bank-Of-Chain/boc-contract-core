@@ -16,12 +16,6 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using StableMath for uint256;
 
-    event Report(
-        uint256 _afterAssets,
-        address[] _rewardTokens,
-        uint256[] _claimAmounts
-    );
-
     event Borrow(address[] _assets, uint256[] _amounts);
 
     event Repay(
@@ -155,10 +149,8 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     function report(
         address[] memory _rewardTokens,
         uint256[] memory _claimAmounts
-    ) internal returns (uint256 currTotalAsset_) {
-        currTotalAsset_ = this.checkBalance();
-        vault.report(currTotalAsset_);
-        emit Report(currTotalAsset_, _rewardTokens, _claimAmounts);
+    ) internal {
+        vault.report(_rewardTokens, _claimAmounts);
     }
 
     /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
@@ -166,12 +158,11 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         external
         virtual
         returns (
-            uint256 _currTotalAsset,
             address[] memory _rewardsTokens,
             uint256[] memory _claimAmounts
         )
     {
-        _currTotalAsset = report(_rewardsTokens, _claimAmounts);
+        report(_rewardsTokens, _claimAmounts);
     }
 
     /// @notice Strategy borrow funds from vault

@@ -76,11 +76,13 @@ interface IVault {
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
     event SetWithdrawalQueue(address[] queues);
     event StrategyReported(
-        address strategy,
+        address indexed strategy,
         uint256 gain,
         uint256 loss,
         uint256 lastStrategyTotalDebt,
-        uint256 nowStrategyTotalDebt
+        uint256 nowStrategyTotalDebt,
+        address[] _rewardTokens,
+        uint256[] _claimAmounts
     );
 
     /// @notice Version of vault
@@ -110,7 +112,7 @@ interface IVault {
     function totalValueInVault() external view returns (uint256 _value);
 
     /**
-    * @dev Internal to calculate total value of all assets held in Strategies.
+     * @dev Internal to calculate total value of all assets held in Strategies.
      * @return _value Total value(by chainlink price) in USD (1e18)
      */
     function totalValueInStrategies() external view returns (uint256 _value);
@@ -175,7 +177,10 @@ interface IVault {
         IExchangeAggregator.ExchangeParam memory exchangeParam
     ) external returns (uint256);
 
-    function report(uint256 _strategyAsset) external;
+    function report(
+        address[] memory _rewardTokens,
+        uint256[] memory _claimAmounts
+    ) external;
 
     /// @notice Shutdown the vault when an emergency occurs, cannot mint/burn.
     function setEmergencyShutdown(bool active) external;
