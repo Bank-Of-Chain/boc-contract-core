@@ -101,7 +101,6 @@ contract VaultStorage is
     event RebasePaused();
     event RebaseUnpaused();
     event RebaseThresholdUpdated(uint256 _threshold);
-    event MaxSupplyDiffChanged(uint256 maxSupplyDiff);
     event TrusteeFeeBpsChanged(uint256 _basis);
     event TreasuryAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
@@ -133,7 +132,7 @@ contract VaultStorage is
     bool public rebasePaused;
     // Mints over this amount automatically rebase. 18 decimals.
     uint256 public rebaseThreshold;
-    // allow max supply diff
+    // Deprecated
     uint256 public maxSupplyDiff;
     // Amount of yield collected in basis points
     uint256 public trusteeFeeBps;
