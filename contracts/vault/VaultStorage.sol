@@ -132,6 +132,8 @@ contract VaultStorage is
     bool public rebasePaused;
     // Mints over this amount automatically rebase. 18 decimals.
     uint256 public rebaseThreshold;
+    // Deprecated
+    uint256 public maxSupplyDiff;
     // Amount of yield collected in basis points
     uint256 public trusteeFeeBps;
     // Redemption fee in basis points
