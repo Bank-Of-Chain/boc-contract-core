@@ -69,7 +69,6 @@ interface IVault {
     event RebasePaused();
     event RebaseUnpaused();
     event RebaseThresholdUpdated(uint256 _threshold);
-    event MaxSupplyDiffChanged(uint256 maxSupplyDiff);
     event TrusteeFeeBpsChanged(uint256 _basis);
     event TreasuryAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
@@ -286,9 +285,6 @@ interface IVault {
 
     // Mints over this amount automatically rebase. 18 decimals.
     function rebaseThreshold() external view returns (uint256);
-
-    // allow max supply diff
-    function maxSupplyDiff() external view returns (uint256);
 
     // Amount of yield collected in basis points
     function trusteeFeeBps() external view returns (uint256);
