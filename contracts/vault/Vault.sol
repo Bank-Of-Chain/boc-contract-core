@@ -709,7 +709,6 @@ contract Vault is VaultStorage {
     {
         (_wants, _ratios) = IStrategy(_strategy).getWantsInfo();
         toAmounts = new uint256[](_wants.length);
-        bool toTokenValid = true;
         for (uint256 i = 0; i < _exchangeTokens.length; i++) {
             bool findToToken = false;
             for (uint256 j = 0; j < _wants.length; j++) {
@@ -718,12 +717,9 @@ contract Vault is VaultStorage {
                     break;
                 }
             }
-            if (findToToken == false) {
-                toTokenValid = false;
-                break;
-            }
+            require(findToToken, "toToken invalid");
         }
-        require(toTokenValid, "toToken invalid");
+
 
         for (uint256 j = 0; j < _wants.length; j++) {
             for (uint256 i = 0; i < _exchangeTokens.length; i++) {

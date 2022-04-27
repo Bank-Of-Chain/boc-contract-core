@@ -164,10 +164,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         external
         onlyVault
     {
-        require(_assets.length == wants.length);
-
         depositTo3rdPool(_assets, _amounts);
-
         emit Borrow(_assets, _amounts);
     }
 
