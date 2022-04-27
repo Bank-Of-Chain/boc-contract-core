@@ -299,7 +299,7 @@ contract Vault is VaultStorage {
         address[] memory _trackedAssets,
         uint256[] memory _assetRedeemPrices,
         uint256[] memory _assetDecimals
-    ) internal returns (uint256[] memory) {
+    ) internal view returns (uint256[] memory) {
         uint256[] memory outputs = new uint256[](_trackedAssets.length);
 
         for (uint256 i = _trackedAssets.length; i > 0; i--) {
@@ -448,10 +448,6 @@ contract Vault is VaultStorage {
         );
         uint256[] memory _assetDecimals = new uint256[](_trackedAssets.length);
 
-        uint256[] memory _assetBalancesInVault = new uint256[](
-            _trackedAssets.length
-        );
-
         uint256 _actualAmount = _amount;
         uint256 _redeemFee = 0;
         // Calculate redeem fee
@@ -459,7 +455,7 @@ contract Vault is VaultStorage {
             _redeemFee = (_amount * redeemFeeBps) / 10000;
             _actualAmount = _amount - _redeemFee;
         }
-        uint256 _totalAssetInVault = 0;
+        uint256 totalAssetInVault = 0;
         //redeem price in vault
         for (uint256 i = 0; i < _trackedAssets.length; i++) {
             uint256 _assetBalancesInVault = balanceOfToken(
@@ -477,8 +473,8 @@ contract Vault is VaultStorage {
                     i,
                     _trackedAssets[i]
                 );
-                _totalAssetInVault =
-                _totalAssetInVault +
+                totalAssetInVault =
+                totalAssetInVault +
                 (
                 _assetBalancesInVault.mulTruncateScale(
                     _assetRedeemPrice,
@@ -489,8 +485,8 @@ contract Vault is VaultStorage {
         }
 
         // vault not enough,withdraw from withdraw queue strategy
-        if (_totalAssetInVault < _actualAmount) {
-            _repayFromWithdrawQueue(_actualAmount - _totalAssetInVault);
+        if (totalAssetInVault < _actualAmount) {
+            _repayFromWithdrawQueue(_actualAmount - totalAssetInVault);
         }
         // calculate need transfer amount from vault ,set to outputs
         uint256[] memory outputs = _calculateOutputs(
