@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-
-
 pragma solidity >=0.6.0 <0.8.0;
 pragma experimental ABIEncoderV2;
 
-import '../../utils/actions/ParaSwapV5ActionsMixin.sol';
+import '../../util/actions/ParaSwapV5ActionsMixin.sol';
 import '../IExchangeAdapter.sol';
 import '../utils/ExchangeHelpers.sol';
 import '@openzeppelin/contracts~v3/math/SafeMath.sol';

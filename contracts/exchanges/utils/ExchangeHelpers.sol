@@ -1,15 +1,12 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-
-
-
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.8.0;
 pragma experimental ABIEncoderV2;
 
-import '../../library/StableMath.sol';
+import '@openzeppelin/contracts~v3/math/SafeMath.sol';
 import '../IExchangeAdapter.sol';
 
 abstract contract ExchangeHelpers {
-    using StableMath for uint256;
+    using SafeMath for uint256;
 
     function __validateFromTokenAmount(address _fromToken, IExchangeAdapter.SwapDescription calldata _sd) internal pure {
         require(_fromToken == _sd.srcToken, 'srcToken diff');

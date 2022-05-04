@@ -1,8 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-
-
-
-
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.8.0;
 pragma experimental ABIEncoderV2;
 
@@ -13,7 +9,7 @@ import '../utils/ExchangeHelpers.sol';
 
 import '@openzeppelin/contracts~v3/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts~v3/token/ERC20/SafeERC20.sol';
-import '../library/StableMath.sol';
+import '@openzeppelin/contracts~v3/math/SafeMath.sol';
 import '../../library/RevertReasonParser.sol';
 
 contract EthOneInchV4Adapter is IExchangeAdapter, ExchangeHelpers {
