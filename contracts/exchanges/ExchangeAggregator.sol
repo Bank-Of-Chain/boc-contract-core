@@ -13,6 +13,8 @@ contract ExchangeAggregator is AccessControlMixin {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    address constant NATIVE_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
     event ExchangeAdapterAdded(
         address[] exchangeAdapters
     );
@@ -53,10 +55,14 @@ contract ExchangeAggregator is AccessControlMixin {
     // bytes calldata _data ：兑换二进制参数
     // IExchangeAdapter.SwapDescription calldata _sd：链内传入的修改结构体
     function swap(address _platform, uint8 _method, bytes calldata _data, IExchangeAdapter.SwapDescription calldata _sd)
-    external
+    external payable
     returns (uint256){
         require(exchangeAdapters.contains(_platform), 'error swap platform');
-        IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
+        if (_sd.srcToken == NATIVE_TOKEN) {
+            payable(_platform).transfer(_sd.amount);
+        }else{
+            IERC20(_sd.srcToken).transferFrom(msg.sender, _platform, _sd.amount);
+        }
         return IExchangeAdapter(_platform).swap(_method, _data, _sd);
     }
 
@@ -72,5 +78,8 @@ contract ExchangeAggregator is AccessControlMixin {
             identifiers_[i] = IExchangeAdapter(exchangeAdapters_[i]).identifier();
         }
         return (exchangeAdapters_, identifiers_);
+    }
+
+    receive() external payable {
     }
 }
