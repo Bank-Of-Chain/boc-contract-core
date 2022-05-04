@@ -17,5 +17,5 @@ interface IExchangeAdapter {
 
     function identifier() external pure returns (string memory identifier_);
 
-    function swap(uint8 _method, bytes calldata _encodedCallArgs, SwapDescription calldata _sd) external  returns(uint256);
+    function swap(uint8 _method, bytes calldata _encodedCallArgs, SwapDescription calldata _sd) external payable returns(uint256);
 }
