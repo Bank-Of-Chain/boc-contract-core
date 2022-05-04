@@ -54,15 +54,6 @@ contract VaultAdmin is VaultStorage {
     }
 
     /**
-     * @dev Sets the maximum allowable difference between
-     * total supply and backing assets' value.
-     */
-    function setMaxSupplyDiff(uint256 _maxSupplyDiff) external isVaultManager {
-        maxSupplyDiff = _maxSupplyDiff;
-        emit MaxSupplyDiffChanged(_maxSupplyDiff);
-    }
-
-    /**
      * @dev Sets the treasuryAddress that can receive a portion of yield.
      *      Setting to the zero address disables this feature.
      */

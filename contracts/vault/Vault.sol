@@ -112,7 +112,10 @@ contract Vault is VaultStorage {
             address trackedAsset = trackedAssets[i];
             uint256 balance = balanceOfToken(trackedAsset, address(this));
             if (balance > 0) {
-                _value = _value +IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(trackedAsset,balance);
+                _value =
+                    _value +
+                    IValueInterpreter(valueInterpreter)
+                        .calcCanonicalAssetValueInUsd(trackedAsset, balance);
             }
         }
     }
@@ -124,13 +127,13 @@ contract Vault is VaultStorage {
     function totalValueInStrategies() public view returns (uint256 _value) {
         uint256 strategyLength = strategySet.length();
         for (uint256 i = 0; i < strategyLength; i++) {
-            uint256 estimatedTotalAssets = IStrategy(strategySet.at(i)).estimatedTotalAssets();
-            if(estimatedTotalAssets>0){
+            uint256 estimatedTotalAssets = IStrategy(strategySet.at(i))
+                .estimatedTotalAssets();
+            if (estimatedTotalAssets > 0) {
                 _value = _value + estimatedTotalAssets;
             }
         }
     }
-
 
     /**
      * @dev Internal to calculate total value of all assets held in Vault.
@@ -293,10 +296,10 @@ contract Vault is VaultStorage {
     /// @notice calculate need transfer amount from vault ,set to outputs
     function _calculateOutputs(
         uint256 _needTransferAmount,
+        address[] memory _trackedAssets,
         uint256[] memory _assetRedeemPrices,
         uint256[] memory _assetDecimals
-    ) internal returns (uint256[] memory) {
-        address[] memory _trackedAssets = _getTrackedAssets();
+    ) internal view returns (uint256[] memory) {
         uint256[] memory outputs = new uint256[](_trackedAssets.length);
 
         for (uint256 i = _trackedAssets.length; i > 0; i--) {
@@ -445,53 +448,6 @@ contract Vault is VaultStorage {
         );
         uint256[] memory _assetDecimals = new uint256[](_trackedAssets.length);
 
-        uint256[] memory _assetBalancesInVault = new uint256[](
-            _trackedAssets.length
-        );
-        for (uint256 i = 0; i < _trackedAssets.length; i++) {
-            _assetBalancesInVault[i] = balanceOfToken(
-                _trackedAssets[i],
-                address(this)
-            );
-        }
-
-        if (maxSupplyDiff > 0) {
-            uint256 _totalValueInStrategy;
-            uint256 strategyLength = strategySet.length();
-            for (uint256 i = 0; i < strategyLength; i++) {
-                _totalValueInStrategy =
-                    _totalValueInStrategy +
-                    IStrategy(strategySet.at(i)).checkBalance();
-            }
-
-            uint256 _totalValueInVault;
-            for (uint256 i = 0; i < _assetBalancesInVault.length; i++) {
-                if (_assetBalancesInVault[i] > 0) {
-                    _totalValueInVault =
-                        _totalValueInVault +
-                        (
-                            _assetBalancesInVault[i].scaleBy(
-                                18,
-                                _assetDecimals[i]
-                            )
-                        );
-                }
-            }
-
-            // Check that USDI is backed by enough assets
-            uint256 _totalSupply = usdi.totalSupply();
-            // Allow a max difference of maxSupplyDiff% between
-            // backing assets value and USDI total supply
-            uint256 diff = _totalSupply.divPrecisely(
-                _totalValueInVault + _totalValueInStrategy
-            );
-            require(
-                (diff > 1e18 ? (diff - (1e18)) : (uint256(1e18) - (diff))) <=
-                    maxSupplyDiff,
-                "Backing supply liquidity error"
-            );
-        }
-
         uint256 _actualAmount = _amount;
         uint256 _redeemFee = 0;
         // Calculate redeem fee
@@ -499,10 +455,14 @@ contract Vault is VaultStorage {
             _redeemFee = (_amount * redeemFeeBps) / 10000;
             _actualAmount = _amount - _redeemFee;
         }
+        uint256 totalAssetInVault = 0;
         //redeem price in vault
-        uint256 _totalAssetInVault = 0;
-        for (uint256 i = 0; i < _assetBalancesInVault.length; i++) {
-            if (_assetBalancesInVault[i] > 0) {
+        for (uint256 i = 0; i < _trackedAssets.length; i++) {
+            uint256 _assetBalancesInVault = balanceOfToken(
+                _trackedAssets[i],
+                address(this)
+            );
+            if (_assetBalancesInVault > 0) {
                 uint256 _assetRedeemPrice = _getAssetRedeemPrice(
                     _assetRedeemPrices,
                     i,
@@ -513,24 +473,25 @@ contract Vault is VaultStorage {
                     i,
                     _trackedAssets[i]
                 );
-                _totalAssetInVault =
-                    _totalAssetInVault +
-                    (
-                        _assetBalancesInVault[i].mulTruncateScale(
-                            _assetRedeemPrice,
-                            10**_assetDecimal
-                        )
-                    );
+                totalAssetInVault =
+                totalAssetInVault +
+                (
+                _assetBalancesInVault.mulTruncateScale(
+                    _assetRedeemPrice,
+                    10**_assetDecimal
+                )
+                );
             }
         }
 
         // vault not enough,withdraw from withdraw queue strategy
-        if (_totalAssetInVault < _actualAmount) {
-            _repayFromWithdrawQueue(_actualAmount - _totalAssetInVault);
+        if (totalAssetInVault < _actualAmount) {
+            _repayFromWithdrawQueue(_actualAmount - totalAssetInVault);
         }
         // calculate need transfer amount from vault ,set to outputs
         uint256[] memory outputs = _calculateOutputs(
             _actualAmount,
+            _trackedAssets,
             _assetRedeemPrices,
             _assetDecimals
         );
@@ -744,7 +705,6 @@ contract Vault is VaultStorage {
     {
         (_wants, _ratios) = IStrategy(_strategy).getWantsInfo();
         toAmounts = new uint256[](_wants.length);
-        bool toTokenValid = true;
         for (uint256 i = 0; i < _exchangeTokens.length; i++) {
             bool findToToken = false;
             for (uint256 j = 0; j < _wants.length; j++) {
@@ -753,12 +713,9 @@ contract Vault is VaultStorage {
                     break;
                 }
             }
-            if (findToToken == false) {
-                toTokenValid = false;
-                break;
-            }
+            require(findToToken, "toToken invalid");
         }
-        require(toTokenValid, "toToken invalid");
+
 
         for (uint256 j = 0; j < _wants.length; j++) {
             for (uint256 i = 0; i < _exchangeTokens.length; i++) {
@@ -862,13 +819,13 @@ contract Vault is VaultStorage {
         emit Redeem(_strategy, _amount, _assets, _amounts);
     }
 
-    function report(uint256 _strategyAsset)
-        external
-        isActiveStrategy(msg.sender)
-    {
+    function report(
+        address[] memory _rewardTokens,
+        uint256[] memory _claimAmounts
+    ) external isActiveStrategy(msg.sender) {
         StrategyParams memory strategyParam = strategies[msg.sender];
         uint256 lastStrategyTotalDebt = strategyParam.totalDebt;
-        uint256 nowStrategyTotalDebt = _strategyAsset;
+        uint256 nowStrategyTotalDebt = IStrategy(msg.sender).checkBalance();
         uint256 gain = 0;
         uint256 loss = 0;
 
@@ -910,7 +867,9 @@ contract Vault is VaultStorage {
             gain,
             loss,
             lastStrategyTotalDebt,
-            nowStrategyTotalDebt
+            nowStrategyTotalDebt,
+            _rewardTokens,
+            _claimAmounts
         );
     }
 
