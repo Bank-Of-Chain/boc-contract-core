@@ -127,14 +127,4 @@ contract MockS3CoinStrategy is BaseStrategy {
         //         _totalShares;
         // }
     }
-
-    function protectedTokens()
-        internal
-        view
-        virtual
-        override
-        returns (address[] memory)
-    {
-        return wants;
-    }
 }
