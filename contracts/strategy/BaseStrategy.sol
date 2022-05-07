@@ -231,23 +231,6 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         return type(uint256).max;
     }
 
-    /// @notice Provide a token list to prevent tokens from being transferred by the 'sweep()'.
-    function protectedTokens() internal view virtual returns (address[] memory);
-
-    /// @notice Removes tokens from this Strategy that are not the type of token managed by this Strategy.
-    /// @param _token： The token to transfer out of this vault.
-    function sweep(address _token) external isKeeper {
-        require(
-            !(arrayContains(wants, _token) ||
-                arrayContains(protectedTokens(), _token)),
-            "protected token"
-        );
-        IERC20Upgradeable(_token).safeTransfer(
-            vault.treasury(),
-            balanceOfToken(_token)
-        );
-    }
-
     /// @notice Query the value of Token.
     function queryTokenValue(address _token, uint256 _amount)
         internal
