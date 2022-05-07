@@ -126,17 +126,4 @@ contract MockStrategy is BaseStrategy {
         uint256 withdrawAmount = (lpAmount * _withdrawShares) / _totalShares;
         mock3rdPool.withdraw(withdrawAmount);
     }
-
-    function protectedTokens()
-        internal
-        view
-        virtual
-        override
-        returns (address[] memory)
-    {
-        address[] memory tokens = new address[](1);
-        tokens[0] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; //WETH
-
-        return tokens;
-    }
 }
