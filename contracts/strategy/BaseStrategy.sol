@@ -266,17 +266,4 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
             }
         }
     }
-
-    function arrayContains(address[] memory array, address key)
-        internal
-        pure
-        returns (bool)
-    {
-        for (uint256 i = 0; i < array.length; i++) {
-            if (array[i] == key) {
-                return true;
-            }
-        }
-        return false;
-    }
 }
