@@ -307,38 +307,36 @@ contract Vault is VaultStorage {
 
         (
             uint256[] memory outPutAssetPriceSortedAssetIndex,
+            uint256[] memory outPutAssetBalance,
             uint256 _sortedAssetCount
         ) = _calculateSortedAssets(_trackedAssetsCopy, _assetPrices);
 
         for (uint256 i = 0; i < _sortedAssetCount; i++) {
             uint256 index = outPutAssetPriceSortedAssetIndex[i];
             address trackedAsset = _trackedAssetsCopy[index];
-            uint256 balance = balanceOfToken(trackedAsset, address(this));
-            if (balance > 0) {
-                (, uint256 _assetRedeemPrice) = _getAssetRedeemPrice(
-                    _assetPrices,
-                    index,
-                    trackedAsset
-                );
-                uint256 _assetDecimal = _getAssetDecimals(
-                    _assetDecimals,
-                    index,
-                    trackedAsset
-                );
+            uint256 balance = outPutAssetBalance[index];
 
-                uint256 _value = balance.mulTruncateScale(
-                    _assetRedeemPrice,
-                    10**_assetDecimal
-                );
-                if (_value >= _needTransferAmountCopy) {
-                    outputs[index] =
-                        (balance * _needTransferAmountCopy) /
-                        _value;
-                    break;
-                } else {
-                    outputs[index] = balance;
-                    _needTransferAmountCopy = _needTransferAmountCopy - _value;
-                }
+            (, uint256 _assetRedeemPrice) = _getAssetRedeemPrice(
+                _assetPrices,
+                index,
+                trackedAsset
+            );
+            uint256 _assetDecimal = _getAssetDecimals(
+                _assetDecimals,
+                index,
+                trackedAsset
+            );
+
+            uint256 _value = balance.mulTruncateScale(
+                _assetRedeemPrice,
+                10**_assetDecimal
+            );
+            if (_value >= _needTransferAmountCopy) {
+                outputs[index] = (balance * _needTransferAmountCopy) / _value;
+                break;
+            } else {
+                outputs[index] = balance;
+                _needTransferAmountCopy = _needTransferAmountCopy - _value;
             }
         }
         return outputs;
@@ -353,17 +351,20 @@ contract Vault is VaultStorage {
         view
         returns (
             uint256[] memory outPutAssetPriceSortedAssetIndex,
+            uint256[] memory outPutAssetBalance,
             uint256 _sortedAssetCount
         )
     {
         address[] memory _trackedAssetsCopy = _trackedAssets;
         uint256 _trackedAssetsLength = _trackedAssetsCopy.length;
 
+        outPutAssetBalance = new uint256[](_trackedAssetsLength);
         outPutAssetPriceSortedAssetIndex = new uint256[](_trackedAssetsLength);
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address trackedAsset = _trackedAssetsCopy[i];
             uint256 balance = balanceOfToken(trackedAsset, address(this));
             if (balance > 0) {
+                outPutAssetBalance[i] = balance;
                 outPutAssetPriceSortedAssetIndex[_sortedAssetCount] = i;
                 (uint256 _assetPrice, ) = _getAssetRedeemPrice(
                     _assetPrices,
