@@ -297,41 +297,105 @@ contract Vault is VaultStorage {
     function _calculateOutputs(
         uint256 _needTransferAmount,
         address[] memory _trackedAssets,
-        uint256[] memory _assetRedeemPrices,
+        uint256[] memory _assetPrices,
         uint256[] memory _assetDecimals
     ) internal view returns (uint256[] memory) {
-        uint256[] memory outputs = new uint256[](_trackedAssets.length);
+        uint256 _needTransferAmountCopy = _needTransferAmount;
+        address[] memory _trackedAssetsCopy = _trackedAssets;
+        uint256 _trackedAssetsLength = _trackedAssetsCopy.length;
+        uint256[] memory outputs = new uint256[](_trackedAssetsLength);
 
-        for (uint256 i = _trackedAssets.length; i > 0; i--) {
-            uint256 index = i - 1;
-            address trackedAsset = _trackedAssets[index];
-            uint256 balance = balanceOfToken(trackedAsset, address(this));
-            if (balance > 0) {
-                uint256 _assetRedeemPrice = _getAssetRedeemPrice(
-                    _assetRedeemPrices,
-                    index,
-                    _trackedAssets[index]
-                );
-                uint256 _assetDecimal = _getAssetDecimals(
-                    _assetDecimals,
-                    index,
-                    _trackedAssets[index]
-                );
+        (
+            uint256[] memory outPutAssetPriceSortedAssetIndex,
+            uint256[] memory outPutAssetBalance,
+            uint256 _sortedAssetCount
+        ) = _calculateSortedAssets(_trackedAssetsCopy, _assetPrices);
 
-                uint256 _value = balance.mulTruncateScale(
-                    _assetRedeemPrice,
-                    10**_assetDecimal
-                );
-                if (_value >= _needTransferAmount) {
-                    outputs[index] = (balance * _needTransferAmount) / _value;
-                    break;
-                } else {
-                    outputs[index] = balance;
-                    _needTransferAmount = _needTransferAmount - _value;
-                }
+        for (uint256 i = 0; i < _sortedAssetCount; i++) {
+            uint256 index = outPutAssetPriceSortedAssetIndex[i];
+            address trackedAsset = _trackedAssetsCopy[index];
+            uint256 balance = outPutAssetBalance[index];
+
+            (, uint256 _assetRedeemPrice) = _getAssetRedeemPrice(
+                _assetPrices,
+                index,
+                trackedAsset
+            );
+            uint256 _assetDecimal = _getAssetDecimals(
+                _assetDecimals,
+                index,
+                trackedAsset
+            );
+
+            uint256 _value = balance.mulTruncateScale(
+                _assetRedeemPrice,
+                10**_assetDecimal
+            );
+            if (_value >= _needTransferAmountCopy) {
+                outputs[index] = (balance * _needTransferAmountCopy) / _value;
+                break;
+            } else {
+                outputs[index] = balance;
+                _needTransferAmountCopy = _needTransferAmountCopy - _value;
             }
         }
         return outputs;
+    }
+
+    /// @notice calculate need transfer amount from vault ,set to outputs order by oracle price
+    function _calculateSortedAssets(
+        address[] memory _trackedAssets,
+        uint256[] memory _assetPrices
+    )
+        internal
+        view
+        returns (
+            uint256[] memory outPutAssetPriceSortedAssetIndex,
+            uint256[] memory outPutAssetBalance,
+            uint256 _sortedAssetCount
+        )
+    {
+        address[] memory _trackedAssetsCopy = _trackedAssets;
+        uint256 _trackedAssetsLength = _trackedAssetsCopy.length;
+
+        outPutAssetBalance = new uint256[](_trackedAssetsLength);
+        outPutAssetPriceSortedAssetIndex = new uint256[](_trackedAssetsLength);
+        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
+            address trackedAsset = _trackedAssetsCopy[i];
+            uint256 balance = balanceOfToken(trackedAsset, address(this));
+            if (balance > 0) {
+                outPutAssetBalance[i] = balance;
+                outPutAssetPriceSortedAssetIndex[_sortedAssetCount] = i;
+                (uint256 _assetPrice, ) = _getAssetRedeemPrice(
+                    _assetPrices,
+                    i,
+                    trackedAsset
+                );
+                for (uint256 j = 0; j < _sortedAssetCount; j++) {
+                    uint256 _currentAssetIndex = outPutAssetPriceSortedAssetIndex[
+                            j
+                        ];
+                    (
+                        uint256 _currentSortedIndexAssetPrice,
+
+                    ) = _getAssetRedeemPrice(
+                            _assetPrices,
+                            _currentAssetIndex,
+                            _trackedAssetsCopy[_currentAssetIndex]
+                        );
+                    if (_assetPrice >= _currentSortedIndexAssetPrice) {
+                        for (uint256 k = _sortedAssetCount; k > j; k--) {
+                            outPutAssetPriceSortedAssetIndex[
+                                k
+                            ] = outPutAssetPriceSortedAssetIndex[k - 1];
+                        }
+                        outPutAssetPriceSortedAssetIndex[j] = i;
+                        break;
+                    }
+                }
+                _sortedAssetCount = _sortedAssetCount + 1;
+            }
+        }
     }
 
     // @notice exchange token to _asset form vault and transfer to user
@@ -443,9 +507,7 @@ contract Vault is VaultStorage {
         }
 
         address[] memory _trackedAssets = _getTrackedAssets();
-        uint256[] memory _assetRedeemPrices = new uint256[](
-            _trackedAssets.length
-        );
+        uint256[] memory _assetPrices = new uint256[](_trackedAssets.length);
         uint256[] memory _assetDecimals = new uint256[](_trackedAssets.length);
 
         uint256 _actualAmount = _amount;
@@ -458,29 +520,30 @@ contract Vault is VaultStorage {
         uint256 totalAssetInVault = 0;
         //redeem price in vault
         for (uint256 i = 0; i < _trackedAssets.length; i++) {
+            address _trackedAsset = _trackedAssets[i];
             uint256 _assetBalancesInVault = balanceOfToken(
-                _trackedAssets[i],
+                _trackedAsset,
                 address(this)
             );
             if (_assetBalancesInVault > 0) {
-                uint256 _assetRedeemPrice = _getAssetRedeemPrice(
-                    _assetRedeemPrices,
+                (, uint256 _assetRedeemPrice) = _getAssetRedeemPrice(
+                    _assetPrices,
                     i,
-                    _trackedAssets[i]
+                    _trackedAsset
                 );
                 uint256 _assetDecimal = _getAssetDecimals(
                     _assetDecimals,
                     i,
-                    _trackedAssets[i]
+                    _trackedAsset
                 );
                 totalAssetInVault =
-                totalAssetInVault +
-                (
-                _assetBalancesInVault.mulTruncateScale(
-                    _assetRedeemPrice,
-                    10**_assetDecimal
-                )
-                );
+                    totalAssetInVault +
+                    (
+                        _assetBalancesInVault.mulTruncateScale(
+                            _assetRedeemPrice,
+                            10**_assetDecimal
+                        )
+                    );
             }
         }
 
@@ -492,7 +555,7 @@ contract Vault is VaultStorage {
         uint256[] memory outputs = _calculateOutputs(
             _actualAmount,
             _trackedAssets,
-            _assetRedeemPrices,
+            _assetPrices,
             _assetDecimals
         );
 
@@ -564,17 +627,20 @@ contract Vault is VaultStorage {
 
     /**
      * @notice Get an array of the supported asset prices in USD.
-     * @return assetPrice Array of asset prices in USD (1e18)
+     * @return price prices in USD (1e18)
+     * @return redeemPrice redeem prices in USD (1e18)
      */
     function _getAssetRedeemPrice(
-        uint256[] memory _assetRedeemPrices,
+        uint256[] memory _assetPrices,
         uint256 _assetIndex,
         address _asset
-    ) internal view returns (uint256) {
-        if (_assetRedeemPrices[_assetIndex] == 0) {
-            _assetRedeemPrices[_assetIndex] = priceUSDRedeem(_asset);
+    ) internal view returns (uint256 price, uint256 redeemPrice) {
+        if (_assetPrices[_assetIndex] == 0) {
+            (_assetPrices[_assetIndex], redeemPrice) = priceUSDRedeem(_asset);
+        } else {
+            redeemPrice = priceInRedeem(_assetPrices[_assetIndex]);
         }
-        return _assetRedeemPrices[_assetIndex];
+        price = _assetPrices[_assetIndex];
     }
 
     /// @notice Change USDi supply with Vault total assets.
@@ -715,7 +781,6 @@ contract Vault is VaultStorage {
             }
             require(findToToken, "toToken invalid");
         }
-
 
         for (uint256 j = 0; j < _wants.length; j++) {
             for (uint256 i = 0; i < _exchangeTokens.length; i++) {
@@ -903,12 +968,27 @@ contract Vault is VaultStorage {
      * @dev Returns the total price in 18 digit USD for a given asset.
      *      Never goes below 1, since that is how we price redeems
      * @param asset Address of the asset
+     * @return price USD price of 1 of the asset, in 18 decimal fixed
+     * @return redeemPrice USD redeem price of 1 of the asset, in 18 decimal fixed
+     */
+    function priceUSDRedeem(address asset)
+        internal
+        view
+        returns (uint256 price, uint256 redeemPrice)
+    {
+        price = IValueInterpreter(valueInterpreter).price(asset);
+        redeemPrice = priceInRedeem(price);
+    }
+
+    /**
+     * @dev Returns the total price in 18 digit USD for a given price.
+     *      Never goes below 1, since that is how we price redeems
+     * @param price oracle price of the asset
      * @return uint256 USD price of 1 of the asset, in 18 decimal fixed
      */
-    function priceUSDRedeem(address asset) internal view returns (uint256) {
-        uint256 price = IValueInterpreter(valueInterpreter).price(asset);
+    function priceInRedeem(uint256 price) internal view returns (uint256) {
         if (price < 1e18) {
-            price = 1e18;
+            return 1e18;
         }
         return price;
     }
