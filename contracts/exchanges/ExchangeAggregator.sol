@@ -61,7 +61,7 @@ contract ExchangeAggregator is AccessControlMixin {
         if (_sd.srcToken == NATIVE_TOKEN) {
             payable(_platform).transfer(_sd.amount);
         }else{
-            IERC20(_sd.srcToken).transferFrom(msg.sender, _platform, _sd.amount);
+            IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
         }
         return IExchangeAdapter(_platform).swap(_method, _data, _sd);
     }
