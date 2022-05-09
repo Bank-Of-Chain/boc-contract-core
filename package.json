@@ -1,6 +1,6 @@
 {
   "name": "boc-contract-core",
-  "version": "1.0.8",
+  "version": "2.0.0",
   "description": "BankOfChain protocol core.",
   "main": "index.js",
   "license": "AGPL-3.0-or-later",
