@@ -402,6 +402,7 @@ contract Vault is VaultStorage {
     function _exchangeAndTransfer(
         address _asset,
         uint256[] memory _outputs,
+        uint256[] memory _assetDecimals,
         address[] memory _trackedAssets,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
     )
@@ -412,16 +413,33 @@ contract Vault is VaultStorage {
             uint256 _actualAmount
         )
     {
-        for (uint256 i = 0; i < _trackedAssets.length; i++) {
-            address withdrawToken = _trackedAssets[i];
+        uint256 _trackedAssetsLength = _trackedAssets.length;
+
+        _assets = new address[](_trackedAssetsLength);
+        _amounts = new uint256[](_trackedAssetsLength);
+        uint256 _toTokenIndex = _trackedAssetsLength;
+        uint256 _toTokenAmount;
+        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
+            _assets[i] = _trackedAssets[i];
+            if (_toTokenIndex == _trackedAssetsLength && _assets[i] == _asset) {
+                _toTokenIndex = i;
+            }
+            address withdrawToken = _assets[i];
             uint256 withdrawAmount = _outputs[i];
             if (withdrawAmount > 0) {
                 if (withdrawToken == _asset) {
-                    _actualAmount = _actualAmount + withdrawAmount;
+                    _toTokenAmount = _toTokenAmount + withdrawAmount;
                 } else {
                     for (uint256 j = 0; j < _exchangeTokens.length; j++) {
                         IExchangeAggregator.ExchangeToken
                             memory exchangeToken = _exchangeTokens[j];
+                        if (
+                            exchangeToken.fromToken == withdrawToken &&
+                            exchangeToken.toToken == withdrawToken
+                        ) {
+                            _amounts[i] = withdrawAmount;
+                            break;
+                        }
                         if (
                             exchangeToken.fromToken == withdrawToken &&
                             exchangeToken.toToken == _asset
@@ -433,22 +451,32 @@ contract Vault is VaultStorage {
                                 exchangeToken.exchangeParam
                             );
                             // console.log('withdraw exchange token %s amount %d toAmount %d', withdrawAmount, withdrawAmount, toAmount);
-                            _actualAmount = _actualAmount + toAmount;
+                            _toTokenAmount = _toTokenAmount + toAmount;
                             break;
                         }
                     }
                 }
             }
         }
-        IERC20Upgradeable(_asset).safeTransfer(msg.sender, _actualAmount);
-
-        _assets = new address[](1);
-        _assets[0] = _asset;
-        _amounts = new uint256[](1);
-        _amounts[0] = _actualAmount;
-
-        uint256 _toDecimals = trackedAssetDecimalsMap[_asset];
-        _actualAmount = _actualAmount.scaleBy(18, _toDecimals);
+        _amounts[_toTokenIndex] = _toTokenAmount;
+        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
+            uint256 _amount = _amounts[i];
+            if (_amount > 0) {
+                address _trackedAsset = _assets[i];
+                uint256 _toDecimals = _getAssetDecimals(
+                    _assetDecimals,
+                    i,
+                    _trackedAsset
+                );
+                _actualAmount =
+                    _actualAmount +
+                    _amount.scaleBy(18, _toDecimals);
+                IERC20Upgradeable(_trackedAsset).safeTransfer(
+                    msg.sender,
+                    _amount
+                );
+            }
+        }
     }
 
     // @notice without exchange token and transfer form vault to user
@@ -503,7 +531,11 @@ contract Vault is VaultStorage {
         checkIsSupportAsset(_asset);
 
         for (uint256 i = 0; i < _exchangeTokens.length; i++) {
-            require(_exchangeTokens[i].toToken == _asset, "toToken is invalid");
+            require(
+                _exchangeTokens[i].toToken == _asset ||
+                    _exchangeTokens[i].toToken == _exchangeTokens[i].fromToken,
+                "toToken is invalid"
+            );
         }
 
         address[] memory _trackedAssets = _getTrackedAssets();
@@ -564,6 +596,7 @@ contract Vault is VaultStorage {
             (_assets, _amounts, _actuallyReceivedAmount) = _exchangeAndTransfer(
                 _asset,
                 outputs,
+                _assetDecimals,
                 _trackedAssets,
                 _exchangeTokens
             );
