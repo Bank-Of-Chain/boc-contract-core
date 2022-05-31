@@ -715,7 +715,7 @@ contract Vault is VaultStorage {
         // Only rachet USDi supply upwards
         usdiSupply = usdi.totalSupply();
         // Final check should use latest value
-        if (vaultValue > usdiSupply || vaultValue < usdiSupply) {
+        if (vaultValue != usdiSupply) {
             usdi.changeSupply(vaultValue);
         }
     }
