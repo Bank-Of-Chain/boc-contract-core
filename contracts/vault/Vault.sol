@@ -801,10 +801,12 @@ contract Vault is VaultStorage {
         )
     {
         (_wants, _ratios) = IStrategy(_strategy).getWantsInfo();
-        toAmounts = new uint256[](_wants.length);
-        for (uint256 i = 0; i < _exchangeTokens.length; i++) {
+        uint256 _wantsLength = _wants.length;
+        toAmounts = new uint256[](_wantsLength);
+        uint256 _exchangeTokensLength = _exchangeTokens.length;
+        for (uint256 i = 0; i < _exchangeTokensLength; i++) {
             bool findToToken = false;
-            for (uint256 j = 0; j < _wants.length; j++) {
+            for (uint256 j = 0; j < _wantsLength; j++) {
                 if (_exchangeTokens[i].toToken == _wants[j]) {
                     findToToken = true;
                     break;
@@ -813,8 +815,8 @@ contract Vault is VaultStorage {
             require(findToToken, "toToken invalid");
         }
 
-        for (uint256 j = 0; j < _wants.length; j++) {
-            for (uint256 i = 0; i < _exchangeTokens.length; i++) {
+        for (uint256 j = 0; j < _wantsLength; j++) {
+            for (uint256 i = 0; i < _exchangeTokensLength; i++) {
                 IExchangeAggregator.ExchangeToken
                     memory exchangeToken = _exchangeTokens[i];
 
