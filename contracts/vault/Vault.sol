@@ -639,7 +639,7 @@ contract Vault is VaultStorage {
         // by withdrawing them, this should be here.
         // It's possible that a strategy was off on its asset total, perhaps
         // a reward token sold for more or for less than anticipated.
-        if (_amount > rebaseThreshold && !rebasePaused) {
+        if (_amount >= rebaseThreshold && !rebasePaused) {
             _rebase();
         }
         emit Burn(msg.sender, _asset, _amount, _actualAmount);
