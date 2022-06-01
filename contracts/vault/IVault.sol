@@ -128,12 +128,11 @@ interface IVault {
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
     /// @dev Support single asset or multi-assets
-    /// @return unitAdjustedDeposit  assets amount by Scale up to 18 decimal
     /// @return priceAdjustedDeposit   usdi amount
     function estimateMint(address[] memory _assets, uint256[] memory _amounts)
         external
         view
-        returns (uint256 unitAdjustedDeposit, uint256 priceAdjustedDeposit);
+        returns (uint256 priceAdjustedDeposit);
 
     /// @notice Minting USDi with stablecoins
     /// @param _assets Address of the asset being deposited
@@ -148,11 +147,11 @@ interface IVault {
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
     /// @param _asset one of StableCoin asset
-    /// @param _minimumUnitAmount Minimum stablecoin units to receive in return
+    /// @param _minimumUsdAmount Minimum usd to receive in return
     function burn(
         uint256 _amount,
         address _asset,
-        uint256 _minimumUnitAmount,
+        uint256 _minimumUsdAmount,
         bool _needExchange,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
     ) external returns (address[] memory _assets, uint256[] memory _amounts);
