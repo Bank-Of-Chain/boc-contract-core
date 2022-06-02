@@ -24,16 +24,18 @@ interface IVaultBuffer {
         returns (uint256 mintAmount);
 
     /// @notice transfer cash to vault
-    /// @return _assets transfer token
-    /// @return _amounts transfer token amount
-    function prepareToLend()
-        external
-        returns (address[] memory _assets, uint256[] memory _amounts);
+    /// @param _assets transfer token
+    /// @param _amounts transfer token amount
+    function prepareToLend(address[] memory _assets, uint256[] memory _amounts) external;
 
     /// @notice distribute USDi to users that pendingShare's holder.
     function distribute() external;
 
     /// @notice use USDi swap cash,when old user want to withdraw.
+    /// @param usdiAmount usdi amount,in
+    /// @param expectToken expect token ,out
+    /// @return _assets actual out assets.
+    /// @return _amounts actual out token amounts.
     function swapCash(uint256 usdiAmount,address expectToken)
         external
         returns (address[] memory _assets, uint256[] memory _amounts);
