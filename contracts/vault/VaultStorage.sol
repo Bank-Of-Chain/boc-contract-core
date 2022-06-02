@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "hardhat/console.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/IterableIntMap.sol";
+import "../library/IterableUintMap.sol";
 import "../library/StableMath.sol";
 import "../token/USDi.sol";
 
@@ -13,14 +14,11 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-contract VaultStorage is
-    Initializable,
-    ReentrancyGuardUpgradeable,
-    AccessControlMixin
-{
+contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessControlMixin {
     using StableMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
+    using IterableUintMap for IterableUintMap.AddressToUintMap;
 
     struct StrategyParams {
         //last report timestamp
@@ -43,18 +41,8 @@ contract VaultStorage is
     event AddStrategies(address[] _strategies);
     event RemoveStrategies(address[] _strategies);
     event RemoveStrategyByForce(address _strategy);
-    event Mint(
-        address _account,
-        address[] _assets,
-        uint256[] _amounts,
-        uint256 _mintAmount
-    );
-    event Burn(
-        address _account,
-        address _asset,
-        uint256 _amount,
-        uint256 _actualAmount
-    );
+    event Mint(address _account, address[] _assets, uint256[] _amounts, uint256 _mintAmount);
+    event Burn(address _account, address _asset, uint256 _amount, uint256 _actualAmount);
     event BurnWithoutExchange(
         address _account,
         address[] _assets,
@@ -68,18 +56,8 @@ contract VaultStorage is
         address _distAsset,
         uint256 _distAmount
     );
-    event Redeem(
-        address _strategy,
-        uint256 _debtChangeAmount,
-        address[] _assets,
-        uint256[] _amounts
-    );
-    event LendToStrategy(
-        address indexed strategy,
-        address[] wants,
-        uint256[] amounts,
-        uint256 lendValue
-    );
+    event Redeem(address _strategy, uint256 _debtChangeAmount, address[] _assets, uint256[] _amounts);
+    event LendToStrategy(address indexed strategy, address[] wants, uint256[] amounts, uint256 lendValue);
     event RepayFromStrategy(
         address indexed strategy,
         uint256 strategyWithdrawValue,
@@ -155,15 +133,21 @@ contract VaultStorage is
     bytes32 constant adminImplPosition =
         0x3d78d3961e16fde088e2e26c1cfa163f5f8bb870709088dd68c87eb4091137e2;
 
+    //vault Buffer Address
+    address public vaultBufferAddress;
+    // Assets held in Vault from vault buffer
+    IterableUintMap.AddressToUintMap internal transferFromVaultBufferAssetsMap;
+    // redeem Assets where ad
+    IterableUintMap.AddressToUintMap internal redeemAssetsMap;
+    // Assets held in Vault from vault buffer
+    IterableUintMap.AddressToUintMap internal beforeAdjustPositionAssetsMap;
+
     /**
      * @dev set the implementation for the admin, this needs to be in a base class else we cannot set it
      * @param newImpl address of the implementation
      */
     function setAdminImpl(address newImpl) external onlyGovOrDelegate {
-        require(
-            AddressUpgradeable.isContract(newImpl),
-            "new implementation is not a contract"
-        );
+        require(AddressUpgradeable.isContract(newImpl), "new implementation is not a contract");
         bytes32 position = adminImplPosition;
         assembly {
             sstore(position, newImpl)

@@ -25,10 +25,7 @@ contract VaultAdmin is VaultStorage {
     }
 
     /// @notice set adjustPositionPeriod true when adjust position occurs, cannot remove add asset/strategy and cannot mint/burn.
-    function setAdjustPositionPeriod(bool _adjustPositionPeriod)
-        external
-        isKeeper
-    {
+    function setAdjustPositionPeriod(bool _adjustPositionPeriod) external isKeeper {
         adjustPositionPeriod = _adjustPositionPeriod;
         emit SetAdjustPositionPeriod(_adjustPositionPeriod);
     }
@@ -57,21 +54,20 @@ contract VaultAdmin is VaultStorage {
      * @dev Sets the treasuryAddress that can receive a portion of yield.
      *      Setting to the zero address disables this feature.
      */
-    function setTreasuryAddress(address _address)
-        external
-        onlyRole(BocRoles.GOV_ROLE)
-    {
+    function setTreasuryAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
         treasury = _address;
         emit TreasuryAddressChanged(_address);
     }
 
-    function setUSDiAddress(address _address)
-        external
-        onlyRole(BocRoles.GOV_ROLE)
-    {
+    function setUSDiAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
         require(address(usdi) == address(0), "USDi has been set");
         require(_address != address(0), "USDi ad is 0");
         usdi = USDi(_address);
+    }
+
+    function setVaultBufferAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
+        require(_address != address(0), "vaultBuffer ad is 0");
+        vaultBufferAddress = _address;
     }
 
     /**
@@ -84,10 +80,7 @@ contract VaultAdmin is VaultStorage {
         emit TrusteeFeeBpsChanged(_basis);
     }
 
-    function setStrategyEnforceChangeLimit(address _strategy, bool _enabled)
-        external
-        isVaultManager
-    {
+    function setStrategyEnforceChangeLimit(address _strategy, bool _enabled) external isVaultManager {
         strategies[_strategy].enforceChangeLimit = _enabled;
     }
 
@@ -135,11 +128,14 @@ contract VaultAdmin is VaultStorage {
     /// @notice Remove support for specific asset.
     function removeAsset(address _asset) external isVaultManager {
         require(assetSet.contains(_asset), "not exist");
+        require(
+            IERC20Upgradeable(_asset).balanceOf(vaultBufferAddress) == 0,
+            "vaultBuffer exit this asset"
+        );
         assetSet.remove(_asset);
         trackedAssetsMap.minus(_asset, 1);
         if (
-            trackedAssetsMap.get(_asset) <= 0 &&
-            IERC20Upgradeable(_asset).balanceOf(address(this)) == 0
+            trackedAssetsMap.get(_asset) <= 0 && IERC20Upgradeable(_asset).balanceOf(address(this)) == 0
         ) {
             trackedAssetsMap.remove(_asset);
             delete trackedAssetDecimalsMap[_asset];
@@ -151,10 +147,7 @@ contract VaultAdmin is VaultStorage {
     /// @dev The strategy added to the strategy list,
     ///      Vault may invest funds into the strategy,
     ///      and the strategy will invest the funds in the 3rd protocol
-    function addStrategy(StrategyAdd[] memory strategyAdds)
-        external
-        isVaultManager
-    {
+    function addStrategy(StrategyAdd[] memory strategyAdds) external isVaultManager {
         address[] memory _strategies = new address[](strategyAdds.length);
         for (uint256 i = 0; i < strategyAdds.length; i++) {
             StrategyAdd memory strategyAdd = strategyAdds[i];
@@ -166,18 +159,12 @@ contract VaultAdmin is VaultStorage {
                 "Strategy is invalid"
             );
             _strategies[i] = _strategy;
-            _addStrategy(
-                _strategy,
-                strategyAdd.profitLimitRatio,
-                strategyAdd.lossLimitRatio
-            );
+            _addStrategy(_strategy, strategyAdd.profitLimitRatio, strategyAdd.lossLimitRatio);
             address[] memory _wants = IStrategy(_strategy).getWants();
             for (uint256 j = 0; j < _wants.length; j++) {
                 trackedAssetsMap.plus(_wants[j], 1);
                 if (trackedAssetDecimalsMap[_wants[j]] == 0) {
-                    trackedAssetDecimalsMap[_wants[j]] = Helpers.getDecimals(
-                        _wants[j]
-                    );
+                    trackedAssetDecimalsMap[_wants[j]] = Helpers.getDecimals(_wants[j]);
                 }
             }
         }
@@ -206,10 +193,7 @@ contract VaultAdmin is VaultStorage {
 
     /// @notice Remove strategy from strategy list
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
-    function removeStrategy(address[] memory _strategies)
-        external
-        isVaultManager
-    {
+    function removeStrategy(address[] memory _strategies) external isVaultManager {
         for (uint256 i = 0; i < _strategies.length; i++) {
             require(strategySet.contains(_strategies[i]), "Strategy not exist");
             _removeStrategy(_strategies[i], false);
@@ -276,10 +260,7 @@ contract VaultAdmin is VaultStorage {
         emit SetWithdrawalQueue(queues);
     }
 
-    function removeStrategyFromQueue(address[] memory _strategies)
-        external
-        isKeeper
-    {
+    function removeStrategyFromQueue(address[] memory _strategies) external isKeeper {
         for (uint256 i = 0; i < _strategies.length; i++) {
             _removeStrategyFromQueue(_strategies[i]);
         }

@@ -9,6 +9,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
+import "./IVaultBuffer.sol";
 import "./VaultStorage.sol";
 import "../library/BocRoles.sol";
 import "../strategy/IStrategy.sol";
@@ -20,6 +21,7 @@ contract Vault is VaultStorage {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
+    using IterableUintMap for IterableUintMap.AddressToUintMap;
 
     function initialize(
         address _accessControlProxy,
@@ -117,9 +119,11 @@ contract Vault is VaultStorage {
             uint256 balance = balanceOfToken(_trackedAsset, address(this));
             if (balance > 0) {
                 _value =
-                    _value +
-                    IValueInterpreter(valueInterpreter)
-                        .calcCanonicalAssetValueInUsd(_trackedAsset, balance);
+                _value +
+                IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(
+                    _trackedAsset,
+                    balance
+                );
             }
         }
     }
@@ -131,8 +135,7 @@ contract Vault is VaultStorage {
     function totalValueInStrategies() public view returns (uint256 _value) {
         uint256 _strategyLength = strategySet.length();
         for (uint256 i = 0; i < _strategyLength; i++) {
-            uint256 estimatedTotalAssets = IStrategy(strategySet.at(i))
-                .estimatedTotalAssets();
+            uint256 estimatedTotalAssets = IStrategy(strategySet.at(i)).estimatedTotalAssets();
             if (estimatedTotalAssets > 0) {
                 _value = _value + estimatedTotalAssets;
             }
@@ -148,79 +151,59 @@ contract Vault is VaultStorage {
         require(strategySet.contains(_strategy), "strategy not exist");
     }
 
-    /// @notice estimate Minting USDi with stablecoins
+    /// @notice estimate Minting pending share
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
     /// @dev Support single asset or multi-assets
-    /// @return priceAdjustedDeposit usdi amount
+    /// @return _pending Share Amount
     function estimateMint(address[] memory _assets, uint256[] memory _amounts)
-        public
-        view
-        returns (uint256 priceAdjustedDeposit)
+    public
+    view
+    returns (uint256)
     {
+        _checkMintAssets(_assets, _amounts);
+        uint256 _pendingShareAmount = IVaultBuffer(vaultBufferAddress).estimateMint(_assets, _amounts);
+        return _pendingShareAmount;
+    }
+
+    function _checkMintAssets(address[] memory _assets, uint256[] memory _amounts) private view {
+        uint256 _assetsLength = _assets.length;
+        uint256 _amountsLength = _amounts.length;
         require(
-            _assets.length > 0 &&
-                _amounts.length > 0 &&
-                _assets.length == _amounts.length,
+            _assetsLength > 0 && _amountsLength > 0 && _assetsLength == _amountsLength,
             "Assets and amounts must be equal in length and not empty"
         );
 
-        for (uint256 i = 0; i < _assets.length; i++) {
+        for (uint256 i = 0; i < _assetsLength; i++) {
             checkIsSupportAsset(_assets[i]);
             require(_amounts[i] > 0, "Amount must be greater than 0");
         }
-
-        for (uint256 i = 0; i < _assets.length; i++) {
-            address _asset = _assets[i];
-            uint256 price = _priceUSDMint(_asset);
-            uint256 assetDecimals = trackedAssetDecimalsMap[_asset];
-            priceAdjustedDeposit =
-                priceAdjustedDeposit +
-                (_amounts[i].mulTruncateScale(price, 10**assetDecimals));
-        }
-        return priceAdjustedDeposit;
     }
 
-    /// @notice Minting USDi with stablecoins
+    /// @notice Minting share with stablecoins
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
-    /// @param _minimumUsdiAmount Minimum USDI to mint
     /// @dev Support single asset or multi-assets
+    /// @return shareAmount
     function mint(
         address[] memory _assets,
         uint256[] memory _amounts,
-        uint256 _minimumUsdiAmount
-    )
-        external
-        whenNotEmergency
-        whenNotAdjustPosition
-        nonReentrant
-        returns (uint256)
-    {
-        uint256 priceAdjustedDeposit = estimateMint(_assets, _amounts);
-        if (_minimumUsdiAmount > 0) {
-            require(
-                priceAdjustedDeposit >= _minimumUsdiAmount,
-                "Mint amount lower than minimum"
-            );
+        uint256 _minimumAmount
+    ) external whenNotEmergency whenNotAdjustPosition nonReentrant returns (uint256) {
+        _checkMintAssets(_assets, _amounts);
+        uint256 _shareAmount = IVaultBuffer(vaultBufferAddress).mint(msg.sender, _assets, _amounts);
+        if (_minimumAmount > 0) {
+            require(_shareAmount >= _minimumAmount, "Mint amount lower than minimum");
         }
-
-        // Rebase must happen before any transfers occur.
-        if (priceAdjustedDeposit >= rebaseThreshold && !rebasePaused) {
-            _rebase();
-        }
-
-        // Mint matching USDi
-        usdi.mint(msg.sender, priceAdjustedDeposit);
 
         for (uint256 i = 0; i < _assets.length; i++) {
             // Transfer the deposited coins to the vault
             IERC20Upgradeable asset = IERC20Upgradeable(_assets[i]);
-            asset.safeTransferFrom(msg.sender, address(this), _amounts[i]);
+            asset.safeTransferFrom(msg.sender, vaultBufferAddress, _amounts[i]);
         }
 
-        emit Mint(msg.sender, _assets, _amounts, priceAdjustedDeposit);
-        return priceAdjustedDeposit;
+        emit Mint(msg.sender, _assets, _amounts, _shareAmount);
+        return _shareAmount;
     }
 
     /// @notice withdraw from strategy queue
@@ -245,9 +228,10 @@ contract Vault is VaultStorage {
                 needWithdrawValue = 0;
             }
             // console.log('start withdrawn from %s numerator %d denominator %d', _strategy, strategyWithdrawValue, strategyTotalValue);
-            (address[] memory _assets, uint256[] memory _amounts) = IStrategy(
-                _strategy
-            ).repay(strategyWithdrawValue, strategyTotalValue);
+            (address[] memory _assets, uint256[] memory _amounts) = IStrategy(_strategy).repay(
+                strategyWithdrawValue,
+                strategyTotalValue
+            );
             emit RepayFromStrategy(
                 _strategy,
                 strategyWithdrawValue,
@@ -266,6 +250,53 @@ contract Vault is VaultStorage {
         totalDebt -= totalWithdrawValue;
     }
 
+
+
+    /// @notice withdraw from strategy queue
+    function _repayFromVaultBuffer(
+        uint256 _needTransferValue,
+        uint256[] memory _assetPrices,
+        uint256[] memory _assetDecimals,
+        address[] memory _trackedAssets
+    ) internal returns (uint256){
+        address[] memory _transferAssets = _trackedAssets;
+        uint256 _transferAssetsLength = _transferAssets.length;
+        uint256[] memory _amounts = new uint256[](_transferAssetsLength);
+        uint256 _totalTransferValue;
+        //price in vault
+        for (uint256 i = 0; i < _transferAssetsLength; i++) {
+            address _trackedAsset = _transferAssets[i];
+            if (assetSet.contains(_trackedAsset)) {
+                uint256 _assetBalancesInVaultBuffer = balanceOfToken(_trackedAsset, vaultBufferAddress);
+                if (_assetBalancesInVaultBuffer > 0) {
+                    uint256 _value = _calculateAssetValue(
+                        _assetPrices,
+                        _assetDecimals,
+                        i,
+                        _trackedAsset,
+                        _assetBalancesInVaultBuffer
+                    );
+
+                    if (_needTransferValue > _value) {
+                        _totalTransferValue = _totalTransferValue + _value;
+                        _needTransferValue = _needTransferValue - _value;
+                        _amounts[i] = _assetBalancesInVaultBuffer;
+                    } else {
+                        _totalTransferValue = _totalTransferValue + _needTransferValue;
+                        _needTransferValue = 0;
+                        _amounts[i] = (_assetBalancesInVaultBuffer * _needTransferValue) / _value;
+                        break;
+                    }
+                }
+            }
+        }
+        if (_totalTransferValue > 0) {
+            IVaultBuffer(vaultBufferAddress).transferCashToVault(_transferAssets, _amounts);
+            usdi.mint(vaultBufferAddress, _totalTransferValue);
+        }
+        return _totalTransferValue;
+    }
+
     /// @notice calculate need transfer amount from vault ,set to outputs
     function _calculateOutputs(
         uint256 _needTransferAmount,
@@ -279,54 +310,64 @@ contract Vault is VaultStorage {
         uint256[] memory outputs = new uint256[](_trackedAssetsLength);
 
         (
-            uint256[] memory outPutAssetPriceSortedAssetIndex,
-            uint256[] memory outPutAssetBalance,
-            uint256 _sortedAssetCount
+        uint256[] memory outPutAssetPriceSortedAssetIndex,
+        uint256[] memory outPutAssetBalance,
+        uint256 _sortedAssetCount
         ) = _calculateSortedAssets(_trackedAssetsCopy, _assetPrices);
 
         for (uint256 i = 0; i < _sortedAssetCount; i++) {
-            uint256 index = outPutAssetPriceSortedAssetIndex[i];
-            address trackedAsset = _trackedAssetsCopy[index];
-            uint256 balance = outPutAssetBalance[index];
+            uint256 _assetIndex = outPutAssetPriceSortedAssetIndex[i];
+            address _trackedAsset = _trackedAssetsCopy[_assetIndex];
+            uint256 _balance = outPutAssetBalance[_assetIndex];
 
-            (, uint256 _assetRedeemPrice) = _getAssetRedeemPrice(
+            uint256 _value = _calculateAssetValue(
                 _assetPrices,
-                index,
-                trackedAsset
-            );
-            uint256 _assetDecimal = _getAssetDecimals(
                 _assetDecimals,
-                index,
-                trackedAsset
+                _assetIndex,
+                _trackedAsset,
+                _balance
             );
 
-            uint256 _value = balance.mulTruncateScale(
-                _assetRedeemPrice,
-                10**_assetDecimal
-            );
             if (_value >= _needTransferAmountCopy) {
-                outputs[index] = (balance * _needTransferAmountCopy) / _value;
+                outputs[_assetIndex] = (_balance * _needTransferAmountCopy) / _value;
                 break;
             } else {
-                outputs[index] = balance;
+                outputs[_assetIndex] = _balance;
                 _needTransferAmountCopy = _needTransferAmountCopy - _value;
             }
         }
         return outputs;
     }
 
+    /// @notice calculate Asset value in usd by oracle price
+    /// @param _assetPrices array of asset price
+    /// @param _assetDecimals array of asset decimal
+    /// @param _assetIndex index of the asset in trackedAssets array
+    /// @param _trackedAsset address of the asset
+    /// @return shareAmount
+    function _calculateAssetValue(
+        uint256[] memory _assetPrices,
+        uint256[] memory _assetDecimals,
+        uint256 _assetIndex,
+        address _trackedAsset,
+        uint256 _balance
+    ) private view returns (uint256) {
+        uint256 _assetPrice = _getAssetPrice(_assetPrices, _assetIndex, _trackedAsset);
+        uint256 _assetDecimal = _getAssetDecimals(_assetDecimals, _assetIndex, _trackedAsset);
+
+        uint256 _value = _balance.mulTruncateScale(_assetPrice, 10 ** _assetDecimal);
+        return _value;
+    }
+
     /// @notice calculate need transfer amount from vault ,set to outputs order by oracle price
-    function _calculateSortedAssets(
-        address[] memory _trackedAssets,
-        uint256[] memory _assetPrices
+    function _calculateSortedAssets(address[] memory _trackedAssets, uint256[] memory _assetPrices)
+    internal
+    view
+    returns (
+        uint256[] memory outPutAssetPriceSortedAssetIndex,
+        uint256[] memory outPutAssetBalance,
+        uint256 _sortedAssetCount
     )
-        internal
-        view
-        returns (
-            uint256[] memory outPutAssetPriceSortedAssetIndex,
-            uint256[] memory outPutAssetBalance,
-            uint256 _sortedAssetCount
-        )
     {
         address[] memory _trackedAssetsCopy = _trackedAssets;
         uint256 _trackedAssetsLength = _trackedAssetsCopy.length;
@@ -339,28 +380,18 @@ contract Vault is VaultStorage {
             if (balance > 0) {
                 outPutAssetBalance[i] = balance;
                 outPutAssetPriceSortedAssetIndex[_sortedAssetCount] = i;
-                (uint256 _assetPrice, ) = _getAssetRedeemPrice(
-                    _assetPrices,
-                    i,
-                    trackedAsset
-                );
+                uint256 _assetPrice = _getAssetPrice(_assetPrices, i, trackedAsset);
                 for (uint256 j = 0; j < _sortedAssetCount; j++) {
-                    uint256 _currentAssetIndex = outPutAssetPriceSortedAssetIndex[
-                            j
-                        ];
-                    (
-                        uint256 _currentSortedIndexAssetPrice,
+                    uint256 _currentAssetIndex = outPutAssetPriceSortedAssetIndex[j];
 
-                    ) = _getAssetRedeemPrice(
-                            _assetPrices,
-                            _currentAssetIndex,
-                            _trackedAssetsCopy[_currentAssetIndex]
-                        );
+                    uint256 _currentSortedIndexAssetPrice = _getAssetPrice(
+                        _assetPrices,
+                        _currentAssetIndex,
+                        _trackedAssetsCopy[_currentAssetIndex]
+                    );
                     if (_assetPrice >= _currentSortedIndexAssetPrice) {
                         for (uint256 k = _sortedAssetCount; k > j; k--) {
-                            outPutAssetPriceSortedAssetIndex[
-                                k
-                            ] = outPutAssetPriceSortedAssetIndex[k - 1];
+                            outPutAssetPriceSortedAssetIndex[k] = outPutAssetPriceSortedAssetIndex[k - 1];
                         }
                         outPutAssetPriceSortedAssetIndex[j] = i;
                         break;
@@ -380,82 +411,89 @@ contract Vault is VaultStorage {
         address[] memory _trackedAssets,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
     )
-        internal
-        returns (
-            address[] memory _assets,
-            uint256[] memory _amounts,
-            uint256 _actualAmount
-        )
+    internal
+    returns (
+        address[] memory _assets,
+        uint256[] memory _amounts,
+        uint256 _actualAmount
+    )
     {
-        address _assetCopy = _asset;
-        uint256[] memory _assetPricesCopy = _assetPrices;
+        (_assets, _amounts) = _exchangeAndCalculateAmounts(
+            _asset,
+            _outputs,
+            _assetPrices,
+            _assetDecimals,
+            _trackedAssets,
+            _exchangeTokens
+        );
+
+        for (uint256 i = 0; i < _trackedAssets.length; i++) {
+            uint256 _amount = _amounts[i];
+            if (_amount > 0) {
+                address _trackedAsset = _assets[i];
+                uint256 _value = _calculateAssetValue(
+                    _assetPrices,
+                    _assetDecimals,
+                    i,
+                    _trackedAsset,
+                    _amount
+                );
+                _actualAmount = _actualAmount + _value;
+                IERC20Upgradeable(_trackedAsset).safeTransfer(msg.sender, _amount);
+            }
+        }
+    }
+
+    function _exchangeAndCalculateAmounts(
+        address _asset,
+        uint256[] memory _outputs,
+        uint256[] memory _assetPrices,
+        uint256[] memory _assetDecimals,
+        address[] memory _trackedAssets,
+        IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
+    ) internal returns (address[] memory _assets, uint256[] memory _amounts) {
         uint256 _trackedAssetsLength = _trackedAssets.length;
 
         _assets = new address[](_trackedAssetsLength);
         _amounts = new uint256[](_trackedAssetsLength);
         uint256 _toTokenIndex = _trackedAssetsLength;
         uint256 _toTokenAmount;
-        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
-            _assets[i] = _trackedAssets[i];
-            if (
-                _toTokenIndex == _trackedAssetsLength &&
-                _assets[i] == _assetCopy
-            ) {
-                _toTokenIndex = i;
-            }
-            address withdrawToken = _assets[i];
-            uint256 withdrawAmount = _outputs[i];
-            if (withdrawAmount > 0) {
-                if (withdrawToken == _assetCopy) {
-                    _toTokenAmount = _toTokenAmount + withdrawAmount;
-                } else {
-                    _amounts[i] = withdrawAmount;
-                    for (uint256 j = 0; j < _exchangeTokens.length; j++) {
-                        IExchangeAggregator.ExchangeToken
-                            memory exchangeToken = _exchangeTokens[j];
-                        if (
-                            exchangeToken.fromToken == withdrawToken &&
-                            exchangeToken.toToken == _assetCopy
-                        ) {
-                            _amounts[i] = 0;
-                            uint256 toAmount = _exchange(
-                                exchangeToken.fromToken,
-                                exchangeToken.toToken,
-                                withdrawAmount,
-                                exchangeToken.exchangeParam
-                            );
-                            // console.log('withdraw exchange token %s amount %d toAmount %d', withdrawAmount, withdrawAmount, toAmount);
-                            _toTokenAmount = _toTokenAmount + toAmount;
-                            break;
+        {
+            for (uint256 i = 0; i < _trackedAssetsLength; i++) {
+                _assets[i] = _trackedAssets[i];
+                if (_toTokenIndex == _trackedAssetsLength && _assets[i] == _asset) {
+                    _toTokenIndex = i;
+                }
+                address withdrawToken = _assets[i];
+                uint256 withdrawAmount = _outputs[i];
+                if (withdrawAmount > 0) {
+                    if (withdrawToken == _asset) {
+                        _toTokenAmount = _toTokenAmount + withdrawAmount;
+                    } else {
+                        _amounts[i] = withdrawAmount;
+                        for (uint256 j = 0; j < _exchangeTokens.length; j++) {
+                            IExchangeAggregator.ExchangeToken memory exchangeToken = _exchangeTokens[j];
+                            if (
+                                exchangeToken.fromToken == withdrawToken &&
+                                exchangeToken.toToken == _asset
+                            ) {
+                                _amounts[i] = 0;
+                                uint256 toAmount = _exchange(
+                                    exchangeToken.fromToken,
+                                    exchangeToken.toToken,
+                                    withdrawAmount,
+                                    exchangeToken.exchangeParam
+                                );
+                                // console.log('withdraw exchange token %s amount %d toAmount %d', withdrawAmount, withdrawAmount, toAmount);
+                                _toTokenAmount = _toTokenAmount + toAmount;
+                                break;
+                            }
                         }
                     }
                 }
             }
         }
         _amounts[_toTokenIndex] = _toTokenAmount;
-        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
-            uint256 _amount = _amounts[i];
-            if (_amount > 0) {
-                address _trackedAsset = _assets[i];
-                uint256 _toDecimal = _getAssetDecimals(
-                    _assetDecimals,
-                    i,
-                    _trackedAsset
-                );
-                (uint256 _toPrice, ) = _getAssetRedeemPrice(
-                    _assetPricesCopy,
-                    i,
-                    _trackedAsset
-                );
-                _actualAmount =
-                    _actualAmount +
-                    _amount.mulTruncateScale(_toPrice, 10**_toDecimal);
-                IERC20Upgradeable(_trackedAsset).safeTransfer(
-                    msg.sender,
-                    _amount
-                );
-            }
-        }
     }
 
     // @notice without exchange token and transfer form vault to user
@@ -465,12 +503,12 @@ contract Vault is VaultStorage {
         uint256[] memory _assetDecimals,
         address[] memory _trackedAssets
     )
-        internal
-        returns (
-            address[] memory _assets,
-            uint256[] memory _amounts,
-            uint256 _actualAmount
-        )
+    internal
+    returns (
+        address[] memory _assets,
+        uint256[] memory _amounts,
+        uint256 _actualAmount
+    )
     {
         _assets = _trackedAssets;
         _amounts = _outputs;
@@ -478,18 +516,15 @@ contract Vault is VaultStorage {
             uint256 _amount = _amounts[i];
             if (_amount > 0) {
                 address _trackedAsset = _assets[i];
-                (uint256 _toPrice, ) = _getAssetRedeemPrice(
+                uint256 _value = _calculateAssetValue(
                     _assetPrices,
+                    _assetDecimals,
                     i,
-                    _trackedAsset
-                );
-                _actualAmount =
-                    _actualAmount +
-                    _amount.mulTruncateScale(_toPrice, 10**_assetDecimals[i]);
-                IERC20Upgradeable(_trackedAsset).safeTransfer(
-                    msg.sender,
+                    _trackedAsset,
                     _amount
                 );
+                _actualAmount = _actualAmount + _value;
+                IERC20Upgradeable(_trackedAsset).safeTransfer(msg.sender, _amount);
             }
         }
     }
@@ -505,14 +540,13 @@ contract Vault is VaultStorage {
         bool _needExchange,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
     )
-        external
-        whenNotEmergency
-        whenNotAdjustPosition
-        nonReentrant
-        returns (address[] memory _assets, uint256[] memory _amounts)
+    external
+    whenNotEmergency
+    whenNotAdjustPosition
+    nonReentrant
+    returns (address[] memory _assets, uint256[] memory _amounts)
     {
-        IExchangeAggregator.ExchangeToken[]
-            memory _exchangeTokensCopy = _exchangeTokens;
+        IExchangeAggregator.ExchangeToken[] memory _exchangeTokensCopy = _exchangeTokens;
         {
             require(
                 _amount > 0 && _amount <= usdi.balanceOf(msg.sender),
@@ -523,8 +557,7 @@ contract Vault is VaultStorage {
             for (uint256 i = 0; i < _exchangeTokensCopy.length; i++) {
                 require(
                     _exchangeTokensCopy[i].toToken == _asset ||
-                        _exchangeTokensCopy[i].toToken ==
-                        _exchangeTokensCopy[i].fromToken,
+                    _exchangeTokensCopy[i].toToken == _exchangeTokensCopy[i].fromToken,
                     "toToken is invalid"
                 );
             }
@@ -541,40 +574,32 @@ contract Vault is VaultStorage {
         address[] memory _trackedAssets = _getTrackedAssets();
         uint256[] memory _assetPrices = new uint256[](_trackedAssets.length);
         uint256[] memory _assetDecimals = new uint256[](_trackedAssets.length);
-        uint256 totalAssetInVault = 0;
+        uint256 _totalAssetInVault = 0;
         {
-            //redeem price in vault
+            //price in vault
             for (uint256 i = 0; i < _trackedAssets.length; i++) {
                 address _trackedAsset = _trackedAssets[i];
-                uint256 _assetBalancesInVault = balanceOfToken(
-                    _trackedAsset,
-                    address(this)
-                );
+                uint256 _assetBalancesInVault = balanceOfToken(_trackedAsset, address(this));
                 if (_assetBalancesInVault > 0) {
-                    (, uint256 _assetRedeemPrice) = _getAssetRedeemPrice(
+                    uint256 _value = _calculateAssetValue(
                         _assetPrices,
-                        i,
-                        _trackedAsset
-                    );
-                    uint256 _assetDecimal = _getAssetDecimals(
                         _assetDecimals,
                         i,
-                        _trackedAsset
+                        _trackedAsset,
+                        _assetBalancesInVault
                     );
-                    totalAssetInVault =
-                        totalAssetInVault +
-                        (
-                            _assetBalancesInVault.mulTruncateScale(
-                                _assetRedeemPrice,
-                                10**_assetDecimal
-                            )
-                        );
+                    _totalAssetInVault = _totalAssetInVault + _value;
                 }
+            }
+            // vault not enough,withdraw from vault buffer
+            if (_totalAssetInVault < _actualAmount) {
+                uint256 _totalTransferValue =  _repayFromVaultBuffer(_actualAmount - _totalAssetInVault, _assetPrices, _assetDecimals, _trackedAssets);
+                _totalAssetInVault = _totalAssetInVault + _totalTransferValue;
             }
 
             // vault not enough,withdraw from withdraw queue strategy
-            if (totalAssetInVault < _actualAmount) {
-                _repayFromWithdrawQueue(_actualAmount - totalAssetInVault);
+            if (_totalAssetInVault < _actualAmount) {
+                _repayFromWithdrawQueue(_actualAmount - _totalAssetInVault);
             }
         }
 
@@ -588,11 +613,7 @@ contract Vault is VaultStorage {
                 _assetDecimals
             );
             if (_needExchange) {
-                (
-                    _assets,
-                    _amounts,
-                    _actuallyReceivedAmount
-                ) = _exchangeAndTransfer(
+                (_assets, _amounts, _actuallyReceivedAmount) = _exchangeAndTransfer(
                     _asset,
                     outputs,
                     _assetPrices,
@@ -601,11 +622,7 @@ contract Vault is VaultStorage {
                     _exchangeTokensCopy
                 );
             } else {
-                (
-                    _assets,
-                    _amounts,
-                    _actuallyReceivedAmount
-                ) = _withoutExchangeTransfer(
+                (_assets, _amounts, _actuallyReceivedAmount) = _withoutExchangeTransfer(
                     outputs,
                     _assetPrices,
                     _assetDecimals,
@@ -615,17 +632,22 @@ contract Vault is VaultStorage {
         }
 
         if (_minimumUsdAmount > 0) {
-            require(
-                _actuallyReceivedAmount >= _minimumUsdAmount,
-                "amount lower than minimum"
-            );
+            require(_actuallyReceivedAmount >= _minimumUsdAmount, "amount lower than minimum");
         }
-        _burnUSDIAndCheckRebase(
-            _asset,
-            _actualAmount + _redeemFee,
-            _actuallyReceivedAmount
-        );
+        _burnUSDIAndCheckRebase(_asset, _actualAmount + _redeemFee, _actuallyReceivedAmount);
     }
+
+    /// @notice Vault and vault buffer holds asset value directly in USD
+    function valueOfTrackedTokensIncludeVaultBuffer() external view returns (uint256 _totalValue) {}
+
+    /// @notice Vault and vault buffer total asset in USD
+    function totalAssetsIncludeVaultBuffer() external view returns (uint256) {}
+
+    /// @notice start  Adjust  Position
+    function startAdjustPosition() external {}
+
+    /// @notice end  Adjust Position
+    function endAdjustPosition() external {}
 
     // @notice burn usdi and check rebase
     function _burnUSDIAndCheckRebase(
@@ -662,20 +684,17 @@ contract Vault is VaultStorage {
 
     /**
      * @notice Get an array of the supported asset prices in USD.
-     * @return price prices in USD (1e18)
-     * @return redeemPrice redeem prices in USD (1e18)
+     * @return _price prices in USD (1e18)
      */
-    function _getAssetRedeemPrice(
+    function _getAssetPrice(
         uint256[] memory _assetPrices,
         uint256 _assetIndex,
         address _asset
-    ) internal view returns (uint256 price, uint256 redeemPrice) {
+    ) internal view returns (uint256 _price) {
         if (_assetPrices[_assetIndex] == 0) {
-            (_assetPrices[_assetIndex], redeemPrice) = priceUSDRedeem(_asset);
-        } else {
-            redeemPrice = priceInRedeem(_assetPrices[_assetIndex]);
+            _assetPrices[_assetIndex] = _priceUSD(_asset);
         }
-        price = _assetPrices[_assetIndex];
+        _price = _assetPrices[_assetIndex];
     }
 
     /// @notice Change USDi supply with Vault total assets.
@@ -699,11 +718,7 @@ contract Vault is VaultStorage {
         // Yield fee collection
         address _treasuryAddress = treasury;
         // gas savings
-        if (
-            trusteeFeeBps > 0 &&
-            _treasuryAddress != address(0) &&
-            (vaultValue > usdiSupply)
-        ) {
+        if (trusteeFeeBps > 0 && _treasuryAddress != address(0) && (vaultValue > usdiSupply)) {
             uint256 yield = vaultValue - usdiSupply;
             uint256 fee = (yield * trusteeFeeBps) / 10000;
             require(yield > fee, "Fee must not be greater than yield");
@@ -721,20 +736,17 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Allocate funds in Vault to strategies.
-    function lend(
-        address _strategy,
-        IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens
-    )
-        external
-        isKeeper
-        whenNotEmergency
-        isActiveStrategy(_strategy)
-        nonReentrant
+    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens)
+    external
+    isKeeper
+    whenNotEmergency
+    isActiveStrategy(_strategy)
+    nonReentrant
     {
         (
-            address[] memory _wants,
-            uint256[] memory _ratios,
-            uint256[] memory toAmounts
+        address[] memory _wants,
+        uint256[] memory _ratios,
+        uint256[] memory toAmounts
         ) = _checkAndExchange(_strategy, _exchangeTokens);
         //Definition rule 0 means unconstrained, currencies that do not participate are not in the returned wants
         uint256 minProductIndex = 0;
@@ -750,8 +762,7 @@ contract Vault is VaultStorage {
                     //minProductIndex is assigned to the first index whose proportion is not 0
                     minProductIndex = i;
                 } else if (
-                    toAmounts[minProductIndex] * _ratios[i] >
-                    toAmounts[i] * _ratios[minProductIndex]
+                    toAmounts[minProductIndex] * _ratios[i] > toAmounts[i] * _ratios[minProductIndex]
                 ) {
                     minProductIndex = i;
                 }
@@ -772,9 +783,11 @@ contract Vault is VaultStorage {
                     _actualAmount = (_ratios[i] * minMount) / minAspect;
                 }
                 lendValue =
-                    lendValue +
-                    IValueInterpreter(valueInterpreter)
-                        .calcCanonicalAssetValueInUsd(_want, _actualAmount);
+                lendValue +
+                IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(
+                    _want,
+                    _actualAmount
+                );
                 toAmounts[i] = _actualAmount;
                 // console.log('token %s actual amount %d', _wants[i], actualAmount);
                 IERC20Upgradeable(_want).safeTransfer(_strategy, _actualAmount);
@@ -793,12 +806,12 @@ contract Vault is VaultStorage {
         address _strategy,
         IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens
     )
-        internal
-        returns (
-            address[] memory _wants,
-            uint256[] memory _ratios,
-            uint256[] memory toAmounts
-        )
+    internal
+    returns (
+        address[] memory _wants,
+        uint256[] memory _ratios,
+        uint256[] memory toAmounts
+    )
     {
         (_wants, _ratios) = IStrategy(_strategy).getWantsInfo();
         uint256 _wantsLength = _wants.length;
@@ -817,8 +830,7 @@ contract Vault is VaultStorage {
 
         for (uint256 j = 0; j < _wantsLength; j++) {
             for (uint256 i = 0; i < _exchangeTokensLength; i++) {
-                IExchangeAggregator.ExchangeToken
-                    memory exchangeToken = _exchangeTokens[i];
+                IExchangeAggregator.ExchangeToken memory exchangeToken = _exchangeTokens[i];
 
                 // not strategy need token,skip
                 if (_wants[j] != exchangeToken.toToken) continue;
@@ -860,13 +872,12 @@ contract Vault is VaultStorage {
     ) internal returns (uint256 exchangeAmount) {
         require(trackedAssetsMap.contains(_toToken), "!T");
 
-        IExchangeAdapter.SwapDescription
-            memory swapDescription = IExchangeAdapter.SwapDescription({
-                amount: _amount,
-                srcToken: _fromToken,
-                dstToken: _toToken,
-                receiver: address(this)
-            });
+        IExchangeAdapter.SwapDescription memory swapDescription = IExchangeAdapter.SwapDescription({
+        amount : _amount,
+        srcToken : _fromToken,
+        dstToken : _toToken,
+        receiver : address(this)
+        });
         IERC20Upgradeable(_fromToken).safeApprove(exchangeManager, _amount);
         exchangeAmount = IExchangeAggregator(exchangeManager).swap(
             exchangeParam.platform,
@@ -874,32 +885,27 @@ contract Vault is VaultStorage {
             exchangeParam.encodeExchangeArgs,
             swapDescription
         );
-        uint256 oracleExpectedAmount = IValueInterpreter(valueInterpreter)
-            .calcCanonicalAssetValue(_fromToken, _amount, _toToken);
-        require(
-            exchangeAmount >=
-                (oracleExpectedAmount *
-                    (MAX_BPS -
-                        exchangeParam.slippage -
-                        exchangeParam.oracleAdditionalSlippage)) /
-                    MAX_BPS,
-            "OL"
-        );
-        emit Exchange(
-            exchangeParam.platform,
+        uint256 oracleExpectedAmount = IValueInterpreter(valueInterpreter).calcCanonicalAssetValue(
             _fromToken,
             _amount,
-            _toToken,
-            exchangeAmount
+            _toToken
         );
+        require(
+            exchangeAmount >=
+            (oracleExpectedAmount *
+            (MAX_BPS - exchangeParam.slippage - exchangeParam.oracleAdditionalSlippage)) /
+            MAX_BPS,
+            "OL"
+        );
+        emit Exchange(exchangeParam.platform, _fromToken, _amount, _toToken, exchangeAmount);
     }
 
     /// @notice redeem the funds from specified strategy.
     function redeem(address _strategy, uint256 _amount)
-        external
-        isKeeper
-        isActiveStrategy(_strategy)
-        nonReentrant
+    external
+    isKeeper
+    isActiveStrategy(_strategy)
+    nonReentrant
     {
         uint256 strategyAssetValue = strategies[_strategy].totalDebt;
         require(_amount <= strategyAssetValue);
@@ -925,8 +931,7 @@ contract Vault is VaultStorage {
     ) private {
         StrategyParams memory strategyParam = strategies[_strategy];
         uint256 lastStrategyTotalDebt = strategyParam.totalDebt + lendValue;
-        uint256 nowStrategyTotalDebt = IStrategy(_strategy)
-            .estimatedTotalAssets();
+        uint256 nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();
         uint256 gain = 0;
         uint256 loss = 0;
 
@@ -939,18 +944,11 @@ contract Vault is VaultStorage {
         if (strategyParam.enforceChangeLimit) {
             if (gain > 0) {
                 require(
-                    gain <=
-                        ((lastStrategyTotalDebt *
-                            strategyParam.profitLimitRatio) / MAX_BPS),
+                    gain <= ((lastStrategyTotalDebt * strategyParam.profitLimitRatio) / MAX_BPS),
                     "GL"
                 );
             } else if (loss > 0) {
-                require(
-                    loss <=
-                        ((lastStrategyTotalDebt *
-                            strategyParam.lossLimitRatio) / MAX_BPS),
-                    "LL"
-                );
+                require(loss <= ((lastStrategyTotalDebt * strategyParam.lossLimitRatio) / MAX_BPS), "LL");
             }
         } else {
             strategies[_strategy].enforceChangeLimit = true;
@@ -958,11 +956,7 @@ contract Vault is VaultStorage {
         }
 
         strategies[_strategy].totalDebt = nowStrategyTotalDebt;
-        totalDebt =
-            totalDebt +
-            nowStrategyTotalDebt +
-            lendValue -
-            lastStrategyTotalDebt;
+        totalDebt = totalDebt + nowStrategyTotalDebt + lendValue - lastStrategyTotalDebt;
 
         strategies[_strategy].lastReport = block.timestamp;
         //        lastReport = block.timestamp;
@@ -978,18 +972,15 @@ contract Vault is VaultStorage {
         );
     }
 
-    function report(
-        address[] memory _rewardTokens,
-        uint256[] memory _claimAmounts
-    ) external isActiveStrategy(msg.sender) nonReentrant {
+    function report(address[] memory _rewardTokens, uint256[] memory _claimAmounts)
+    external
+    isActiveStrategy(msg.sender)
+    nonReentrant
+    {
         _report(msg.sender, _rewardTokens, _claimAmounts, 0);
     }
 
-    function balanceOfToken(address tokenAddress, address owner)
-        internal
-        view
-        returns (uint256)
-    {
+    function balanceOfToken(address tokenAddress, address owner) internal view returns (uint256) {
         return IERC20Upgradeable(tokenAddress).balanceOf(owner);
     }
 
@@ -998,46 +989,12 @@ contract Vault is VaultStorage {
     ****************************************/
 
     /**
-     * @dev Returns the total price in 18 digit USD for a given asset.
-     *      Never goes above 1, since that is how we price mints
-     * @param asset address of the asset
-     * @return uint256 USD price of 1 of the asset, in 18 decimal fixed
+     * @dev Returns the total price in 18 digit USD for a given asset
+     * @param _asset Address of the asset
+     * @return _price USD price of 1 of the asset, in 18 decimal fixed
      */
-    function _priceUSDMint(address asset) internal view returns (uint256) {
-        uint256 price = IValueInterpreter(valueInterpreter).price(asset);
-        if (price > 1e18) {
-            price = 1e18;
-        }
-        return price;
-    }
-
-    /**
-     * @dev Returns the total price in 18 digit USD for a given asset.
-     *      Never goes below 1, since that is how we price redeems
-     * @param asset Address of the asset
-     * @return price USD price of 1 of the asset, in 18 decimal fixed
-     * @return redeemPrice USD redeem price of 1 of the asset, in 18 decimal fixed
-     */
-    function priceUSDRedeem(address asset)
-        internal
-        view
-        returns (uint256 price, uint256 redeemPrice)
-    {
-        price = IValueInterpreter(valueInterpreter).price(asset);
-        redeemPrice = priceInRedeem(price);
-    }
-
-    /**
-     * @dev Returns the total price in 18 digit USD for a given price.
-     *      Never goes below 1, since that is how we price redeems
-     * @param price oracle price of the asset
-     * @return uint256 USD price of 1 of the asset, in 18 decimal fixed
-     */
-    function priceInRedeem(uint256 price) internal view returns (uint256) {
-        if (price < 1e18) {
-            return 1e18;
-        }
-        return price;
+    function _priceUSD(address _asset) internal view returns (uint256 _price) {
+        _price = IValueInterpreter(valueInterpreter).price(_asset);
     }
 
     /**
@@ -1048,23 +1005,16 @@ contract Vault is VaultStorage {
         bytes32 slot = adminImplPosition;
 
         assembly {
-            // Copy msg.data. We take full control of memory in this inline assembly
-            // block because it will not return to Solidity code. We overwrite the
-            // Solidity scratch pad at memory position 0.
+        // Copy msg.data. We take full control of memory in this inline assembly
+        // block because it will not return to Solidity code. We overwrite the
+        // Solidity scratch pad at memory position 0.
             calldatacopy(0, 0, calldatasize())
 
-            // Call the implementation.
-            // out and outsize are 0 because we don't know the size yet.
-            let result := delegatecall(
-                gas(),
-                sload(slot),
-                0,
-                calldatasize(),
-                0,
-                0
-            )
+        // Call the implementation.
+        // out and outsize are 0 because we don't know the size yet.
+            let result := delegatecall(gas(), sload(slot), 0, calldatasize(), 0, 0)
 
-            // Copy the returned data.
+        // Copy the returned data.
             returndatacopy(0, 0, returndatasize())
 
             switch result
@@ -1073,7 +1023,7 @@ contract Vault is VaultStorage {
                 revert(0, returndatasize())
             }
             default {
-                return(0, returndatasize())
+                return (0, returndatasize())
             }
         }
     }

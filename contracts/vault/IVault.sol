@@ -27,18 +27,8 @@ interface IVault {
     event AddStrategies(address[] _strategies);
     event RemoveStrategies(address[] _strategies);
     event RemoveStrategyByForce(address _strategy);
-    event Mint(
-        address _account,
-        address[] _assets,
-        uint256[] _amounts,
-        uint256 _mintAmount
-    );
-    event Burn(
-        address _account,
-        address _asset,
-        uint256 _amount,
-        uint256 _actualAmount
-    );
+    event Mint(address _account, address[] _assets, uint256[] _amounts, uint256 _mintAmount);
+    event Burn(address _account, address _asset, uint256 _amount, uint256 _actualAmount);
     event BurnWithoutExchange(
         address _account,
         address[] _assets,
@@ -52,18 +42,8 @@ interface IVault {
         address _distAsset,
         uint256 _distAmount
     );
-    event Redeem(
-        address _strategy,
-        uint256 _debtChangeAmount,
-        address[] _assets,
-        uint256[] _amounts
-    );
-    event LendToStrategy(
-        address indexed strategy,
-        address[] wants,
-        uint256[] amounts,
-        uint256 lendValue
-    );
+    event Redeem(address _strategy, uint256 _debtChangeAmount, address[] _assets, uint256[] _amounts);
+    event LendToStrategy(address indexed strategy, address[] wants, uint256[] amounts, uint256 lendValue);
     event RemoveStrategyFromQueue(address[] _strategies);
     event SetEmergencyShutdown(bool _shutdown);
     event RebasePaused();
@@ -98,11 +78,23 @@ interface IVault {
     /// @notice Vault holds asset value directly in USD
     function valueOfTrackedTokens() external view returns (uint256 _totalValue);
 
+    /// @notice Vault and vault buffer holds asset value directly in USD
+    function valueOfTrackedTokensIncludeVaultBuffer() external view returns (uint256 _totalValue);
+
     /// @notice Vault total asset in USD
     function totalAssets() external view returns (uint256);
 
+    /// @notice Vault and vault buffer total asset in USD
+    function totalAssetsIncludeVaultBuffer() external view returns (uint256);
+
     /// @notice Vault total value(by chainlink price) in USD(1e18)
     function totalValue() external view returns (uint256);
+
+    /// @notice start  Adjust  Position
+    function startAdjustPosition() external;
+
+    /// @notice end  Adjust Position
+    function endAdjustPosition() external;
 
     /**
      * @dev Internal to calculate total value of all assets held in Vault.
@@ -117,32 +109,30 @@ interface IVault {
     function totalValueInStrategies() external view returns (uint256 _value);
 
     /// @notice All strategies
-    function getStrategies()
-        external
-        view
-        returns (address[] memory _strategies);
+    function getStrategies() external view returns (address[] memory _strategies);
 
     function checkActiveStrategy(address strategy) external view;
 
-    /// @notice estimate Minting USDi with stablecoins
+    /// @notice estimate Minting share with stablecoins
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
     /// @dev Support single asset or multi-assets
-    /// @return priceAdjustedDeposit   usdi amount
+    /// @return shareAmount
     function estimateMint(address[] memory _assets, uint256[] memory _amounts)
         external
         view
-        returns (uint256 priceAdjustedDeposit);
+        returns (uint256 shareAmount);
 
-    /// @notice Minting USDi with stablecoins
+    /// @notice Minting share with stablecoins
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
     /// @dev Support single asset or multi-assets
+    /// @return shareAmount
     function mint(
         address[] memory _assets,
         uint256[] memory _amounts,
-        uint256 _minimumUsdiAmount
-    ) external returns (uint256 usdiAmount);
+        uint256 _minimumAmount
+    ) external returns (uint256 shareAmount);
 
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
@@ -160,10 +150,8 @@ interface IVault {
     function rebase() external;
 
     /// @notice Allocate funds in Vault to strategies.
-    function lend(
-        address _strategy,
-        IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens
-    ) external;
+    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens)
+        external;
 
     /// @notice Withdraw the funds from specified strategy.
     function redeem(address _strategy, uint256 _amount) external;
@@ -175,10 +163,7 @@ interface IVault {
         IExchangeAggregator.ExchangeParam memory exchangeParam
     ) external returns (uint256);
 
-    function report(
-        address[] memory _rewardTokens,
-        uint256[] memory _claimAmounts
-    ) external;
+    function report(address[] memory _rewardTokens, uint256[] memory _claimAmounts) external;
 
     /// @notice Shutdown the vault when an emergency occurs, cannot mint/burn.
     function setEmergencyShutdown(bool active) external;
@@ -225,8 +210,7 @@ interface IVault {
     //advance queue
     function setWithdrawalQueue(address[] memory queues) external;
 
-    function setStrategyEnforceChangeLimit(address _strategy, bool _enabled)
-        external;
+    function setStrategyEnforceChangeLimit(address _strategy, bool _enabled) external;
 
     function setStrategySetLimitRatio(
         address _strategy,
@@ -298,10 +282,7 @@ interface IVault {
     function exchangeManager() external view returns (address);
 
     // strategy info
-    function strategies(address _strategy)
-        external
-        view
-        returns (StrategyParams memory);
+    function strategies(address _strategy) external view returns (StrategyParams memory);
 
     //withdraw strategy set
     function withdrawQueue() external view returns (address[] memory);
