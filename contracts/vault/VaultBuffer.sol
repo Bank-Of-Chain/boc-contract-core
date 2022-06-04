@@ -274,18 +274,6 @@ contract VaultBuffer is
         uint256[] memory _amounts
     ) external onlyVault returns (uint256 mintAmount) {
         mintAmount = estimateMint(_assets, _amounts);
-        uint256 len = _assets.length;
-        for (uint256 i = 0; i < len; i++) {
-            uint256 amount = _amounts[i];
-            if (amount > 0) {
-                address asset = _assets[i];
-                IERC20Upgradeable(asset).safeTransferFrom(
-                    _sender,
-                    address(this),
-                    amount
-                );
-            }
-        }
         _mint(_sender, mintAmount);
     }
 
