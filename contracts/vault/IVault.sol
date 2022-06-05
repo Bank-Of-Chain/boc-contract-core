@@ -294,4 +294,6 @@ interface IVault {
     function valueInterpreter() external view returns (address);
 
     function accessControlProxy() external view returns (address);
+
+    function setVaultBufferAddress(address _address) external;
 }
