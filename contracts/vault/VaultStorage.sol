@@ -8,6 +8,10 @@ import "../library/IterableIntMap.sol";
 import "../library/IterableUintMap.sol";
 import "../library/StableMath.sol";
 import "../token/USDi.sol";
+import "./IVaultBuffer.sol";
+import "../library/BocRoles.sol";
+import "../strategy/IStrategy.sol";
+import "../price-feeds/IValueInterpreter.sol";
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -136,11 +140,13 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     //vault Buffer Address
     address public vaultBufferAddress;
     // Assets held in Vault from vault buffer
-    IterableUintMap.AddressToUintMap internal transferFromVaultBufferAssetsMap;
+    mapping(address => uint256) internal transferFromVaultBufferAssetsMap;
     // redeem Assets where ad
-    IterableUintMap.AddressToUintMap internal redeemAssetsMap;
-    // Assets held in Vault from vault buffer
-    IterableUintMap.AddressToUintMap internal beforeAdjustPositionAssetsMap;
+    mapping(address => uint256) internal redeemAssetsMap;
+    // Assets held in Vault and buffer before Adjust Position
+    mapping(address => uint256) internal beforeAdjustPositionAssetsMap;
+    // Assets held in strategy before Adjust Position
+    uint256 internal beforeAdjustPositionUsd;
 
     /**
      * @dev set the implementation for the admin, this needs to be in a base class else we cannot set it
