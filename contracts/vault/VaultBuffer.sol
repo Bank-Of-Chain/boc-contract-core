@@ -34,8 +34,8 @@ contract VaultBuffer is
     string private _name;
     string private _symbol;
 
-    address vault;
-    address usdi;
+    address public vault;
+    address public usdi;
 
     modifier onlyVault() {
         require(msg.sender == vault);
@@ -46,12 +46,14 @@ contract VaultBuffer is
         string memory name_,
         string memory symbol_,
         address _vault,
-        address _usdi
+        address _usdi,
+        address _accessControlProxy
     ) external initializer {
         _name = name_;
         _symbol = symbol_;
         vault = _vault;
         usdi = _usdi;
+        _initAccessControl(_accessControlProxy);
     }
 
     /**
@@ -227,6 +229,7 @@ contract VaultBuffer is
     }
 
     function distributeByKeeper() external isKeeper {
+        assert(!IVault(vault).adjustPositionPeriod());
         _distribute();
     }
 
