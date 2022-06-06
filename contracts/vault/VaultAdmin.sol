@@ -408,12 +408,12 @@ contract VaultAdmin is VaultStorage {
     }
 
     function _calculateVault(address[] memory _trackedAssets, bool _beforeAdjustPosition)
-    internal
-    returns (
-        uint256[] memory,
-        uint256[] memory,
-        bool
-    )
+        internal
+        returns (
+            uint256[] memory,
+            uint256[] memory,
+            bool
+        )
     {
         uint256 _trackedAssetsLength = _trackedAssets.length;
         uint256[] memory _transferAmounts = new uint256[](_trackedAssetsLength);
@@ -465,7 +465,9 @@ contract VaultAdmin is VaultStorage {
         returns (uint256[] memory, uint256)
     {
         (uint256[] memory _amounts, , ) = _calculateVault(_trackedAssets, false);
+        console.log("start _calculateStrategy");
         uint256 _afterAdjustPositionUsd = _calculateStrategy(_trackedAssets, _amounts);
+        console.log("end _calculateStrategy");
         return (_amounts, _afterAdjustPositionUsd);
     }
 
@@ -474,28 +476,29 @@ contract VaultAdmin is VaultStorage {
         returns (uint256)
     {
         uint256 _afterAdjustPositionUsd = 0;
-        uint256 _trackedAssetsLength = _trackedAssets.length;
-        //TODO:: cache strategySet.length()
-        for (uint256 i = 0; i < strategySet.length(); i++) {
-            address _strategy = strategySet.at(i);
-            if (strategies[_strategy].totalDebt > 0) {
-                (
-                    address[] memory _tokens,
-                    uint256[] memory _strategyAmounts,
-                    bool _isUsd,
-                    uint256 _usdValue
-                ) = IStrategy(_strategy).getPositionDetail();
-                if (_isUsd) {
-                    _afterAdjustPositionUsd = _afterAdjustPositionUsd + _usdValue;
-                } else {
-                    for (uint256 j = 0; j < _tokens.length; j++) {
-                        uint256 _amount = _strategyAmounts[j];
-                        if (_amount > 0) {
-                            address _token = _tokens[j];
-                            for (uint256 k = 0; k < _trackedAssetsLength; k++) {
-                                if (_trackedAssets[k] == _token) {
-                                    _amounts[i] = _amounts[i] + _amount;
-                                    break;
+        {
+            uint256 _trackedAssetsLength = _trackedAssets.length;
+            uint256 _strategySetLength = strategySet.length();
+            for (uint256 i = 0; i < _strategySetLength; i++) {
+                address _strategy = strategySet.at(i);
+                if (strategies[_strategy].totalDebt > 0) {
+                    (
+                        address[] memory _tokens,
+                        uint256[] memory _strategyAmounts,
+                        bool _isUsd,
+                        uint256 _usdValue
+                    ) = IStrategy(_strategy).getPositionDetail();
+                    if (_isUsd) {
+                        _afterAdjustPositionUsd = _afterAdjustPositionUsd + _usdValue;
+                    } else {
+                        for (uint256 j = 0; j < _tokens.length; j++) {
+                            uint256 _amount = _strategyAmounts[j];
+                            if (_amount > 0) {
+                                for (uint256 k = 0; k < _trackedAssetsLength; k++) {
+                                    if (_trackedAssets[k] == _tokens[j]) {
+                                        _amounts[i] = _amounts[i] + _amount;
+                                        break;
+                                    }
                                 }
                             }
                         }
