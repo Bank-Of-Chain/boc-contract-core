@@ -517,7 +517,6 @@ contract VaultAdmin is VaultStorage {
      */
     function _rebaseAdmin(address[] memory _trackedAssets) internal {
         require(!rebasePaused, "RP");
-        require(!emergencyShutdown, "ES");
         uint256 _usdiSupply = usdi.totalSupply();
         if (_usdiSupply == 0 || usdi.rebasingCredits() < 1e27) {
             return;
