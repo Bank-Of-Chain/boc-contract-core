@@ -180,7 +180,7 @@ contract Vault is VaultStorage {
         uint256 _assetsLength = _assets.length;
         uint256 _amountsLength = _amounts.length;
         require(
-            _assetsLength > 0 && _amountsLength > 0 && _assetsLength == _amountsLength,
+            _assetsLength > 0 && _assetsLength == _amountsLength,
             "Assets and amounts must be equal in length and not empty"
         );
 
@@ -260,7 +260,7 @@ contract Vault is VaultStorage {
         totalDebt -= totalWithdrawValue;
     }
 
-    /// @notice withdraw from strategy queue
+    /// @notice withdraw from vault buffer
     function _repayFromVaultBuffer(
         uint256 _needTransferValue,
         uint256[] memory _assetPrices,

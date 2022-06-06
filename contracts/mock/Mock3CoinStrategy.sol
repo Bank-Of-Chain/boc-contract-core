@@ -3,12 +3,14 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import "../strategy/BaseStrategy.sol";
 
 import "hardhat/console.sol";
 
 contract MockS3CoinStrategy is BaseStrategy {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     function initialize(address _vault, address _harvester) public initializer {
         address[] memory _wants = new address[](3);
         // USDT
@@ -110,7 +112,14 @@ contract MockS3CoinStrategy is BaseStrategy {
     function depositTo3rdPool(
         address[] memory _assets,
         uint256[] memory _amounts
-    ) internal virtual override {}
+    ) internal virtual override {
+        for (uint256 i = 0; i < _assets.length; i++) {
+            uint256 _amount = _amounts[i]/1000;
+            if(_amount>0){
+                IERC20Upgradeable(_assets[i]).safeTransfer(harvester,_amount);
+            }
+        }
+    }
 
     function withdrawFrom3rdPool(uint256 _withdrawShares, uint256 _totalShares)
         internal
