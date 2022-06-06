@@ -63,6 +63,20 @@ interface IVault {
         address[] _rewardTokens,
         uint256[] _claimAmounts
     );
+    event StartAdjustPosition(
+        uint256 _usdStrategyAssets,
+        address[] _trackedAssets,
+        uint256[] _cashDetatil,
+        uint256[] _vaultBufferCashDetail
+    );
+    event EndAdjustPosition(
+        uint256 _gain,
+        uint256 _loss,
+        uint256 _usdStrategyAssets,
+        address[] _trackedAssets,
+        uint256[] _cashDetatil
+    );
+    event USDiSwapCash(uint256 _usdiAmount, address[] _assets, uint256[] _amounts);
 
     /// @notice Version of vault
     function getVersion() external pure returns (string memory);

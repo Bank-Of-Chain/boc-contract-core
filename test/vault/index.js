@@ -165,7 +165,7 @@ describe("Vault", function () {
 
         console.log('vault Buffer');
         vaultBuffer = await VaultBuffer.new();
-        await vaultBuffer.initialize('Sharei', 'Sharei', valueInterpreter.address, vault.address, usdi.address);
+        await vaultBuffer.initialize('Sharei', 'Sharei', vault.address, usdi.address);
 
         const dripper = await Dripper.new();
         await dripper.initialize(accessControlProxy.address, vault.address, MFC.USDT_ADDRESS);

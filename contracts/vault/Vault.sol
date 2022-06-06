@@ -301,6 +301,8 @@ contract Vault is VaultStorage {
         if (_totalTransferValue > 0) {
             IVaultBuffer(vaultBufferAddress).transferCashToVault(_transferAssets, _amounts);
             usdi.mint(vaultBufferAddress, _totalTransferValue);
+
+            emit USDiSwapCash(_totalTransferValue, _transferAssets, _amounts);
         }
         return _totalTransferValue;
     }

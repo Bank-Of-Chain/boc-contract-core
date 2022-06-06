@@ -87,9 +87,21 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event TreasuryAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
-    event SetWithdrawalQueue(address[] queues);
-    event StartAdjustPosition();
-    event EndAdjustPosition();
+    event SetWithdrawalQueue(address[] _queues);
+    event StartAdjustPosition(
+        uint256 _usdStrategyAssets,
+        address[] _trackedAssets,
+        uint256[] _cashDetatil,
+        uint256[] _vaultBufferCashDetail
+    );
+    event EndAdjustPosition(
+        uint256 _gain,
+        uint256 _loss,
+        uint256 _usdStrategyAssets,
+        address[] _trackedAssets,
+        uint256[] _cashDetatil
+    );
+    event USDiSwapCash(uint256 _usdiAmount, address[] _assets, uint256[] _amounts);
 
     address internal constant ZERO_ADDRESS = address(0);
 

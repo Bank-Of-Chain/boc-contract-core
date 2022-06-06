@@ -12,7 +12,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "../library/IterableUintMap.sol";
 import "../library/StableMath.sol";
 import "./../access-control/AccessControlMixin.sol";
-import "../price-feeds/IValueInterpreter.sol";
 import "./IVault.sol";
 
 contract VaultBuffer is
@@ -35,7 +34,6 @@ contract VaultBuffer is
     string private _name;
     string private _symbol;
 
-    IValueInterpreter valueInterpreter;
     address vault;
     address usdi;
 
@@ -47,13 +45,11 @@ contract VaultBuffer is
     function initialize(
         string memory name_,
         string memory symbol_,
-        address _valueInterpreter,
         address _vault,
         address _usdi
     ) external initializer {
         _name = name_;
         _symbol = symbol_;
-        valueInterpreter = IValueInterpreter(_valueInterpreter);
         vault = _vault;
         usdi = _usdi;
     }
@@ -226,7 +222,15 @@ contract VaultBuffer is
         }
     }
 
-    function distribute() external onlyVault {
+    function distributeByVault() external onlyVault {
+        _distribute();
+    }
+
+    function distributeByKeeper() external isKeeper {
+        _distribute();
+    }
+
+    function _distribute() internal {
         IERC20Upgradeable usdiToken = IERC20Upgradeable(usdi);
         uint256 totalUsdi = usdiToken.balanceOf(address(this));
         uint256 len = _balances.length();

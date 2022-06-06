@@ -15,5 +15,8 @@ interface IVaultBuffer {
     function transferCashToVault(address[] memory _assets, uint256[] memory _amounts) external;
 
     /// @notice distribute USDi to users that pendingShare's holder.
-    function distribute() external;
+    function distributeByVault() external;
+
+    /// @notice distribute USDi to users that pendingShare's holder.
+    function distributeByKeeper() external;
 }
