@@ -292,7 +292,7 @@ contract VaultAdmin is VaultStorage {
 
     /// @notice start  Adjust  Position
     function startAdjustPosition() external isKeeper nonReentrant {
-        require(!adjustPositionPeriod, "AD");
+        require(!rebasePaused, "RP");
         require(!emergencyShutdown, "ES");
         adjustPositionPeriod = true;
         address[] memory _trackedAssets = trackedAssetsMap._inner._keys.values();
@@ -317,7 +317,6 @@ contract VaultAdmin is VaultStorage {
 
     /// @notice end  Adjust Position
     function endAdjustPosition() external isKeeper nonReentrant {
-        require(adjustPositionPeriod, "No AD");
         address[] memory _trackedAssets = trackedAssetsMap._inner._keys.values();
         (uint256[] memory _amounts, uint256 afterAdjustPositionUsd) = _calculateAfterAdjust(
             _trackedAssets
@@ -360,6 +359,7 @@ contract VaultAdmin is VaultStorage {
 
             uint256 _beforeAmount = beforeAdjustPositionAssetsMap[_trackedAsset];
             uint256 _amount = _amounts[i];
+            //TODO:: saving "_amount - _beforeAmount" or "_beforeAmount - _amount" result as a variable
             if (_amount > _beforeAmount) {
                 uint256 _value = _calculateAssetValueInAdmin(
                     _assetPrices,
@@ -381,6 +381,7 @@ contract VaultAdmin is VaultStorage {
                 _loss = _loss + _value;
             }
         }
+        //TODO:: saving "_gain - _loss" or "_loss - _gain" result as a variable
         if (_gain >= _loss) {
             _transferValue =
                 _transferValue +
@@ -397,6 +398,7 @@ contract VaultAdmin is VaultStorage {
         beforeAdjustPositionUsd = 0;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
+            //TODO:: use remove()?
             redeemAssetsMap[_trackedAsset] = 0;
             beforeAdjustPositionAssetsMap[_trackedAsset] = 0;
             transferFromVaultBufferAssetsMap[_trackedAsset] = 0;
@@ -473,6 +475,7 @@ contract VaultAdmin is VaultStorage {
     {
         uint256 _afterAdjustPositionUsd = 0;
         uint256 _trackedAssetsLength = _trackedAssets.length;
+        //TODO:: cache strategySet.length()
         for (uint256 i = 0; i < strategySet.length(); i++) {
             address _strategy = strategySet.at(i);
             if (strategies[_strategy].totalDebt > 0) {

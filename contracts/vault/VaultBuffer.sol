@@ -100,13 +100,7 @@ contract VaultBuffer is
     /**
      * @dev See {IERC20-balanceOf}.
      */
-    function balanceOf(address account)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function balanceOf(address account) public view virtual override returns (uint256) {
         return _balances.get(account);
     }
 
@@ -118,12 +112,7 @@ contract VaultBuffer is
      * - `to` cannot be the zero address.
      * - the caller must have a balance of at least `amount`.
      */
-    function transfer(address to, uint256 amount)
-        public
-        virtual
-        override
-        returns (bool)
-    {
+    function transfer(address to, uint256 amount) public virtual override returns (bool) {
         address owner = _msgSender();
         _transfer(owner, to, amount);
         return true;
@@ -132,13 +121,7 @@ contract VaultBuffer is
     /**
      * @dev See {IERC20-allowance}.
      */
-    function allowance(address owner, address spender)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function allowance(address owner, address spender) public view virtual override returns (uint256) {
         return _allowances[owner][spender];
     }
 
@@ -152,12 +135,7 @@ contract VaultBuffer is
      *
      * - `spender` cannot be the zero address.
      */
-    function approve(address spender, uint256 amount)
-        public
-        virtual
-        override
-        returns (bool)
-    {
+    function approve(address spender, uint256 amount) public virtual override returns (bool) {
         address owner = _msgSender();
         _approve(owner, spender, amount);
         return true;
@@ -202,11 +180,7 @@ contract VaultBuffer is
      *
      * - `spender` cannot be the zero address.
      */
-    function increaseAllowance(address spender, uint256 addedValue)
-        public
-        virtual
-        returns (bool)
-    {
+    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
         address owner = _msgSender();
         _approve(owner, spender, allowance(owner, spender) + addedValue);
         return true;
@@ -226,17 +200,10 @@ contract VaultBuffer is
      * - `spender` must have allowance for the caller of at least
      * `subtractedValue`.
      */
-    function decreaseAllowance(address spender, uint256 subtractedValue)
-        public
-        virtual
-        returns (bool)
-    {
+    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
         address owner = _msgSender();
         uint256 currentAllowance = allowance(owner, spender);
-        require(
-            currentAllowance >= subtractedValue,
-            "ERC20: decreased allowance below zero"
-        );
+        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
         unchecked {
             _approve(owner, spender, currentAllowance - subtractedValue);
         }
@@ -244,43 +211,11 @@ contract VaultBuffer is
         return true;
     }
 
-    function estimateMint(address[] memory _assets, uint256[] memory _amounts)
-        public
-        view
-        returns (uint256 mintAmount)
-    {
-        require(
-            _assets.length > 0 &&
-                _amounts.length > 0 &&
-                _assets.length == _amounts.length,
-            "Assets and amounts must be equal in length and not empty"
-        );
-
-        for (uint256 i = 0; i < _assets.length; i++) {
-            address _asset = _assets[i];
-            uint256 price = valueInterpreter.price(_asset);
-            uint256 assetDecimals = _getDecimals(_asset);
-            mintAmount += _amounts[i].mulTruncateScale(
-                price,
-                10**assetDecimals
-            );
-        }
-        return mintAmount;
+    function mint(address _sender, uint256 _amount) external onlyVault {
+        _mint(_sender, _amount);
     }
 
-    function mint(
-        address _sender,
-        address[] memory _assets,
-        uint256[] memory _amounts
-    ) external onlyVault returns (uint256 mintAmount) {
-        mintAmount = estimateMint(_assets, _amounts);
-        _mint(_sender, mintAmount);
-    }
-
-    function transferCashToVault(address[] memory _assets, uint256[] memory _amounts)
-        external
-        onlyVault
-    {
+    function transferCashToVault(address[] memory _assets, uint256[] memory _amounts) external onlyVault {
         uint256 len = _assets.length;
         for (uint256 i = 0; i < len; i++) {
             uint256 amount = _amounts[i];
@@ -296,12 +231,11 @@ contract VaultBuffer is
         uint256 totalUsdi = usdiToken.balanceOf(address(this));
         uint256 len = _balances.length();
         for (uint256 i = len; i > 0; i--) {
-            (address account, uint256 share) = _balances.at(i-1);
+            (address account, uint256 share) = _balances.at(i - 1);
             usdiToken.safeTransfer(account, (share * totalUsdi) / _totalSupply);
             _balances.remove(account);
         }
     }
-
 
     /**
      * @dev Moves `amount` of tokens from `sender` to `recipient`.
@@ -328,10 +262,7 @@ contract VaultBuffer is
         _beforeTokenTransfer(from, to, amount);
 
         uint256 fromBalance = _balances.get(from);
-        require(
-            fromBalance >= amount,
-            "ERC20: transfer amount exceeds balance"
-        );
+        require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
         unchecked {
             // _balances[from] = fromBalance - amount;
             _balances.set(from, fromBalance - amount);
@@ -435,10 +366,7 @@ contract VaultBuffer is
     ) internal virtual {
         uint256 currentAllowance = allowance(owner, spender);
         if (currentAllowance != type(uint256).max) {
-            require(
-                currentAllowance >= amount,
-                "ERC20: insufficient allowance"
-            );
+            require(currentAllowance >= amount, "ERC20: insufficient allowance");
             unchecked {
                 _approve(owner, spender, currentAllowance - amount);
             }
