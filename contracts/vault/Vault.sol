@@ -925,7 +925,7 @@ contract Vault is VaultStorage {
      *      strategies and update the supply of USDI, optionally sending a
      *      portion of the yield to the trustee.
      */
-    function _rebase() internal whenNotEmergency whenNotRebasePaused whenNotAdjustPosition{
+    function _rebase() internal whenNotEmergency whenNotRebasePaused whenNotAdjustPosition {
         uint256 _usdiSupply = usdi.totalSupply();
         if (_usdiSupply == 0 || usdi.rebasingCredits() < 1e27) {
             return;

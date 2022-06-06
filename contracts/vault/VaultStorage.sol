@@ -88,6 +88,8 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
     event SetWithdrawalQueue(address[] queues);
+    event StartAdjustPosition();
+    event EndAdjustPosition();
 
     address internal constant ZERO_ADDRESS = address(0);
 

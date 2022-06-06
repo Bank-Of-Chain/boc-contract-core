@@ -313,6 +313,7 @@ contract VaultAdmin is VaultStorage {
                 beforeAdjustPositionAssetsMap[_trackedAssets[i]] = _amount;
             }
         }
+        emit StartAdjustPosition();
     }
 
     /// @notice end  Adjust Position
@@ -359,7 +360,6 @@ contract VaultAdmin is VaultStorage {
 
             uint256 _beforeAmount = beforeAdjustPositionAssetsMap[_trackedAsset];
             uint256 _amount = _amounts[i];
-            //TODO:: saving "_amount - _beforeAmount" or "_beforeAmount - _amount" result as a variable
             if (_amount > _beforeAmount) {
                 uint256 _value = _calculateAssetValueInAdmin(
                     _assetPrices,
@@ -381,7 +381,6 @@ contract VaultAdmin is VaultStorage {
                 _loss = _loss + _value;
             }
         }
-        //TODO:: saving "_gain - _loss" or "_loss - _gain" result as a variable
         if (_gain >= _loss) {
             _transferValue =
                 _transferValue +
@@ -398,13 +397,14 @@ contract VaultAdmin is VaultStorage {
         beforeAdjustPositionUsd = 0;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
-            //TODO:: use remove()?
             redeemAssetsMap[_trackedAsset] = 0;
             beforeAdjustPositionAssetsMap[_trackedAsset] = 0;
             transferFromVaultBufferAssetsMap[_trackedAsset] = 0;
         }
         IVaultBuffer(vaultBufferAddress).distribute();
         adjustPositionPeriod = false;
+
+        emit EndAdjustPosition();
     }
 
     function _calculateVault(address[] memory _trackedAssets, bool _beforeAdjustPosition)
