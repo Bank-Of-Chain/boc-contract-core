@@ -231,13 +231,17 @@ contract VaultBuffer is
     }
 
     function _distribute() internal {
+        address[] memory assets = IVault(vault).getTrackedAssets();
+        for(uint256 i = 0;i < assets.length;i++){
+            assert(IERC20Upgradeable(assets[i]).balanceOf(address(this)) == 0);
+        }
         IERC20Upgradeable usdiToken = IERC20Upgradeable(usdi);
         uint256 totalUsdi = usdiToken.balanceOf(address(this));
         uint256 len = _balances.length();
         for (uint256 i = len; i > 0; i--) {
             (address account, uint256 share) = _balances.at(i - 1);
             usdiToken.safeTransfer(account, (share * totalUsdi) / _totalSupply);
-            _balances.remove(account);
+            _burn(account,share);
         }
     }
 
