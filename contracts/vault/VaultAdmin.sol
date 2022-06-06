@@ -292,7 +292,7 @@ contract VaultAdmin is VaultStorage {
 
     /// @notice start  Adjust  Position
     function startAdjustPosition() external isKeeper nonReentrant {
-        require(!rebasePaused, "RP");
+        require(!adjustPositionPeriod, "AD");
         require(!emergencyShutdown, "ES");
         adjustPositionPeriod = true;
         address[] memory _trackedAssets = trackedAssetsMap._inner._keys.values();
@@ -318,6 +318,7 @@ contract VaultAdmin is VaultStorage {
 
     /// @notice end  Adjust Position
     function endAdjustPosition() external isKeeper nonReentrant {
+        require(adjustPositionPeriod, "AD ING");
         address[] memory _trackedAssets = trackedAssetsMap._inner._keys.values();
         (uint256[] memory _amounts, uint256 afterAdjustPositionUsd) = _calculateAfterAdjust(
             _trackedAssets
