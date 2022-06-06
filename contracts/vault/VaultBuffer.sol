@@ -240,10 +240,11 @@ contract VaultBuffer is
         }
         IERC20Upgradeable usdiToken = IERC20Upgradeable(usdi);
         uint256 totalUsdi = usdiToken.balanceOf(address(this));
+        uint256 _totalSupplyCurrent = _totalSupply;
         uint256 len = _balances.length();
         for (uint256 i = len; i > 0; i--) {
             (address account, uint256 share) = _balances.at(i - 1);
-            usdiToken.safeTransfer(account, (share * totalUsdi) / _totalSupply);
+            usdiToken.safeTransfer(account, (share * totalUsdi) / _totalSupplyCurrent);
             _burn(account,share);
         }
     }
