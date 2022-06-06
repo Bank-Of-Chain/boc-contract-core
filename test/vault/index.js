@@ -265,7 +265,7 @@ describe("Vault", function () {
     });
 
 
-    it('验证：Vault可正常赎回', async function () {
+    it('验证：Vault可正常投资其他币种', async function () {
         let _assets = new Array();
         _assets.push(MFC.USDC_ADDRESS);
         _assets.push(MFC.DAI_ADDRESS);
@@ -306,18 +306,20 @@ describe("Vault", function () {
         await iVault.setTrusteeFeeBps(1000, {from: governance});
 
 
+        //开启调仓
         await iVault.startAdjustPosition({from: keeper});
 
 
         const beforeBalance = new BigNumber(await usdcToken.balanceOf(farmer1)).div(10 ** tokenDecimals).toFixed();
 
-        console.log("赎回前vault的usdt的balance:", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
-        console.log("赎回前vault的usdc的balance:", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
-        console.log("赎回前vault的dai的balance:", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
-        console.log("赎回前farmer1的usdi的balance:", new BigNumber(await usdi.balanceOf(farmer1)).div(10 ** usdiDecimals).toFixed());
-        console.log("赎回前farmer1的usdt的balance:", new BigNumber(await underlying.balanceOf(farmer1)).div(10 ** tokenDecimals).toFixed());
-        console.log("赎回前farmer1的dai的balance:", new BigNumber(await daiToken.balanceOf(farmer1)).div(10 ** daiDecimals).toFixed());
-        console.log("赎回前farmer1的usdc的balance:", beforeBalance);
+        console.log("开启调仓后vault的usdt的balance:", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
+        console.log("开启调仓后vault的usdc的balance:", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
+        console.log("开启调仓后vault的dai的balance:", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
+        console.log("开启调仓后farmer1的usdi的balance:", new BigNumber(await usdi.balanceOf(farmer1)).div(10 ** usdiDecimals).toFixed());
+        console.log("开启调仓后farmer1的usdt的balance:", new BigNumber(await underlying.balanceOf(farmer1)).div(10 ** tokenDecimals).toFixed());
+        console.log("开启调仓后farmer1的dai的balance:", new BigNumber(await daiToken.balanceOf(farmer1)).div(10 ** daiDecimals).toFixed());
+        console.log("开启调仓后farmer1的usdc的balance:", beforeBalance);
+        console.log("开启调仓后vault缓存池总资金(包含vaultBuffer):%s,总价值(包含vaultBuffer)：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
 
     });
 
@@ -330,8 +332,8 @@ describe("Vault", function () {
         });
         await iVault.addStrategy(addToVaultStrategies, {from: governance});
 
-        const beforUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).div(10 ** tokenDecimals).toFixed();
-        console.log("lend前vault的usdt的balance:", beforUsdt);
+        const beforeUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).div(10 ** tokenDecimals).toFixed();
+        console.log("lend前vault的usdt的balance:", beforeUsdt);
         console.log("lend前vault的usdc的balance:", new BigNumber(await usdcToken.balanceOf(iVault.address)).div(10 ** usdcDecimals).toFixed());
         console.log("lend前vault的dai的balance:", new BigNumber(await daiToken.balanceOf(iVault.address)).div(10 ** daiDecimals).toFixed());
         console.log("(usdt,usdc,dai)=", depositAmount.div(5).div(10 ** tokenDecimals).toFixed(), usdcDepositAmount.div(5).div(10 ** usdcDecimals).toFixed(), daiDepositAmount.div(5).div(10 ** daiDecimals).toFixed());
@@ -368,7 +370,7 @@ describe("Vault", function () {
         console.log("lend后vault的usdt的balance:", afterUsdt);
         console.log("lend后vault的usdc的balance:", new BigNumber(await usdcToken.balanceOf(iVault.address)).div(10 ** usdcDecimals).toFixed());
         console.log("lend后vault的dai的balance:", new BigNumber(await daiToken.balanceOf(iVault.address)).div(10 ** daiDecimals).toFixed());
-        Utils.assertBNGt(beforUsdt, afterUsdt);
+        Utils.assertBNGt(beforeUsdt, afterUsdt);
 
         const _amount = new BigNumber(await usdi.balanceOf(farmer1)).div(4).multipliedBy(1).toFixed();
         const _toAsset = MFC.USDC_ADDRESS;
