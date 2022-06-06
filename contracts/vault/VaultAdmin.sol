@@ -412,6 +412,7 @@ contract VaultAdmin is VaultStorage {
             _loss = _loss - _gain;
             _gain = 0;
         }
+
         emit EndAdjustPosition(_gain, _loss, afterAdjustPositionUsd, _trackedAssets, _amounts);
     }
 
@@ -473,9 +474,7 @@ contract VaultAdmin is VaultStorage {
         returns (uint256[] memory, uint256)
     {
         (uint256[] memory _amounts, , ) = _calculateVault(_trackedAssets, false);
-        console.log("start _calculateStrategy");
         uint256 _afterAdjustPositionUsd = _calculateStrategy(_trackedAssets, _amounts);
-        console.log("end _calculateStrategy");
         return (_amounts, _afterAdjustPositionUsd);
     }
 
@@ -504,7 +503,7 @@ contract VaultAdmin is VaultStorage {
                             if (_amount > 0) {
                                 for (uint256 k = 0; k < _trackedAssetsLength; k++) {
                                     if (_trackedAssets[k] == _tokens[j]) {
-                                        _amounts[i] = _amounts[i] + _amount;
+                                        _amounts[k] = _amounts[k] + _amount;
                                         break;
                                     }
                                 }

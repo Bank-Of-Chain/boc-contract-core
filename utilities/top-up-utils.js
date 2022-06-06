@@ -310,6 +310,36 @@ const tranferBackUsdt = async (address) => {
     });
     console.log(`${tokenName} 钱包账户余额：` + new BigNumber(await underlying.balanceOf(underlyingWhale)).toFormat());
 }
+/**
+ * 将用户的usdc币，转回钱包
+ * @param {*} address
+ */
+const tranferBackUsdc = async (address) => {
+    const underlying = await IEREC20Mint.at(addresses.USDC_ADDRESS);
+    const tokenName = await underlying.name();
+    const underlyingWhale = addresses.USDC_WHALE_ADDRESS;
+    await impersonates([underlyingWhale]);
+    const farmerBalance = await underlying.balanceOf(address);
+    await underlying.transfer(underlyingWhale, farmerBalance, {
+        from: address,
+    });
+    console.log(`${tokenName} 钱包账户余额：` + new BigNumber(await underlying.balanceOf(underlyingWhale)).toFormat());
+}
+/**
+ * 将用户的dai币，转回钱包
+ * @param {*} address
+ */
+const tranferBackDai = async (address) => {
+    const underlying = await IEREC20Mint.at(addresses.DAI_ADDRESS);
+    const tokenName = await underlying.name();
+    const underlyingWhale = addresses.DAI_WHALE_ADDRESS;
+    await impersonates([underlyingWhale]);
+    const farmerBalance = await underlying.balanceOf(address);
+    await underlying.transfer(underlyingWhale, farmerBalance, {
+        from: address,
+    });
+    console.log(`${tokenName} 钱包账户余额：` + new BigNumber(await underlying.balanceOf(underlyingWhale)).toFormat());
+}
 
 module.exports = {
     topUpMain,
@@ -329,6 +359,8 @@ module.exports = {
     topUpCvxByAddress,
     topUpBalByAddress,
     tranferBackUsdt,
+    tranferBackUsdc,
+    tranferBackDai,
     impersonates,
     topUpMainV2,
     topUpMainV2_1,
