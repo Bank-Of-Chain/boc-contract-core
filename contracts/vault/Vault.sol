@@ -291,8 +291,8 @@ contract Vault is VaultStorage {
                         _amounts[i] = _assetBalancesInVaultBuffer;
                     } else {
                         _totalTransferValue = _totalTransferValue + _needTransferValue;
-                        _needTransferValue = 0;
                         _amounts[i] = (_assetBalancesInVaultBuffer * _needTransferValue) / _value;
+                        _needTransferValue = 0;
                         break;
                     }
                 }
