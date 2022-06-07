@@ -25,7 +25,7 @@ contract TestAdapter is IExchangeAdapter {
         uint8 _method,
         bytes calldata _encodedCallArgs,
         IExchangeAdapter.SwapDescription calldata _sd
-    ) external payable override returns (uint256) {
+    ) external override returns (uint256) {
         console.log('[TestAdapter] swap:_sd.srcToken:%s, balanceOf:%s', _sd.srcToken, IERC20Upgradeable(_sd.srcToken).balanceOf(address(this)));
         console.log('[TestAdapter] swap:_sd.dstToken:%s, balanceOf:%s', _sd.dstToken, IERC20Upgradeable(_sd.dstToken).balanceOf(address(this)));
         // 估算一下大概能换多少目标币

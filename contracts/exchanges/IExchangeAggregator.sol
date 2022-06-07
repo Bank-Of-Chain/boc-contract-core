@@ -25,7 +25,7 @@ interface IExchangeAggregator {
         uint8 _method,
         bytes calldata _data,
         IExchangeAdapter.SwapDescription calldata _sd
-    ) external payable returns (uint256);
+    ) external returns (uint256);
 
     function getExchangeAdapters()
         external
