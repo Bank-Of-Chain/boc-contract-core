@@ -364,8 +364,10 @@ contract VaultAdmin is VaultStorage {
                     redeemAssetsMap[_trackedAsset]
                 );
 
+            console.log("(_trackedAsset, _transferamount, _redeemAmount) = ", _trackedAsset, transferFromVaultBufferAssetsMap[_trackedAsset], redeemAssetsMap[_trackedAsset]);
             uint256 _beforeAmount = beforeAdjustPositionAssetsMap[_trackedAsset];
             uint256 _amount = _amounts[i];
+            console.log("(_trackedAsset, _amount, _beforeAmount) = ", _trackedAsset, _amount, _beforeAmount);
             if (_amount > _beforeAmount) {
                 uint256 _value = _calculateAssetValueInAdmin(
                     _assetPrices,
@@ -387,6 +389,8 @@ contract VaultAdmin is VaultStorage {
                 _loss = _loss + _value;
             }
         }
+        console.log("_transferValue, _redeemValue, _gain, _loss");
+        console.log(_transferValue, _redeemValue, _gain, _loss);
         if (_transferValue > 0) {
             if (_gain >= _loss) {
                 _transferValue =
