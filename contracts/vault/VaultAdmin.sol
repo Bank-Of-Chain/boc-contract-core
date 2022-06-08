@@ -299,11 +299,14 @@ contract VaultAdmin is VaultStorage {
 
         (
             uint256[] memory _amounts,
+            uint256[] memory _vaultAmounts,
             uint256[] memory _transferAmounts,
             bool _transferVaultBuffer
         ) = _calculateVault(_trackedAssets, true);
         if (_transferVaultBuffer) {
-            _rebaseAdmin(_trackedAssets);
+            uint256[] memory _assetPrices = new uint256[](_trackedAssets.length);
+            uint256[] memory _assetDecimals = new uint256[](_trackedAssets.length);
+            _rebaseAdmin(_trackedAssets, _vaultAmounts, _assetPrices, _assetDecimals, 0);
             IVaultBuffer(vaultBufferAddress).transferCashToVault(_trackedAssets, _transferAmounts);
         }
         beforeAdjustPositionUsd = _calculateStrategy(_trackedAssets, _amounts);
@@ -320,9 +323,11 @@ contract VaultAdmin is VaultStorage {
     function endAdjustPosition() external isKeeper nonReentrant {
         require(adjustPositionPeriod, "AD ING");
         address[] memory _trackedAssets = trackedAssetsMap._inner._keys.values();
-        (uint256[] memory _amounts, uint256 afterAdjustPositionUsd) = _calculateAfterAdjust(
-            _trackedAssets
-        );
+        (
+            uint256[] memory _amounts,
+            uint256[] memory _vaultAmounts,
+            uint256 afterAdjustPositionUsd
+        ) = _calculateAfterAdjust(_trackedAssets);
         uint256 _trackedAssetsLength = _trackedAssets.length;
         uint256 _gain = 0;
         uint256 _loss = 0;
@@ -359,8 +364,10 @@ contract VaultAdmin is VaultStorage {
                     redeemAssetsMap[_trackedAsset]
                 );
 
+            console.log("(_trackedAsset, _transferamount, _redeemAmount) = ", _trackedAsset, transferFromVaultBufferAssetsMap[_trackedAsset], redeemAssetsMap[_trackedAsset]);
             uint256 _beforeAmount = beforeAdjustPositionAssetsMap[_trackedAsset];
             uint256 _amount = _amounts[i];
+            console.log("(_trackedAsset, _amount, _beforeAmount) = ", _trackedAsset, _amount, _beforeAmount);
             if (_amount > _beforeAmount) {
                 uint256 _value = _calculateAssetValueInAdmin(
                     _assetPrices,
@@ -382,18 +389,25 @@ contract VaultAdmin is VaultStorage {
                 _loss = _loss + _value;
             }
         }
-        if (_gain >= _loss) {
-            _transferValue =
-                _transferValue +
-                ((_gain - _loss) * _transferValue) /
-                (_transferValue + _redeemValue);
-        } else {
-            _transferValue =
-                _transferValue -
-                ((_loss - _gain) * _transferValue) /
-                (_transferValue + _redeemValue);
+        console.log("_transferValue, _redeemValue, _gain, _loss");
+        console.log(_transferValue, _redeemValue, _gain, _loss);
+        if (_transferValue > 0) {
+            if (_gain >= _loss) {
+                _transferValue =
+                    _transferValue +
+                    ((_gain - _loss) * _transferValue) /
+                    (_transferValue + _redeemValue);
+            } else {
+                _transferValue =
+                    _transferValue -
+                    ((_loss - _gain) * _transferValue) /
+                    (_transferValue + _redeemValue);
+            }
         }
-        usdi.mint(vaultBufferAddress, _transferValue);
+        _rebaseAdmin(_trackedAssets, _vaultAmounts, _assetPrices, _assetDecimals, _transferValue);
+        if (_transferValue > 0) {
+            usdi.mint(vaultBufferAddress, _transferValue);
+        }
 
         beforeAdjustPositionUsd = 0;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
@@ -421,11 +435,13 @@ contract VaultAdmin is VaultStorage {
         returns (
             uint256[] memory,
             uint256[] memory,
+            uint256[] memory,
             bool
         )
     {
         uint256 _trackedAssetsLength = _trackedAssets.length;
         uint256[] memory _transferAmounts = new uint256[](_trackedAssetsLength);
+        uint256[] memory _vaultAmounts = new uint256[](_trackedAssetsLength);
         uint256[] memory _amounts = new uint256[](_trackedAssetsLength);
         bool _vaultBufferAboveZero = false;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
@@ -439,9 +455,10 @@ contract VaultAdmin is VaultStorage {
                     transferFromVaultBufferAssetsMap[_trackedAsset] = _balance;
                 }
             }
-            _amounts[i] = _balance + IERC20Upgradeable(_trackedAsset).balanceOf(address(this));
+            _vaultAmounts[i] = IERC20Upgradeable(_trackedAsset).balanceOf(address(this));
+            _amounts[i] = _balance + _vaultAmounts[i];
         }
-        return (_amounts, _transferAmounts, _vaultBufferAboveZero);
+        return (_amounts, _vaultAmounts, _transferAmounts, _vaultBufferAboveZero);
     }
 
     /// @notice calculate Asset value in usd by oracle price
@@ -471,11 +488,18 @@ contract VaultAdmin is VaultStorage {
 
     function _calculateAfterAdjust(address[] memory _trackedAssets)
         internal
-        returns (uint256[] memory, uint256)
+        returns (
+            uint256[] memory,
+            uint256[] memory,
+            uint256
+        )
     {
-        (uint256[] memory _amounts, , ) = _calculateVault(_trackedAssets, false);
+        (uint256[] memory _amounts, uint256[] memory _vaultAmounts, , ) = _calculateVault(
+            _trackedAssets,
+            false
+        );
         uint256 _afterAdjustPositionUsd = _calculateStrategy(_trackedAssets, _amounts);
-        return (_amounts, _afterAdjustPositionUsd);
+        return (_amounts, _vaultAmounts, _afterAdjustPositionUsd);
     }
 
     function _calculateStrategy(address[] memory _trackedAssets, uint256[] memory _amounts)
@@ -521,7 +545,13 @@ contract VaultAdmin is VaultStorage {
      *      strategies and update the supply of USDI, optionally sending a
      *      portion of the yield to the trustee.
      */
-    function _rebaseAdmin(address[] memory _trackedAssets) internal {
+    function _rebaseAdmin(
+        address[] memory _trackedAssets,
+        uint256[] memory _vaultAmounts,
+        uint256[] memory _assetPrices,
+        uint256[] memory _assetDecimals,
+        uint256 _transferValue
+    ) internal {
         require(!rebasePaused, "RP");
         uint256 _usdiSupply = usdi.totalSupply();
         if (_usdiSupply == 0 || usdi.rebasingCredits() < 1e27) {
@@ -531,18 +561,14 @@ contract VaultAdmin is VaultStorage {
         uint256 _totalValueInVault = 0;
         for (uint256 i = 0; i < _trackedAssets.length; i++) {
             address _trackedAsset = _trackedAssets[i];
-            uint256 _balance = IERC20Upgradeable(_trackedAsset).balanceOf(address(this));
-            if (_balance > 0) {
+            uint256 _amount = _vaultAmounts[i];
+            if (_amount > 0) {
                 _totalValueInVault =
                     _totalValueInVault +
-                    IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(
-                        _trackedAsset,
-                        _balance
-                    );
+                    _calculateAssetValueInAdmin(_assetPrices, _assetDecimals, i, _trackedAsset, _amount);
             }
         }
-        uint256 _vaultValue = _totalValueInVault + totalDebt;
-
+        uint256 _vaultValue = _totalValueInVault + totalDebt - _transferValue;
         // Yield fee collection
         address _treasuryAddress = treasury;
         // gas savings

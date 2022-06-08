@@ -76,7 +76,8 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         uint256 lastStrategyTotalDebt,
         uint256 nowStrategyTotalDebt,
         address[] _rewardTokens,
-        uint256[] _claimAmounts
+        uint256[] _claimAmounts,
+        uint256 _type
     );
     event RemoveStrategyFromQueue(address[] _strategies);
     event SetEmergencyShutdown(bool _shutdown);

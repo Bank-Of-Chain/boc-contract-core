@@ -683,192 +683,6 @@ contract Vault is VaultStorage {
         return _totalAssetInVaultAndVaultBuffer;
     }
 
-    //
-    //    /// @notice start  Adjust  Position
-    //    function startAdjustPosition() external isKeeper nonReentrant whenNotRebasePaused {
-    //        adjustPositionPeriod = true;
-    //        address[] memory _trackedAssets = _getTrackedAssets();
-    //
-    //        (
-    //            uint256[] memory _amounts,
-    //            uint256[] memory _transferAmounts,
-    //            bool _transferVaultBuffer
-    //        ) = _calculateVault(_trackedAssets, true);
-    //        if (_transferVaultBuffer) {
-    //            _rebase();
-    //            IVaultBuffer(vaultBufferAddress).transferCashToVault(_trackedAssets, _transferAmounts);
-    //        }
-    //        beforeAdjustPositionUsd = _calculateStrategy(_trackedAssets, _amounts);
-    //        for (uint256 i = 0; i < _trackedAssets.length; i++) {
-    //            uint256 _amount = _amounts[i];
-    //            if (_amount > 0) {
-    //                beforeAdjustPositionAssetsMap[_trackedAssets[i]] = _amount;
-    //            }
-    //        }
-    //    }
-    //
-    //    function _calculateVault(address[] memory _trackedAssets, bool _beforeAdjustPosition)
-    //        internal
-    //        returns (
-    //            uint256[] memory,
-    //            uint256[] memory,
-    //            bool
-    //        )
-    //    {
-    //        uint256 _trackedAssetsLength = _trackedAssets.length;
-    //        uint256[] memory _transferAmounts = new uint256[](_trackedAssetsLength);
-    //        uint256[] memory _amounts = new uint256[](_trackedAssetsLength);
-    //        bool _vaultBufferAboveZero = false;
-    //        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
-    //            address _trackedAsset = _trackedAssets[i];
-    //            uint256 _balance = 0;
-    //            if (_beforeAdjustPosition && assetSet.contains(_trackedAsset)) {
-    //                _balance = balanceOfToken(_trackedAsset, vaultBufferAddress);
-    //                if (_balance > 0) {
-    //                    _transferAmounts[i] = _balance;
-    //                    _vaultBufferAboveZero = true;
-    //                    transferFromVaultBufferAssetsMap[_trackedAsset] = _balance;
-    //                }
-    //            }
-    //            _amounts[i] = _balance + balanceOfToken(_trackedAsset, address(this));
-    //        }
-    //        return (_amounts, _transferAmounts, _vaultBufferAboveZero);
-    //    }
-    //
-    //    /// @notice end  Adjust Position
-    //    function endAdjustPosition() external isKeeper nonReentrant {
-    //        address[] memory _trackedAssets = _getTrackedAssets();
-    //        (uint256[] memory _amounts, uint256 afterAdjustPositionUsd) = _calculateAfterAdjust(
-    //            _trackedAssets
-    //        );
-    //        uint256 _trackedAssetsLength = _trackedAssets.length;
-    //        uint256 _gain = 0;
-    //        uint256 _loss = 0;
-    //        if (afterAdjustPositionUsd > beforeAdjustPositionUsd) {
-    //            _gain = _gain + afterAdjustPositionUsd - beforeAdjustPositionUsd;
-    //        } else {
-    //            _loss = _loss + beforeAdjustPositionUsd - afterAdjustPositionUsd;
-    //        }
-    //
-    //        uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
-    //        uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
-    //
-    //        uint256 _transferValue = 0;
-    //        uint256 _redeemValue = 0;
-    //
-    //        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
-    //            address _trackedAsset = _trackedAssets[i];
-    //            _transferValue =
-    //                _transferValue +
-    //                _calculateAssetValue(
-    //                    _assetPrices,
-    //                    _assetDecimals,
-    //                    i,
-    //                    _trackedAsset,
-    //                    transferFromVaultBufferAssetsMap[_trackedAsset]
-    //                );
-    //            _redeemValue =
-    //                _redeemValue +
-    //                _calculateAssetValue(
-    //                    _assetPrices,
-    //                    _assetDecimals,
-    //                    i,
-    //                    _trackedAsset,
-    //                    redeemAssetsMap[_trackedAsset]
-    //                );
-    //
-    //            uint256 _beforeAmount = beforeAdjustPositionAssetsMap[_trackedAsset];
-    //            uint256 _amount = _amounts[i];
-    //            if (_amount > _beforeAmount) {
-    //                uint256 _value = _calculateAssetValue(
-    //                    _assetPrices,
-    //                    _assetDecimals,
-    //                    i,
-    //                    _trackedAsset,
-    //                    _amount - _beforeAmount
-    //                );
-    //
-    //                _gain = _gain + _value;
-    //            } else {
-    //                uint256 _value = _calculateAssetValue(
-    //                    _assetPrices,
-    //                    _assetDecimals,
-    //                    i,
-    //                    _trackedAsset,
-    //                    _beforeAmount - _amount
-    //                );
-    //                _loss = _loss + _value;
-    //            }
-    //        }
-    //        if (_gain >= _loss) {
-    //            _transferValue =
-    //                _transferValue +
-    //                ((_gain - _loss) * _transferValue) /
-    //                (_transferValue + _redeemValue);
-    //        } else {
-    //            _transferValue =
-    //                _transferValue -
-    //                ((_loss - _gain) * _transferValue) /
-    //                (_transferValue + _redeemValue);
-    //        }
-    //        usdi.mint(vaultBufferAddress, _transferValue);
-    //
-    //        beforeAdjustPositionUsd = 0;
-    //        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
-    //            address _trackedAsset = _trackedAssets[i];
-    //            redeemAssetsMap[_trackedAsset] = 0;
-    //            beforeAdjustPositionAssetsMap[_trackedAsset] = 0;
-    //            transferFromVaultBufferAssetsMap[_trackedAsset] = 0;
-    //        }
-    //        IVaultBuffer(vaultBufferAddress).distribute();
-    //        adjustPositionPeriod = false;
-    //    }
-    //
-    //    function _calculateAfterAdjust(address[] memory _trackedAssets)
-    //        internal
-    //        returns (uint256[] memory, uint256)
-    //    {
-    //        (uint256[] memory _amounts, , ) = _calculateVault(_trackedAssets, false);
-    //        uint256 _afterAdjustPositionUsd = _calculateStrategy(_trackedAssets, _amounts);
-    //        return (_amounts, _afterAdjustPositionUsd);
-    //    }
-    //
-    //    function _calculateStrategy(address[] memory _trackedAssets, uint256[] memory _amounts)
-    //        internal
-    //        returns (uint256)
-    //    {
-    //        uint256 _afterAdjustPositionUsd = 0;
-    //        uint256 _trackedAssetsLength = _trackedAssets.length;
-    //        for (uint256 i = 0; i < strategySet.length(); i++) {
-    //            address _strategy = strategySet.at(i);
-    //            if (strategies[_strategy].totalDebt > 0) {
-    //                (
-    //                    address[] memory _tokens,
-    //                    uint256[] memory _strategyAmounts,
-    //                    bool _isUsd,
-    //                    uint256 _usdValue
-    //                ) = IStrategy(_strategy).getPositionDetail();
-    //                if (_isUsd) {
-    //                    _afterAdjustPositionUsd = _afterAdjustPositionUsd + _usdValue;
-    //                } else {
-    //                    for (uint256 j = 0; j < _tokens.length; j++) {
-    //                        uint256 _amount = _strategyAmounts[j];
-    //                        if (_amount > 0) {
-    //                            address _token = _tokens[j];
-    //                            for (uint256 k = 0; k < _trackedAssetsLength; k++) {
-    //                                if (_trackedAssets[k] == _token) {
-    //                                    _amounts[i] = _amounts[i] + _amount;
-    //                                    break;
-    //                                }
-    //                            }
-    //                        }
-    //                    }
-    //                }
-    //            }
-    //        }
-    //        return _afterAdjustPositionUsd;
-    //    }
-
     // @notice burn usdi and check rebase
     function _burnUSDIAndCheckRebase(
         address _asset,
@@ -966,59 +780,59 @@ contract Vault is VaultStorage {
         (
             address[] memory _wants,
             uint256[] memory _ratios,
-            uint256[] memory toAmounts
+            uint256[] memory _toAmounts
         ) = _checkAndExchange(_strategy, _exchangeTokens);
         //Definition rule 0 means unconstrained, currencies that do not participate are not in the returned wants
-        uint256 minProductIndex = 0;
-        bool isWantRatioIgnorable = IStrategy(_strategy).isWantRatioIgnorable();
-        if (!isWantRatioIgnorable && _ratios.length > 1) {
+        uint256 _minProductIndex = 0;
+        bool _isWantRatioIgnorable = IStrategy(_strategy).isWantRatioIgnorable();
+        if (!_isWantRatioIgnorable && _ratios.length > 1) {
             for (uint256 i = 1; i < _ratios.length; i++) {
                 // console.log('token %s amount %d aspect %d', _wants[i], toAmounts[i], _ratios[i]);
                 // console.log('token i+1  %s amount %d aspect %d', tokenDetails[i + 1].token, tokenDetails[i + 1].amount, tokenAspects[i + 1].aspect);
                 if (_ratios[i] == 0) {
                     //0 is free
                     continue;
-                } else if (_ratios[minProductIndex] == 0) {
+                } else if (_ratios[_minProductIndex] == 0) {
                     //minProductIndex is assigned to the first index whose proportion is not 0
-                    minProductIndex = i;
+                    _minProductIndex = i;
                 } else if (
-                    toAmounts[minProductIndex] * _ratios[i] > toAmounts[i] * _ratios[minProductIndex]
+                    _toAmounts[_minProductIndex] * _ratios[i] > _toAmounts[i] * _ratios[_minProductIndex]
                 ) {
-                    minProductIndex = i;
+                    _minProductIndex = i;
                 }
             }
         }
 
-        uint256 minMount = toAmounts[minProductIndex];
-        uint256 minAspect = _ratios[minProductIndex];
-        uint256 lendValue;
-        for (uint256 i = 0; i < toAmounts.length; i++) {
-            uint256 _actualAmount = toAmounts[i];
+        uint256 _minMount = _toAmounts[_minProductIndex];
+        uint256 _minAspect = _ratios[_minProductIndex];
+        uint256 _lendValue;
+        for (uint256 i = 0; i < _toAmounts.length; i++) {
+            uint256 _actualAmount = _toAmounts[i];
             if (_actualAmount > 0) {
                 address _want = _wants[i];
                 // console.log('token %s amount %d', _wants[i], toAmounts[i]);
                 // console.log(' minProductIndex %d minMount %d minAspect %d', minProductIndex, minMount, minAspect);
 
-                if (!isWantRatioIgnorable && _ratios[i] > 0) {
-                    _actualAmount = (_ratios[i] * minMount) / minAspect;
+                if (!_isWantRatioIgnorable && _ratios[i] > 0) {
+                    _actualAmount = (_ratios[i] * _minMount) / _minAspect;
                 }
-                lendValue =
-                    lendValue +
+                _lendValue =
+                    _lendValue +
                     IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(
                         _want,
                         _actualAmount
                     );
-                toAmounts[i] = _actualAmount;
+                _toAmounts[i] = _actualAmount;
                 // console.log('token %s actual amount %d', _wants[i], actualAmount);
                 IERC20Upgradeable(_want).safeTransfer(_strategy, _actualAmount);
             }
         }
         IStrategy strategy = IStrategy(_strategy);
-        strategy.borrow(_wants, toAmounts);
+        strategy.borrow(_wants, _toAmounts);
         address[] memory _rewardTokens;
         uint256[] memory _claimAmounts;
-        _report(_strategy, _rewardTokens, _claimAmounts, lendValue);
-        emit LendToStrategy(_strategy, _wants, toAmounts, lendValue);
+        _report(_strategy, _rewardTokens, _claimAmounts, _lendValue);
+        emit LendToStrategy(_strategy, _wants, _toAmounts, _lendValue);
     }
 
     /// @notice check valid and exchange to want token
@@ -1172,10 +986,10 @@ contract Vault is VaultStorage {
         address _strategy,
         address[] memory _rewardTokens,
         uint256[] memory _claimAmounts,
-        uint256 lendValue
+        uint256 _lendValue
     ) private {
         StrategyParams memory strategyParam = strategies[_strategy];
-        uint256 lastStrategyTotalDebt = strategyParam.totalDebt + lendValue;
+        uint256 lastStrategyTotalDebt = strategyParam.totalDebt + _lendValue;
         uint256 nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();
         uint256 gain = 0;
         uint256 loss = 0;
@@ -1201,20 +1015,33 @@ contract Vault is VaultStorage {
         }
 
         strategies[_strategy].totalDebt = nowStrategyTotalDebt;
-        totalDebt = totalDebt + nowStrategyTotalDebt + lendValue - lastStrategyTotalDebt;
+        totalDebt = totalDebt + nowStrategyTotalDebt + _lendValue - lastStrategyTotalDebt;
 
         strategies[_strategy].lastReport = block.timestamp;
         //        lastReport = block.timestamp;
-
-        emit StrategyReported(
-            _strategy,
-            gain,
-            loss,
-            lastStrategyTotalDebt,
-            nowStrategyTotalDebt,
-            _rewardTokens,
-            _claimAmounts
-        );
+        if (_lendValue > 0) {
+            emit StrategyReported(
+                _strategy,
+                gain,
+                loss,
+                lastStrategyTotalDebt,
+                nowStrategyTotalDebt,
+                _rewardTokens,
+                _claimAmounts,
+                1
+            );
+        } else {
+            emit StrategyReported(
+                _strategy,
+                gain,
+                loss,
+                lastStrategyTotalDebt,
+                nowStrategyTotalDebt,
+                _rewardTokens,
+                _claimAmounts,
+                0
+            );
+        }
     }
 
     function report(address[] memory _rewardTokens, uint256[] memory _claimAmounts)
