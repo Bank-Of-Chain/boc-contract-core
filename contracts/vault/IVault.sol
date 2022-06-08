@@ -61,7 +61,8 @@ interface IVault {
         uint256 lastStrategyTotalDebt,
         uint256 nowStrategyTotalDebt,
         address[] _rewardTokens,
-        uint256[] _claimAmounts
+        uint256[] _claimAmounts,
+        uint256 _type
     );
     event StartAdjustPosition(
         uint256 _usdStrategyAssets,

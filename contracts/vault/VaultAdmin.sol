@@ -382,18 +382,20 @@ contract VaultAdmin is VaultStorage {
                 _loss = _loss + _value;
             }
         }
-        if (_gain >= _loss) {
-            _transferValue =
-                _transferValue +
-                ((_gain - _loss) * _transferValue) /
-                (_transferValue + _redeemValue);
-        } else {
-            _transferValue =
-                _transferValue -
-                ((_loss - _gain) * _transferValue) /
-                (_transferValue + _redeemValue);
+        if (_transferValue > 0) {
+            if (_gain >= _loss) {
+                _transferValue =
+                    _transferValue +
+                    ((_gain - _loss) * _transferValue) /
+                    (_transferValue + _redeemValue);
+            } else {
+                _transferValue =
+                    _transferValue -
+                    ((_loss - _gain) * _transferValue) /
+                    (_transferValue + _redeemValue);
+            }
+            usdi.mint(vaultBufferAddress, _transferValue);
         }
-        usdi.mint(vaultBufferAddress, _transferValue);
 
         beforeAdjustPositionUsd = 0;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {

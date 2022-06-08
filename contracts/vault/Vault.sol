@@ -966,59 +966,59 @@ contract Vault is VaultStorage {
         (
             address[] memory _wants,
             uint256[] memory _ratios,
-            uint256[] memory toAmounts
+            uint256[] memory _toAmounts
         ) = _checkAndExchange(_strategy, _exchangeTokens);
         //Definition rule 0 means unconstrained, currencies that do not participate are not in the returned wants
-        uint256 minProductIndex = 0;
-        bool isWantRatioIgnorable = IStrategy(_strategy).isWantRatioIgnorable();
-        if (!isWantRatioIgnorable && _ratios.length > 1) {
+        uint256 _minProductIndex = 0;
+        bool _isWantRatioIgnorable = IStrategy(_strategy).isWantRatioIgnorable();
+        if (!_isWantRatioIgnorable && _ratios.length > 1) {
             for (uint256 i = 1; i < _ratios.length; i++) {
                 // console.log('token %s amount %d aspect %d', _wants[i], toAmounts[i], _ratios[i]);
                 // console.log('token i+1  %s amount %d aspect %d', tokenDetails[i + 1].token, tokenDetails[i + 1].amount, tokenAspects[i + 1].aspect);
                 if (_ratios[i] == 0) {
                     //0 is free
                     continue;
-                } else if (_ratios[minProductIndex] == 0) {
+                } else if (_ratios[_minProductIndex] == 0) {
                     //minProductIndex is assigned to the first index whose proportion is not 0
-                    minProductIndex = i;
+                    _minProductIndex = i;
                 } else if (
-                    toAmounts[minProductIndex] * _ratios[i] > toAmounts[i] * _ratios[minProductIndex]
+                    _toAmounts[_minProductIndex] * _ratios[i] > _toAmounts[i] * _ratios[_minProductIndex]
                 ) {
-                    minProductIndex = i;
+                    _minProductIndex = i;
                 }
             }
         }
 
-        uint256 minMount = toAmounts[minProductIndex];
-        uint256 minAspect = _ratios[minProductIndex];
-        uint256 lendValue;
-        for (uint256 i = 0; i < toAmounts.length; i++) {
-            uint256 _actualAmount = toAmounts[i];
+        uint256 _minMount = _toAmounts[_minProductIndex];
+        uint256 _minAspect = _ratios[_minProductIndex];
+        uint256 _lendValue;
+        for (uint256 i = 0; i < _toAmounts.length; i++) {
+            uint256 _actualAmount = _toAmounts[i];
             if (_actualAmount > 0) {
                 address _want = _wants[i];
                 // console.log('token %s amount %d', _wants[i], toAmounts[i]);
                 // console.log(' minProductIndex %d minMount %d minAspect %d', minProductIndex, minMount, minAspect);
 
-                if (!isWantRatioIgnorable && _ratios[i] > 0) {
-                    _actualAmount = (_ratios[i] * minMount) / minAspect;
+                if (!_isWantRatioIgnorable && _ratios[i] > 0) {
+                    _actualAmount = (_ratios[i] * _minMount) / _minAspect;
                 }
-                lendValue =
-                    lendValue +
+                _lendValue =
+                    _lendValue +
                     IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(
                         _want,
                         _actualAmount
                     );
-                toAmounts[i] = _actualAmount;
+                _toAmounts[i] = _actualAmount;
                 // console.log('token %s actual amount %d', _wants[i], actualAmount);
                 IERC20Upgradeable(_want).safeTransfer(_strategy, _actualAmount);
             }
         }
         IStrategy strategy = IStrategy(_strategy);
-        strategy.borrow(_wants, toAmounts);
+        strategy.borrow(_wants, _toAmounts);
         address[] memory _rewardTokens;
         uint256[] memory _claimAmounts;
-        _report(_strategy, _rewardTokens, _claimAmounts, lendValue);
-        emit LendToStrategy(_strategy, _wants, toAmounts, lendValue);
+        _report(_strategy, _rewardTokens, _claimAmounts, _lendValue);
+        emit LendToStrategy(_strategy, _wants, _toAmounts, _lendValue);
     }
 
     /// @notice check valid and exchange to want token
@@ -1172,10 +1172,10 @@ contract Vault is VaultStorage {
         address _strategy,
         address[] memory _rewardTokens,
         uint256[] memory _claimAmounts,
-        uint256 lendValue
+        uint256 _lendValue
     ) private {
         StrategyParams memory strategyParam = strategies[_strategy];
-        uint256 lastStrategyTotalDebt = strategyParam.totalDebt + lendValue;
+        uint256 lastStrategyTotalDebt = strategyParam.totalDebt + _lendValue;
         uint256 nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();
         uint256 gain = 0;
         uint256 loss = 0;
@@ -1201,20 +1201,33 @@ contract Vault is VaultStorage {
         }
 
         strategies[_strategy].totalDebt = nowStrategyTotalDebt;
-        totalDebt = totalDebt + nowStrategyTotalDebt + lendValue - lastStrategyTotalDebt;
+        totalDebt = totalDebt + nowStrategyTotalDebt + _lendValue - lastStrategyTotalDebt;
 
         strategies[_strategy].lastReport = block.timestamp;
         //        lastReport = block.timestamp;
-
-        emit StrategyReported(
-            _strategy,
-            gain,
-            loss,
-            lastStrategyTotalDebt,
-            nowStrategyTotalDebt,
-            _rewardTokens,
-            _claimAmounts
-        );
+        if (_lendValue > 0) {
+            emit StrategyReported(
+                _strategy,
+                gain,
+                loss,
+                lastStrategyTotalDebt,
+                nowStrategyTotalDebt,
+                _rewardTokens,
+                _claimAmounts,
+                1
+            );
+        } else {
+            emit StrategyReported(
+                _strategy,
+                gain,
+                loss,
+                lastStrategyTotalDebt,
+                nowStrategyTotalDebt,
+                _rewardTokens,
+                _claimAmounts,
+                0
+            );
+        }
     }
 
     function report(address[] memory _rewardTokens, uint256[] memory _claimAmounts)
