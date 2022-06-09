@@ -448,26 +448,18 @@ contract VaultAdmin is VaultStorage {
         console.log("(_transferValue,_redeemValue,_vaultValueOfNow,_vaultValueOfBefore)=");
         console.log(_transferValue, _redeemValue, _vaultValueOfNow, _vaultValueOfBefore);
 
-        uint256 _totalDebtOfBeforeAdjustPosition = totalDebtOfBeforeAdjustPosition;
+        uint256 _totalDebtOfBefore = totalDebtOfBeforeAdjustPosition;
         uint256 _totalDebtOfNow = totalDebt;
 
-        uint256 _totalValueOfAfterAdjustPosition = _totalDebtOfNow + _vaultValueOfNow;
-        uint256 _totalValueOfBeforeAdjustPosition = _totalDebtOfBeforeAdjustPosition +
-            _vaultValueOfBefore;
-        console.log(
-            "(_totalDebtOfNow,_totalDebtOfBeforeAdjustPosition,_totalValueOfAfterAdjustPosition,_totalValueOfBeforeAdjustPosition)="
-        );
-        console.log(
-            _totalDebtOfNow,
-            _totalDebtOfBeforeAdjustPosition,
-            _totalValueOfAfterAdjustPosition,
-            _totalValueOfBeforeAdjustPosition
-        );
+        uint256 _totalValueOfNow = _totalDebtOfNow + _vaultValueOfNow;
+        uint256 _totalValueOfBefore = _totalDebtOfBefore + _vaultValueOfBefore;
+        console.log("(_totalDebtOfNow,_totalDebtOfBefore,_totalValueOfNow,_totalValueOfBefore)=");
+        console.log(_totalDebtOfNow, _totalDebtOfBefore, _totalValueOfNow, _totalValueOfBefore);
 
         {
             uint256 _transferValueByUsdi = 0;
-            if (_totalValueOfAfterAdjustPosition > _totalValueOfBeforeAdjustPosition) {
-                uint256 _gain = _totalValueOfAfterAdjustPosition - _totalValueOfBeforeAdjustPosition;
+            if (_totalValueOfNow > _totalValueOfBefore) {
+                uint256 _gain = _totalValueOfNow - _totalValueOfBefore;
                 if (_transferValue > 0) {
                     _transferValueByUsdi =
                         _transferValue +
@@ -475,7 +467,7 @@ contract VaultAdmin is VaultStorage {
                         (_transferValue + _redeemValue);
                 }
             } else {
-                uint256 _loss = _totalValueOfBeforeAdjustPosition - _totalValueOfAfterAdjustPosition;
+                uint256 _loss = _totalValueOfBefore - _totalValueOfNow;
                 if (_transferValue > 0) {
                     _transferValueByUsdi =
                         _transferValue -
@@ -511,8 +503,8 @@ contract VaultAdmin is VaultStorage {
             _transferValue,
             _redeemValue,
             _totalDebtOfNow,
-            _totalValueOfAfterAdjustPosition,
-            _totalValueOfBeforeAdjustPosition
+            _totalValueOfNow,
+            _totalValueOfBefore
         );
     }
 
