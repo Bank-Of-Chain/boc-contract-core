@@ -278,7 +278,12 @@ contract VaultBuffer is
         require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
         unchecked {
             // _balances[from] = fromBalance - amount;
-            _balances.set(from, fromBalance - amount);
+            uint256 newBalance = fromBalance - amount; 
+            if (newBalance == 0){
+                _balances.remove(from);
+            } else {
+                _balances.set(from, newBalance);
+            }
         }
         // _balances[to] += amount;
         _balances.plus(to, amount);
@@ -329,8 +334,12 @@ contract VaultBuffer is
         uint256 accountBalance = _balances.get(account);
         require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
         unchecked {
-            // _balances[account] = accountBalance - amount;
-            _balances.set(account, accountBalance - amount);
+            uint256 newBalance = accountBalance - amount;
+            if (newBalance == 0) {
+                _balances.remove(account);
+            } else {
+                _balances.set(account, newBalance);
+            }
         }
         _totalSupply -= amount;
 
