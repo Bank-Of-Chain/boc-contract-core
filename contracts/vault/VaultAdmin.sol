@@ -82,7 +82,7 @@ contract VaultAdmin is VaultStorage {
      * total supply and backing assets' value.
      */
     function setMaxSupplyDiff(uint256 _maxSupplyDiff) external isVaultManager {
-        require(_maxSupplyDiff <= 10000000, "basis cannot exceed 10000000");
+        require(_maxSupplyDiff <= TEN_MILLION_BPS, "basis cannot exceed 10000000");
         maxSupplyDiff = _maxSupplyDiff;
         emit MaxSupplyDiffChanged(_maxSupplyDiff);
     }
@@ -605,10 +605,10 @@ contract VaultAdmin is VaultStorage {
             trusteeFeeBps > 0 &&
             _treasuryAddress != address(0) &&
             _vaultValue > _usdiSupply &&
-            (_vaultValue - _usdiSupply) * 10000000 > _usdiSupply * maxSupplyDiff
+            (_vaultValue - _usdiSupply) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff
         ) {
             uint256 yield = _vaultValue - _usdiSupply;
-            uint256 fee = (yield * trusteeFeeBps) / 10000;
+            uint256 fee = (yield * trusteeFeeBps) / MAX_BPS;
             require(yield > fee, "Fee must not be greater than yield");
             if (fee > 0) {
                 usdi.mint(_treasuryAddress, fee);
@@ -620,9 +620,9 @@ contract VaultAdmin is VaultStorage {
         // Final check should use latest value
         if (
             (_vaultValue > _usdiSupply &&
-                (_vaultValue - _usdiSupply) * 10000000 > _usdiSupply * maxSupplyDiff) ||
+                (_vaultValue - _usdiSupply) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff) ||
             (_usdiSupply > _vaultValue &&
-                (_usdiSupply - _vaultValue) * 10000000 > _usdiSupply * maxSupplyDiff)
+                (_usdiSupply - _vaultValue) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff)
         ) {
             usdi.changeSupply(_vaultValue);
         }
