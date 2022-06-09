@@ -764,7 +764,8 @@ contract Vault is VaultStorage {
         // Only rachet USDi supply upwards
         _usdiSupply = usdi.totalSupply();
         // Final check should use latest value
-        if (_vaultValue != _usdiSupply) {
+        if (_vaultValue > _usdiSupply && (_vaultValue - _usdiSupply) * 10000000 > _usdiSupply * maxSupplyDiff
+            || _usdiSupply > _vaultValue && ( _usdiSupply - _vaultValue) * 10000000 > _usdiSupply * maxSupplyDiff) {
             usdi.changeSupply(_vaultValue);
         }
     }
@@ -1018,30 +1019,20 @@ contract Vault is VaultStorage {
         totalDebt = totalDebt + nowStrategyTotalDebt + _lendValue - lastStrategyTotalDebt;
 
         strategies[_strategy].lastReport = block.timestamp;
-        //        lastReport = block.timestamp;
+        uint256 _type = 0;
         if (_lendValue > 0) {
-            emit StrategyReported(
-                _strategy,
-                gain,
-                loss,
-                lastStrategyTotalDebt,
-                nowStrategyTotalDebt,
-                _rewardTokens,
-                _claimAmounts,
-                1
-            );
-        } else {
-            emit StrategyReported(
-                _strategy,
-                gain,
-                loss,
-                lastStrategyTotalDebt,
-                nowStrategyTotalDebt,
-                _rewardTokens,
-                _claimAmounts,
-                0
-            );
+            _type = 1;
         }
+        emit StrategyReported(
+            _strategy,
+            gain,
+            loss,
+            lastStrategyTotalDebt,
+            nowStrategyTotalDebt,
+            _rewardTokens,
+            _claimAmounts,
+            _type
+        );
     }
 
     function report(address[] memory _rewardTokens, uint256[] memory _claimAmounts)

@@ -76,6 +76,15 @@ contract VaultAdmin is VaultStorage {
         trusteeFeeBps = _basis;
         emit TrusteeFeeBpsChanged(_basis);
     }
+    /**
+     * @dev Sets the maximum allowable difference between
+     * total supply and backing assets' value.
+     */
+    function setMaxSupplyDiff(uint256 _maxSupplyDiff) external isVaultManager {
+        require(_maxSupplyDiff <= 10000000, "basis cannot exceed 10000000");
+        maxSupplyDiff = _maxSupplyDiff;
+        emit MaxSupplyDiffChanged(_maxSupplyDiff);
+    }
 
     function setStrategyEnforceChangeLimit(address _strategy, bool _enabled) external isVaultManager {
         strategies[_strategy].enforceChangeLimit = _enabled;
@@ -584,7 +593,8 @@ contract VaultAdmin is VaultStorage {
         // Only rachet USDi supply upwards
         _usdiSupply = usdi.totalSupply();
         // Final check should use latest value
-        if (_vaultValue != _usdiSupply) {
+        if (_vaultValue > _usdiSupply && (_vaultValue - _usdiSupply) * 10000000 > _usdiSupply * maxSupplyDiff
+           || _usdiSupply > _vaultValue && ( _usdiSupply - _vaultValue) * 10000000 > _usdiSupply * maxSupplyDiff) {
             usdi.changeSupply(_vaultValue);
         }
     }

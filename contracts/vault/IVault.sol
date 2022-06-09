@@ -53,6 +53,7 @@ interface IVault {
     event TreasuryAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
+    event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
     event SetWithdrawalQueue(address[] queues);
     event StrategyReported(
         address indexed strategy,

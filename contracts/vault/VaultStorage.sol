@@ -88,6 +88,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event TreasuryAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
+    event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
     event SetWithdrawalQueue(address[] _queues);
     event StartAdjustPosition(
         uint256 _usdStrategyAssets,
@@ -129,7 +130,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     bool public rebasePaused;
     // Mints over this amount automatically rebase. 18 decimals.
     uint256 public rebaseThreshold;
-    // Deprecated
+    // Threshold percentage for rebase 10000000
     uint256 public maxSupplyDiff;
     // Amount of yield collected in basis points
     uint256 public trusteeFeeBps;
