@@ -88,19 +88,20 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event TreasuryAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
+    event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
     event SetWithdrawalQueue(address[] _queues);
     event StartAdjustPosition(
-        uint256 _usdStrategyAssets,
+        uint256 _totalDebtOfBeforeAdjustPosition,
         address[] _trackedAssets,
-        uint256[] _cashDetatil,
+        uint256[] _vaultCashDetatil,
         uint256[] _vaultBufferCashDetail
     );
     event EndAdjustPosition(
-        uint256 _gain,
-        uint256 _loss,
-        uint256 _usdStrategyAssets,
-        address[] _trackedAssets,
-        uint256[] _cashDetatil
+        uint256 _transferValue,
+        uint256 _redeemValue,
+        uint256 _totalDebt,
+        uint256 _totalValueOfAfterAdjustPosition,
+        uint256 _totalValueOfBeforeAdjustPosition
     );
     event USDiSwapCash(uint256 _usdiAmount, address[] _assets, uint256[] _amounts);
 
@@ -129,7 +130,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     bool public rebasePaused;
     // Mints over this amount automatically rebase. 18 decimals.
     uint256 public rebaseThreshold;
-    // Deprecated
+    // Threshold percentage for rebase 10000000
     uint256 public maxSupplyDiff;
     // Amount of yield collected in basis points
     uint256 public trusteeFeeBps;
@@ -160,8 +161,8 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     mapping(address => uint256) internal redeemAssetsMap;
     // Assets held in Vault and buffer before Adjust Position
     mapping(address => uint256) internal beforeAdjustPositionAssetsMap;
-    // Assets held in strategy before Adjust Position
-    uint256 internal beforeAdjustPositionUsd;
+    // totalDebt before Adjust Position
+    uint256 internal totalDebtOfBeforeAdjustPosition;
 
     /**
      * @dev set the implementation for the admin, this needs to be in a base class else we cannot set it
