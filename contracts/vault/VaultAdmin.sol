@@ -82,7 +82,7 @@ contract VaultAdmin is VaultStorage {
      * total supply and backing assets' value.
      */
     function setMaxSupplyDiff(uint256 _maxSupplyDiff) external isVaultManager {
-        require(_maxSupplyDiff <= 10000000, "basis cannot exceed 10000000");
+        require(_maxSupplyDiff <= TEN_MILLION_BPS, "basis cannot exceed 10000000");
         maxSupplyDiff = _maxSupplyDiff;
         emit MaxSupplyDiffChanged(_maxSupplyDiff);
     }
@@ -448,26 +448,18 @@ contract VaultAdmin is VaultStorage {
         console.log("(_transferValue,_redeemValue,_vaultValueOfNow,_vaultValueOfBefore)=");
         console.log(_transferValue, _redeemValue, _vaultValueOfNow, _vaultValueOfBefore);
 
-        uint256 _totalDebtOfBeforeAdjustPosition = totalDebtOfBeforeAdjustPosition;
+        uint256 _totalDebtOfBefore = totalDebtOfBeforeAdjustPosition;
         uint256 _totalDebtOfNow = totalDebt;
 
-        uint256 _totalValueOfAfterAdjustPosition = _totalDebtOfNow + _vaultValueOfNow;
-        uint256 _totalValueOfBeforeAdjustPosition = _totalDebtOfBeforeAdjustPosition +
-            _vaultValueOfBefore;
-        console.log(
-            "(_totalDebtOfNow,_totalDebtOfBeforeAdjustPosition,_totalValueOfAfterAdjustPosition,_totalValueOfBeforeAdjustPosition)="
-        );
-        console.log(
-            _totalDebtOfNow,
-            _totalDebtOfBeforeAdjustPosition,
-            _totalValueOfAfterAdjustPosition,
-            _totalValueOfBeforeAdjustPosition
-        );
+        uint256 _totalValueOfNow = _totalDebtOfNow + _vaultValueOfNow;
+        uint256 _totalValueOfBefore = _totalDebtOfBefore + _vaultValueOfBefore;
+        console.log("(_totalDebtOfNow,_totalDebtOfBefore,_totalValueOfNow,_totalValueOfBefore)=");
+        console.log(_totalDebtOfNow, _totalDebtOfBefore, _totalValueOfNow, _totalValueOfBefore);
 
         {
             uint256 _transferValueByUsdi = 0;
-            if (_totalValueOfAfterAdjustPosition > _totalValueOfBeforeAdjustPosition) {
-                uint256 _gain = _totalValueOfAfterAdjustPosition - _totalValueOfBeforeAdjustPosition;
+            if (_totalValueOfNow > _totalValueOfBefore) {
+                uint256 _gain = _totalValueOfNow - _totalValueOfBefore;
                 if (_transferValue > 0) {
                     _transferValueByUsdi =
                         _transferValue +
@@ -475,7 +467,7 @@ contract VaultAdmin is VaultStorage {
                         (_transferValue + _redeemValue);
                 }
             } else {
-                uint256 _loss = _totalValueOfBeforeAdjustPosition - _totalValueOfAfterAdjustPosition;
+                uint256 _loss = _totalValueOfBefore - _totalValueOfNow;
                 if (_transferValue > 0) {
                     _transferValueByUsdi =
                         _transferValue -
@@ -511,8 +503,8 @@ contract VaultAdmin is VaultStorage {
             _transferValue,
             _redeemValue,
             _totalDebtOfNow,
-            _totalValueOfAfterAdjustPosition,
-            _totalValueOfBeforeAdjustPosition
+            _totalValueOfNow,
+            _totalValueOfBefore
         );
     }
 
@@ -613,10 +605,10 @@ contract VaultAdmin is VaultStorage {
             trusteeFeeBps > 0 &&
             _treasuryAddress != address(0) &&
             _vaultValue > _usdiSupply &&
-            (_vaultValue - _usdiSupply) * 10000000 > _usdiSupply * maxSupplyDiff
+            (_vaultValue - _usdiSupply) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff
         ) {
             uint256 yield = _vaultValue - _usdiSupply;
-            uint256 fee = (yield * trusteeFeeBps) / 10000;
+            uint256 fee = (yield * trusteeFeeBps) / MAX_BPS;
             require(yield > fee, "Fee must not be greater than yield");
             if (fee > 0) {
                 usdi.mint(_treasuryAddress, fee);
@@ -628,9 +620,9 @@ contract VaultAdmin is VaultStorage {
         // Final check should use latest value
         if (
             (_vaultValue > _usdiSupply &&
-                (_vaultValue - _usdiSupply) * 10000000 > _usdiSupply * maxSupplyDiff) ||
+                (_vaultValue - _usdiSupply) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff) ||
             (_usdiSupply > _vaultValue &&
-                (_usdiSupply - _vaultValue) * 10000000 > _usdiSupply * maxSupplyDiff)
+                (_usdiSupply - _vaultValue) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff)
         ) {
             usdi.changeSupply(_vaultValue);
         }

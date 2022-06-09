@@ -164,6 +164,9 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     // totalDebt before Adjust Position
     uint256 internal totalDebtOfBeforeAdjustPosition;
 
+    //max percentage 10000000/10000000
+    uint256 internal constant TEN_MILLION_BPS = 10000000;
+
     /**
      * @dev set the implementation for the admin, this needs to be in a base class else we cannot set it
      * @param newImpl address of the implementation
