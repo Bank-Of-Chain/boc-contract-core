@@ -66,17 +66,17 @@ interface IVault {
         uint256 _type
     );
     event StartAdjustPosition(
-        uint256 _usdStrategyAssets,
+        uint256 _totalDebtOfBeforeAdjustPosition,
         address[] _trackedAssets,
-        uint256[] _cashDetatil,
+        uint256[] _vaultCashDetatil,
         uint256[] _vaultBufferCashDetail
     );
     event EndAdjustPosition(
-        uint256 _gain,
-        uint256 _loss,
-        uint256 _usdStrategyAssets,
-        address[] _trackedAssets,
-        uint256[] _cashDetatil
+        uint256 _transferValue,
+        uint256 _redeemValue,
+        uint256 _totalDebt,
+        uint256 _totalValueOfAfterAdjustPosition,
+        uint256 _totalValueOfBeforeAdjustPosition
     );
     event USDiSwapCash(uint256 _usdiAmount, address[] _assets, uint256[] _amounts);
 

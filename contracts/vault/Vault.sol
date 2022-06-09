@@ -752,7 +752,12 @@ contract Vault is VaultStorage {
         // Yield fee collection
         address _treasuryAddress = treasury;
         // gas savings
-        if (trusteeFeeBps > 0 && _treasuryAddress != address(0) && (_vaultValue > _usdiSupply)) {
+        if (
+            trusteeFeeBps > 0 &&
+            _treasuryAddress != address(0) &&
+            _vaultValue > _usdiSupply &&
+            (_vaultValue - _usdiSupply) * 10000000 > _usdiSupply * maxSupplyDiff
+        ) {
             uint256 yield = _vaultValue - _usdiSupply;
             uint256 fee = (yield * trusteeFeeBps) / 10000;
             require(yield > fee, "Fee must not be greater than yield");
@@ -764,8 +769,12 @@ contract Vault is VaultStorage {
         // Only rachet USDi supply upwards
         _usdiSupply = usdi.totalSupply();
         // Final check should use latest value
-        if (_vaultValue > _usdiSupply && (_vaultValue - _usdiSupply) * 10000000 > _usdiSupply * maxSupplyDiff
-            || _usdiSupply > _vaultValue && ( _usdiSupply - _vaultValue) * 10000000 > _usdiSupply * maxSupplyDiff) {
+        if (
+            (_vaultValue > _usdiSupply &&
+                (_vaultValue - _usdiSupply) * 10000000 > _usdiSupply * maxSupplyDiff) ||
+            (_usdiSupply > _vaultValue &&
+                (_usdiSupply - _vaultValue) * 10000000 > _usdiSupply * maxSupplyDiff)
+        ) {
             usdi.changeSupply(_vaultValue);
         }
     }
