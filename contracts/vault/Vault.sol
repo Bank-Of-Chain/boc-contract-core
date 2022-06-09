@@ -764,8 +764,12 @@ contract Vault is VaultStorage {
         // Only rachet USDi supply upwards
         _usdiSupply = usdi.totalSupply();
         // Final check should use latest value
-        if (_vaultValue > _usdiSupply && (_vaultValue - _usdiSupply) * 10000000 > _usdiSupply * maxSupplyDiff
-            || _usdiSupply > _vaultValue && ( _usdiSupply - _vaultValue) * 10000000 > _usdiSupply * maxSupplyDiff) {
+        if (
+            (_vaultValue > _usdiSupply &&
+                (_vaultValue - _usdiSupply) * 10000000 > _usdiSupply * maxSupplyDiff) ||
+            (_usdiSupply > _vaultValue &&
+                (_usdiSupply - _vaultValue) * 10000000 > _usdiSupply * maxSupplyDiff)
+        ) {
             usdi.changeSupply(_vaultValue);
         }
     }
@@ -959,10 +963,15 @@ contract Vault is VaultStorage {
             for (uint256 i = 0; i < _trackedAssetsLength; i++) {
                 address _trackedAsset = _trackedAssets[i];
                 uint256 _afterAmount = balanceOfToken(_trackedAsset, address(this));
-                redeemAssetsMap[_trackedAsset] =
-                    redeemAssetsMap[_trackedAsset] +
-                    _afterAmount -
-                    _beforeAmounts[i];
+                uint256 _beforeAmount = _beforeAmounts[i];
+                if (_afterAmount > _beforeAmount) {
+                    redeemValue =
+                        redeemValue +
+                        IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(
+                            _trackedAsset,
+                            _afterAmount - _beforeAmount
+                        );
+                }
             }
 
             strategies[_strategy].totalDebt -= _amount;

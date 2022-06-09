@@ -76,6 +76,7 @@ contract VaultAdmin is VaultStorage {
         trusteeFeeBps = _basis;
         emit TrusteeFeeBpsChanged(_basis);
     }
+
     /**
      * @dev Sets the maximum allowable difference between
      * total supply and backing assets' value.
@@ -307,167 +308,124 @@ contract VaultAdmin is VaultStorage {
         address[] memory _trackedAssets = trackedAssetsMap._inner._keys.values();
 
         (
-            uint256[] memory _amounts,
-            uint256[] memory _vaultAmounts,
             uint256[] memory _transferAmounts,
-            bool _transferVaultBuffer
+            uint256 _totalValueInVault,
+            uint256 _transferValueFromVaultBuffer
         ) = _calculateVault(_trackedAssets, true);
-        if (_transferVaultBuffer) {
-            uint256[] memory _assetPrices = new uint256[](_trackedAssets.length);
-            uint256[] memory _assetDecimals = new uint256[](_trackedAssets.length);
-            _rebaseAdmin(_trackedAssets, _vaultAmounts, _assetPrices, _assetDecimals, 0);
+        uint256 _totalDebt = totalDebt;
+        if (_transferValueFromVaultBuffer > 0) {
+            _rebaseAdmin(_totalValueInVault + _totalDebt);
             IVaultBuffer(vaultBufferAddress).transferCashToVault(_trackedAssets, _transferAmounts);
+            transferValueFromVaultBuffer = _transferValueFromVaultBuffer;
         }
-        beforeAdjustPositionUsd = _calculateStrategy(_trackedAssets, _amounts);
-        for (uint256 i = 0; i < _trackedAssets.length; i++) {
-            uint256 _amount = _amounts[i];
-            if (_amount > 0) {
-                beforeAdjustPositionAssetsMap[_trackedAssets[i]] = _amount;
-            }
-        }
-        emit StartAdjustPosition(beforeAdjustPositionUsd, _trackedAssets, _amounts, _transferAmounts);
+        uint256 _totalValueOfBeforeAdjustPosition = _totalValueInVault +
+            _totalDebt +
+            _transferValueFromVaultBuffer;
+        totalValueOfBeforeAdjustPosition = _totalValueOfBeforeAdjustPosition;
+
+        emit StartAdjustPosition(
+            _totalValueOfBeforeAdjustPosition,
+            _transferValueFromVaultBuffer,
+            _trackedAssets,
+            _transferAmounts
+        );
     }
 
     /// @notice end  Adjust Position
     function endAdjustPosition() external isKeeper nonReentrant {
         require(adjustPositionPeriod, "AD ING");
         address[] memory _trackedAssets = trackedAssetsMap._inner._keys.values();
-        (
-            uint256[] memory _amounts,
-            uint256[] memory _vaultAmounts,
-            uint256 afterAdjustPositionUsd
-        ) = _calculateAfterAdjust(_trackedAssets);
-        uint256 _trackedAssetsLength = _trackedAssets.length;
-        uint256 _gain = 0;
-        uint256 _loss = 0;
-        if (afterAdjustPositionUsd > beforeAdjustPositionUsd) {
-            _gain = _gain + afterAdjustPositionUsd - beforeAdjustPositionUsd;
-        } else {
-            _loss = _loss + beforeAdjustPositionUsd - afterAdjustPositionUsd;
-        }
 
-        uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
-        uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
+        (, uint256 _totalValueInVaults, ) = _calculateVault(_trackedAssets, false);
+        uint256 _totalDebt = totalDebt;
+        uint256 _totalValueOfBeforeAdjustPosition = totalValueOfBeforeAdjustPosition;
+        uint256 _totalValueOfAfterAdjustPosition = _totalValueInVaults + _totalDebt;
 
-        uint256 _transferValue = 0;
-        uint256 _redeemValue = 0;
-
-        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
-            address _trackedAsset = _trackedAssets[i];
-            _transferValue =
-                _transferValue +
-                _calculateAssetValueInAdmin(
-                    _assetPrices,
-                    _assetDecimals,
-                    i,
-                    _trackedAsset,
-                    transferFromVaultBufferAssetsMap[_trackedAsset]
-                );
-            _redeemValue =
-                _redeemValue +
-                _calculateAssetValueInAdmin(
-                    _assetPrices,
-                    _assetDecimals,
-                    i,
-                    _trackedAsset,
-                    redeemAssetsMap[_trackedAsset]
-                );
-
-            console.log("(_trackedAsset, _transferamount, _redeemAmount) = ", _trackedAsset, transferFromVaultBufferAssetsMap[_trackedAsset], redeemAssetsMap[_trackedAsset]);
-            uint256 _beforeAmount = beforeAdjustPositionAssetsMap[_trackedAsset];
-            uint256 _amount = _amounts[i];
-            console.log("(_trackedAsset, _amount, _beforeAmount) = ", _trackedAsset, _amount, _beforeAmount);
-            if (_amount > _beforeAmount) {
-                uint256 _value = _calculateAssetValueInAdmin(
-                    _assetPrices,
-                    _assetDecimals,
-                    i,
-                    _trackedAsset,
-                    _amount - _beforeAmount
-                );
-
-                _gain = _gain + _value;
-            } else {
-                uint256 _value = _calculateAssetValueInAdmin(
-                    _assetPrices,
-                    _assetDecimals,
-                    i,
-                    _trackedAsset,
-                    _beforeAmount - _amount
-                );
-                _loss = _loss + _value;
-            }
-        }
-        console.log("_transferValue, _redeemValue, _gain, _loss");
-        console.log(_transferValue, _redeemValue, _gain, _loss);
-        if (_transferValue > 0) {
-            if (_gain >= _loss) {
+        uint256 _transferValueFromVaultBuffer = transferValueFromVaultBuffer;
+        uint256 _transferValue = transferValueFromVaultBuffer;
+        uint256 _redeemValue = redeemValue;
+        if (_totalValueOfAfterAdjustPosition > _totalValueOfBeforeAdjustPosition) {
+            uint256 _gain = _totalValueOfAfterAdjustPosition - _totalValueOfBeforeAdjustPosition;
+            if (_transferValue > 0) {
                 _transferValue =
                     _transferValue +
-                    ((_gain - _loss) * _transferValue) /
+                    (_gain * _transferValue) /
                     (_transferValue + _redeemValue);
-            } else {
+            }
+        } else {
+            uint256 _loss = _totalValueOfBeforeAdjustPosition - _totalValueOfAfterAdjustPosition;
+            if (_transferValue > 0) {
                 _transferValue =
                     _transferValue -
-                    ((_loss - _gain) * _transferValue) /
+                    (_loss * _transferValue) /
                     (_transferValue + _redeemValue);
             }
         }
-        _rebaseAdmin(_trackedAssets, _vaultAmounts, _assetPrices, _assetDecimals, _transferValue);
+        _rebaseAdmin(_totalValueOfAfterAdjustPosition - _transferValue);
         if (_transferValue > 0) {
             usdi.mint(vaultBufferAddress, _transferValue);
         }
 
-        beforeAdjustPositionUsd = 0;
-        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
-            address _trackedAsset = _trackedAssets[i];
-            redeemAssetsMap[_trackedAsset] = 0;
-            beforeAdjustPositionAssetsMap[_trackedAsset] = 0;
-            transferFromVaultBufferAssetsMap[_trackedAsset] = 0;
-        }
+        transferValueFromVaultBuffer = 0;
+        redeemValue = 0;
+        totalValueOfBeforeAdjustPosition = 0;
         IVaultBuffer(vaultBufferAddress).distributeByVault();
         adjustPositionPeriod = false;
 
-        if (_gain >= _loss) {
-            _gain = _gain - _loss;
-            _loss = 0;
-        } else {
-            _loss = _loss - _gain;
-            _gain = 0;
-        }
-
-        emit EndAdjustPosition(_gain, _loss, afterAdjustPositionUsd, _trackedAssets, _amounts);
+        emit EndAdjustPosition(
+            _transferValueFromVaultBuffer,
+            _transferValue,
+            _redeemValue,
+            _totalValueOfBeforeAdjustPosition,
+            _totalValueOfAfterAdjustPosition
+        );
     }
 
-    function _calculateVault(address[] memory _trackedAssets, bool _beforeAdjustPosition)
+    function _calculateVault(address[] memory _trackedAssets, bool _includeVaultBuffer)
         internal
         returns (
             uint256[] memory,
-            uint256[] memory,
-            uint256[] memory,
-            bool
+            uint256,
+            uint256
         )
     {
         uint256 _trackedAssetsLength = _trackedAssets.length;
+        uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
+        uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
         uint256[] memory _transferAmounts = new uint256[](_trackedAssetsLength);
-        uint256[] memory _vaultAmounts = new uint256[](_trackedAssetsLength);
-        uint256[] memory _amounts = new uint256[](_trackedAssetsLength);
-        bool _vaultBufferAboveZero = false;
+        uint256 _totalValueInVault;
+        uint256 _transferValueFromVaultBuffer;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
-            uint256 _balance = 0;
-            if (_beforeAdjustPosition && assetSet.contains(_trackedAsset)) {
-                _balance = IERC20Upgradeable(_trackedAsset).balanceOf(vaultBufferAddress);
+            if (_includeVaultBuffer && assetSet.contains(_trackedAsset)) {
+                uint256 _balance = IERC20Upgradeable(_trackedAsset).balanceOf(vaultBufferAddress);
                 if (_balance > 0) {
                     _transferAmounts[i] = _balance;
-                    _vaultBufferAboveZero = true;
-                    transferFromVaultBufferAssetsMap[_trackedAsset] = _balance;
+                    _transferValueFromVaultBuffer =
+                        _transferValueFromVaultBuffer +
+                        _calculateAssetValueInAdmin(
+                            _assetPrices,
+                            _assetDecimals,
+                            i,
+                            _trackedAsset,
+                            _balance
+                        );
                 }
             }
-            _vaultAmounts[i] = IERC20Upgradeable(_trackedAsset).balanceOf(address(this));
-            _amounts[i] = _balance + _vaultAmounts[i];
+            uint256 _vaultAmount = IERC20Upgradeable(_trackedAsset).balanceOf(address(this));
+            if (_vaultAmount > 0) {
+                _totalValueInVault =
+                    _totalValueInVault +
+                    _calculateAssetValueInAdmin(
+                        _assetPrices,
+                        _assetDecimals,
+                        i,
+                        _trackedAsset,
+                        _vaultAmount
+                    );
+            }
         }
-        return (_amounts, _vaultAmounts, _transferAmounts, _vaultBufferAboveZero);
+        return (_transferAmounts, _totalValueInVault, _transferValueFromVaultBuffer);
     }
 
     /// @notice calculate Asset value in usd by oracle price
@@ -495,89 +453,17 @@ contract VaultAdmin is VaultStorage {
         return _value;
     }
 
-    function _calculateAfterAdjust(address[] memory _trackedAssets)
-        internal
-        returns (
-            uint256[] memory,
-            uint256[] memory,
-            uint256
-        )
-    {
-        (uint256[] memory _amounts, uint256[] memory _vaultAmounts, , ) = _calculateVault(
-            _trackedAssets,
-            false
-        );
-        uint256 _afterAdjustPositionUsd = _calculateStrategy(_trackedAssets, _amounts);
-        return (_amounts, _vaultAmounts, _afterAdjustPositionUsd);
-    }
-
-    function _calculateStrategy(address[] memory _trackedAssets, uint256[] memory _amounts)
-        internal
-        returns (uint256)
-    {
-        uint256 _afterAdjustPositionUsd = 0;
-        {
-            uint256 _trackedAssetsLength = _trackedAssets.length;
-            uint256 _strategySetLength = strategySet.length();
-            for (uint256 i = 0; i < _strategySetLength; i++) {
-                address _strategy = strategySet.at(i);
-                if (strategies[_strategy].totalDebt > 0) {
-                    (
-                        address[] memory _tokens,
-                        uint256[] memory _strategyAmounts,
-                        bool _isUsd,
-                        uint256 _usdValue
-                    ) = IStrategy(_strategy).getPositionDetail();
-                    if (_isUsd) {
-                        _afterAdjustPositionUsd = _afterAdjustPositionUsd + _usdValue;
-                    } else {
-                        for (uint256 j = 0; j < _tokens.length; j++) {
-                            uint256 _amount = _strategyAmounts[j];
-                            if (_amount > 0) {
-                                for (uint256 k = 0; k < _trackedAssetsLength; k++) {
-                                    if (_trackedAssets[k] == _tokens[j]) {
-                                        _amounts[k] = _amounts[k] + _amount;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return _afterAdjustPositionUsd;
-    }
-
     /**
      * @dev Calculate the total value of assets held by the Vault and all
      *      strategies and update the supply of USDI, optionally sending a
      *      portion of the yield to the trustee.
      */
-    function _rebaseAdmin(
-        address[] memory _trackedAssets,
-        uint256[] memory _vaultAmounts,
-        uint256[] memory _assetPrices,
-        uint256[] memory _assetDecimals,
-        uint256 _transferValue
-    ) internal {
+    function _rebaseAdmin(uint256 _vaultValue) internal {
         require(!rebasePaused, "RP");
         uint256 _usdiSupply = usdi.totalSupply();
         if (_usdiSupply == 0 || usdi.rebasingCredits() < 1e27) {
             return;
         }
-
-        uint256 _totalValueInVault = 0;
-        for (uint256 i = 0; i < _trackedAssets.length; i++) {
-            address _trackedAsset = _trackedAssets[i];
-            uint256 _amount = _vaultAmounts[i];
-            if (_amount > 0) {
-                _totalValueInVault =
-                    _totalValueInVault +
-                    _calculateAssetValueInAdmin(_assetPrices, _assetDecimals, i, _trackedAsset, _amount);
-            }
-        }
-        uint256 _vaultValue = _totalValueInVault + totalDebt - _transferValue;
         // Yield fee collection
         address _treasuryAddress = treasury;
         // gas savings
@@ -593,8 +479,12 @@ contract VaultAdmin is VaultStorage {
         // Only rachet USDi supply upwards
         _usdiSupply = usdi.totalSupply();
         // Final check should use latest value
-        if (_vaultValue > _usdiSupply && (_vaultValue - _usdiSupply) * 10000000 > _usdiSupply * maxSupplyDiff
-           || _usdiSupply > _vaultValue && ( _usdiSupply - _vaultValue) * 10000000 > _usdiSupply * maxSupplyDiff) {
+        if (
+            (_vaultValue > _usdiSupply &&
+                (_vaultValue - _usdiSupply) * 10000000 > _usdiSupply * maxSupplyDiff) ||
+            (_usdiSupply > _vaultValue &&
+                (_usdiSupply - _vaultValue) * 10000000 > _usdiSupply * maxSupplyDiff)
+        ) {
             usdi.changeSupply(_vaultValue);
         }
     }

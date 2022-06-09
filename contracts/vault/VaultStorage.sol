@@ -91,17 +91,17 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
     event SetWithdrawalQueue(address[] _queues);
     event StartAdjustPosition(
-        uint256 _usdStrategyAssets,
+        uint256 _totalValueOfBeforeAdjustPosition,
+        uint256 _transferValueFromVaultBuffer,
         address[] _trackedAssets,
-        uint256[] _cashDetatil,
-        uint256[] _vaultBufferCashDetail
+        uint256[] _transferAmounts
     );
     event EndAdjustPosition(
-        uint256 _gain,
-        uint256 _loss,
-        uint256 _usdStrategyAssets,
-        address[] _trackedAssets,
-        uint256[] _cashDetatil
+        uint256 _transferValue,
+        uint256 _transferMintUsdi,
+        uint256 _redeemValue,
+        uint256 _totalValueOfBeforeAdjustPosition,
+        uint256 _totalValueOfAfterAdjustPosition
     );
     event USDiSwapCash(uint256 _usdiAmount, address[] _assets, uint256[] _amounts);
 
@@ -155,14 +155,12 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
 
     //vault Buffer Address
     address public vaultBufferAddress;
-    // Assets held in Vault from vault buffer
-    mapping(address => uint256) internal transferFromVaultBufferAssetsMap;
-    // redeem Assets where ad
-    mapping(address => uint256) internal redeemAssetsMap;
-    // Assets held in Vault and buffer before Adjust Position
-    mapping(address => uint256) internal beforeAdjustPositionAssetsMap;
-    // Assets held in strategy before Adjust Position
-    uint256 internal beforeAdjustPositionUsd;
+    // Assets value held in Vault from vault buffer
+    uint256 internal transferValueFromVaultBuffer;
+    // redeem Assets value where ad
+    uint256 internal redeemValue;
+    // total value before Adjust Position
+    uint256 internal totalValueOfBeforeAdjustPosition;
 
     /**
      * @dev set the implementation for the admin, this needs to be in a base class else we cannot set it
