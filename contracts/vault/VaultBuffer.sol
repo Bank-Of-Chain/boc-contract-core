@@ -230,16 +230,16 @@ contract VaultBuffer is
 
     function distributeByKeeper() external isKeeper {
         assert(!IVault(vault).adjustPositionPeriod());
+        address[] memory assets = IVault(vault).getTrackedAssets();
+        for (uint256 i = 0; i < assets.length; i++) {
+            assert(IERC20Upgradeable(assets[i]).balanceOf(address(this)) == 0);
+        }
         _distribute();
     }
 
     function _distribute() internal {
         uint256 _totalSupplyCurrent = _totalSupply;
         if (_totalSupplyCurrent > 0) {
-            address[] memory assets = IVault(vault).getTrackedAssets();
-            for (uint256 i = 0; i < assets.length; i++) {
-                assert(IERC20Upgradeable(assets[i]).balanceOf(address(this)) == 0);
-            }
             IERC20Upgradeable usdiToken = IERC20Upgradeable(usdi);
             uint256 totalUsdi = usdiToken.balanceOf(address(this));
             uint256 len = _balances.length();
