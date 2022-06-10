@@ -294,6 +294,9 @@ interface IVault {
     //all strategy asset
     function totalDebt() external view returns (uint256);
 
+    //Threshold percentage for rebase 10000000
+    function maxSupplyDiff() external view returns (uint256);
+
     //exchangeManager
     function exchangeManager() external view returns (address);
 

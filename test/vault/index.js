@@ -319,6 +319,11 @@ describe("Vault", function () {
 
         await iVault.setTrusteeFeeBps(1000, {from: governance});
 
+        await iVault.setMaxSupplyDiff(1, {from: governance});
+
+        console.log('maxSupplyDiff: %s', (await iVault.maxSupplyDiff()).toString());
+
+
         //开启调仓
         const tx = await iVault.startAdjustPosition({from: keeper});
         const gasUsed = tx.receipt.gasUsed;
