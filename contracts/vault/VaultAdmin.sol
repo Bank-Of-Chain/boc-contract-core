@@ -531,12 +531,12 @@ contract VaultAdmin is VaultStorage {
                     transferFromVaultBufferAssetsMap[_trackedAsset] = _balance;
                 }
             }
-            uint256 _vaultAmount = _balance + IERC20Upgradeable(_trackedAsset).balanceOf(address(this));
+            uint256 _vaultAmount = IERC20Upgradeable(_trackedAsset).balanceOf(address(this));
             if (_vaultAmount > 0) {
                 _vaultAmounts[i] = _vaultAmount;
-                if (_dealVaultBuffer) {
-                    beforeAdjustPositionAssetsMap[_trackedAsset] = _vaultAmount;
-                }
+            }
+            if (_dealVaultBuffer && _vaultAmount + _balance > 0) {
+                beforeAdjustPositionAssetsMap[_trackedAsset] = _vaultAmount + _balance;
             }
         }
         return (_vaultAmounts, _transferAmounts, _vaultBufferAboveZero);
@@ -595,8 +595,8 @@ contract VaultAdmin is VaultStorage {
                     _calculateAssetValueInAdmin(_assetPrices, _assetDecimals, i, _trackedAsset, _amount);
             }
         }
-        console.log("(_totalValueInVault, totalDebt, _transferValue)=");
-        console.log(_totalValueInVault, totalDebt, _transferValue);
+        console.log("(_totalValueInVault, totalDebt, _transferValue,_usdiSupply)=");
+        console.log(_totalValueInVault, totalDebt, _transferValue,_usdiSupply);
         uint256 _vaultValue = _totalValueInVault + totalDebt - _transferValue;
         // Yield fee collection
         address _treasuryAddress = treasury;
