@@ -33,4 +33,27 @@ interface IPegToken is IERC20 {
      */
     function changePauseState(bool _isPaused) external;
 
+    /**
+     * @notice Creates `_sharesAmount` shares and assigns them to `_recipient`, increasing the total amount of shares.
+     * @dev This doesn't increase the token total supply.
+     *
+     * Requirements:
+     *
+     * - `_recipient` cannot be the zero address.
+     * - the contract must not be paused.
+     */
+    function mintShares(address _recipient, uint256 _sharesAmount) external;
+
+    /**
+     * @notice Destroys `_sharesAmount` shares from `_account`'s holdings, decreasing the total amount of shares.
+     * @dev This doesn't decrease the token total supply.
+     *
+     * Requirements:
+     *
+     * - `_account` cannot be the zero address.
+     * - `_account` must hold at least `_sharesAmount` shares.
+     * - the contract must not be paused.
+     */
+    function burnShares(address _account, uint256 _sharesAmount) external;
+
 }
