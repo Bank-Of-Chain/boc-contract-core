@@ -25,7 +25,7 @@ interface IPegToken is IERC20 {
      * @dev query the shares that can be returned for a specified number of underlying uints.
      * @return the shares.
      */
-    function getSharesByUnderlyingUnits(uint256 _pooledEthAmount) external view returns (uint256);
+    function getSharesByUnderlyingUnits(uint256 _underlyingUnits) external view returns (uint256);
     
     /**
      * @dev change the pause state.
