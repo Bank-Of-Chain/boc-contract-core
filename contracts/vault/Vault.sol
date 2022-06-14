@@ -947,14 +947,14 @@ contract Vault is VaultStorage {
             uint256 _assetBalancesInVault = _balanceOfToken(_trackedAsset, address(this));
             if (_assetBalancesInVault > 0) {
                 _totalAssetInVault =
-                _totalAssetInVault +
-                _calculateAssetValue(
-                    _assetPrices,
-                    _assetDecimals,
-                    i,
-                    _trackedAsset,
-                    _assetBalancesInVault
-                );
+                    _totalAssetInVault +
+                    _calculateAssetValue(
+                        _assetPrices,
+                        _assetDecimals,
+                        i,
+                        _trackedAsset,
+                        _assetBalancesInVault
+                    );
             }
         }
         uint256 _actualAmount = _amount;
@@ -977,15 +977,15 @@ contract Vault is VaultStorage {
         // vault not enough,withdraw from vault buffer
         if (_totalAssetInVault < _actualAmount) {
             _totalAssetInVault =
-            _totalAssetInVault +
-            _repayFromVaultBuffer(
-                _actualAmount - _totalAssetInVault,
-                _assetPrices,
-                _assetDecimals,
-                _trackedAssets,
-                _currentTotalAssets,
-                _currentTotalShares
-            );
+                _totalAssetInVault +
+                _repayFromVaultBuffer(
+                    _actualAmount - _totalAssetInVault,
+                    _assetPrices,
+                    _assetDecimals,
+                    _trackedAssets,
+                    _currentTotalAssets,
+                    _currentTotalShares
+                );
         }
 
         // vault not enough,withdraw from withdraw queue strategy
@@ -1160,13 +1160,19 @@ contract Vault is VaultStorage {
                         IPegToken(pegTokenAddress).mintShares(_treasuryAddress, _sharesAmount);
                         _totalShares = _totalShares + _sharesAmount;
                         // Only rachet USDi supply upwards
-                        _usdiSupply = _totalShares * _totalShares.mulTruncateScale(_underlyingUnitsPerShare, 1e27);
+                        _usdiSupply =
+                            _totalShares *
+                            _totalShares.mulTruncateScale(_underlyingUnitsPerShare, 1e27);
                     }
                 }
             }
             console.log("(_totalShares,_totalValue):", _totalShares, _totalAssets);
             uint256 _newUnderlyingUnitsPerShare = _totalAssets.divPreciselyScale(_totalShares, 1e27);
-            console.log("(_newUnderlyingUnitsPerShare,_underlyingUnitsPerShare):", _newUnderlyingUnitsPerShare, _underlyingUnitsPerShare);
+            console.log(
+                "(_newUnderlyingUnitsPerShare,_underlyingUnitsPerShare):",
+                _newUnderlyingUnitsPerShare,
+                _underlyingUnitsPerShare
+            );
             if (_newUnderlyingUnitsPerShare != _underlyingUnitsPerShare) {
                 underlyingUnitsPerShare = _newUnderlyingUnitsPerShare;
                 emit Rebase(_totalShares, _totalAssets, _newUnderlyingUnitsPerShare);

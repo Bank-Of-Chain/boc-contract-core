@@ -234,7 +234,6 @@ interface IVault {
      */
     function setTrusteeFeeBps(uint256 _basis) external;
 
-
     //advance queue
     function setWithdrawalQueue(address[] memory queues) external;
 
