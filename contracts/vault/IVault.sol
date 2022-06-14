@@ -63,7 +63,7 @@ interface IVault {
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
     event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
     event SetWithdrawalQueue(address[] queues);
-    event Rebase(uint256 _totalShares, uint256 _totalValue, uint256 _newPricePerShare);
+    event Rebase(uint256 _totalShares, uint256 _totalValue, uint256 _newUnderlyingUnitsPerShare);
     event StrategyReported(
         address indexed strategy,
         uint256 gain,
@@ -121,7 +121,7 @@ interface IVault {
     /// @notice end  Adjust Position
     function endAdjustPosition() external;
 
-    function pricePerShare() external view returns (uint256);
+    function underlyingUnitsPerShare() external view returns (uint256);
 
     /**
      * @dev Internal to calculate total value of all assets held in Vault.
