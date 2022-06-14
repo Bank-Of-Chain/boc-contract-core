@@ -63,7 +63,7 @@ contract Vault is VaultStorage {
 
     /// @notice Version of vault
     function getVersion() external pure returns (string memory) {
-        return "1.0.0";
+        return "1.1.0";
     }
 
     /// @notice Minting USDi supported assets
@@ -1158,6 +1158,7 @@ contract Vault is VaultStorage {
                     }
                 }
             }
+            console.log('_totalValue:%d,_totalShares:%d',_totalValue,_totalShares);
             uint256 _newPricePerShare = _totalValue.divPreciselyScale(_totalShares, 1e27);
             console.log("_newPricePerShare:",_newPricePerShare);
             if(_newPricePerShare!=_pricePerShare){

@@ -329,4 +329,6 @@ interface IVault {
     function setVaultBufferAddress(address _address) external;
 
     function setPegTokenAddress(address _address) external;
+
+    function setAdminImpl(address newImpl) external;
 }
