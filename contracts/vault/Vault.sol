@@ -813,7 +813,7 @@ contract Vault is VaultStorage {
         }
 
         uint256 _pricePerShare = pricePerShare;
-        uint256 _usdiSupply = _totalShares.mulTruncate(_pricePerShare);
+        uint256 _usdiSupply = _totalShares.mulTruncateScale(_pricePerShare,1e27);
         uint256 _vaultValue = _totalValueInVault + totalDebt;
         {
             // Yield fee collection
@@ -834,7 +834,7 @@ contract Vault is VaultStorage {
                     IPegToken(pegTokenAddress).mintShares(_treasuryAddress, _shareAmount);
                     _totalShares = _totalShares + _shareAmount;
                     // Only rachet USDi supply upwards
-                    _usdiSupply = _totalShares * _totalShares.mulTruncate(_pricePerShare);
+                    _usdiSupply = _totalShares * _totalShares.mulTruncateScale(_pricePerShare,1e27);
                 }
             }
         }
@@ -844,7 +844,7 @@ contract Vault is VaultStorage {
             _vaultValue > _usdiSupply &&
             (_vaultValue - _usdiSupply) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff
         ) {
-            pricePerShare = _vaultValue.divPrecisely(_totalShares);
+            pricePerShare = _vaultValue.divPreciselyScale(_totalShares,1e27);
         }
     }
 
