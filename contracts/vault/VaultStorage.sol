@@ -8,6 +8,7 @@ import "../library/IterableIntMap.sol";
 import "../library/IterableUintMap.sol";
 import "../library/StableMath.sol";
 import "../token/USDi.sol";
+import "../token/IPegToken.sol";
 import "./IVaultBuffer.sol";
 import "../library/BocRoles.sol";
 import "../strategy/IStrategy.sol";
@@ -46,7 +47,15 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event RemoveStrategies(address[] _strategies);
     event RemoveStrategyByForce(address _strategy);
     event Mint(address _account, address[] _assets, uint256[] _amounts, uint256 _mintAmount);
-    event Burn(address _account, address _asset, uint256 _amount, uint256 _actualAmount);
+    event Burn(
+        address _account,
+        address _asset,
+        uint256 _amount,
+        uint256 _actualAmount,
+        uint256 _shareAmount,
+        address[] _assets,
+        uint256[] _amounts
+    );
     event BurnWithoutExchange(
         address _account,
         address[] _assets,
@@ -89,6 +98,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
     event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
+    event PricePerShareChanged(uint256 _pricePerShare);
     event SetWithdrawalQueue(address[] _queues);
     event StartAdjustPosition(
         uint256 _totalDebtOfBeforeAdjustPosition,
@@ -163,6 +173,10 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     mapping(address => uint256) internal beforeAdjustPositionAssetsMap;
     // totalDebt before Adjust Position
     uint256 internal totalDebtOfBeforeAdjustPosition;
+    // totalAsset/totalShare
+    uint256 public pricePerShare;
+    // usdi PegToken address
+    address internal pegTokenAddress;
 
     //max percentage 10000000/10000000
     uint256 internal constant TEN_MILLION_BPS = 10000000;

@@ -28,7 +28,15 @@ interface IVault {
     event RemoveStrategies(address[] _strategies);
     event RemoveStrategyByForce(address _strategy);
     event Mint(address _account, address[] _assets, uint256[] _amounts, uint256 _mintAmount);
-    event Burn(address _account, address _asset, uint256 _amount, uint256 _actualAmount);
+    event Burn(
+        address _account,
+        address _asset,
+        uint256 _amount,
+        uint256 _actualAmount,
+        uint256 _shareAmount,
+        address[] _assets,
+        uint256[] _amounts
+    );
     event BurnWithoutExchange(
         address _account,
         address[] _assets,
@@ -54,6 +62,7 @@ interface IVault {
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
     event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
+    event PricePerShareChanged(uint256 _pricePerShare);
     event SetWithdrawalQueue(address[] queues);
     event StrategyReported(
         address indexed strategy,
@@ -225,6 +234,7 @@ interface IVault {
      */
     function setTrusteeFeeBps(uint256 _basis) external;
 
+
     //advance queue
     function setWithdrawalQueue(address[] memory queues) external;
 
@@ -317,4 +327,8 @@ interface IVault {
     function accessControlProxy() external view returns (address);
 
     function setVaultBufferAddress(address _address) external;
+
+    function setPricePerShare(uint256 _pricePerShare) external;
+
+    function setPegTokenAddress(address _address) external;
 }

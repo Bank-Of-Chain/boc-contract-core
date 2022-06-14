@@ -265,7 +265,9 @@ contract Vault is VaultStorage {
         uint256 _needTransferValue,
         uint256[] memory _assetPrices,
         uint256[] memory _assetDecimals,
-        address[] memory _trackedAssets
+        address[] memory _trackedAssets,
+        uint256 _totalAssets,
+        uint256 _totalShares
     ) internal returns (uint256) {
         address[] memory _transferAssets = _trackedAssets;
         uint256 _transferAssetsLength = _transferAssets.length;
@@ -300,11 +302,34 @@ contract Vault is VaultStorage {
         }
         if (_totalTransferValue > 0) {
             IVaultBuffer(vaultBufferAddress).transferCashToVault(_transferAssets, _amounts);
-            usdi.mint(vaultBufferAddress, _totalTransferValue);
+
+            uint256 _totalTransferShares = _calculateShare(
+                _totalTransferValue,
+                _totalAssets,
+                _totalShares
+            );
+            IPegToken(pegTokenAddress).mintShares(vaultBufferAddress, _totalTransferShares);
 
             emit USDiSwapCash(_totalTransferValue, _transferAssets, _amounts);
         }
         return _totalTransferValue;
+    }
+
+    function _calculateShare(
+        uint256 _amount,
+        uint256 _totalAssets,
+        uint256 _totalShares
+    ) internal pure returns (uint256) {
+        uint256 _shareAmount = 0;
+        if (_totalAssets == 0) {
+            _shareAmount = _amount;
+        } else {
+            _shareAmount = (_amount * _totalShares) / _totalAssets;
+            if (_shareAmount == 0) {
+                _shareAmount = _amount;
+            }
+        }
+        return _shareAmount;
     }
 
     /// @notice calculate need transfer amount from vault ,set to outputs
@@ -314,36 +339,28 @@ contract Vault is VaultStorage {
         uint256[] memory _assetPrices,
         uint256[] memory _assetDecimals
     ) internal view returns (uint256[] memory) {
-        uint256 _needTransferAmountCopy = _needTransferAmount;
-        address[] memory _trackedAssetsCopy = _trackedAssets;
-        uint256 _trackedAssetsLength = _trackedAssetsCopy.length;
+        uint256 _trackedAssetsLength = _trackedAssets.length;
         uint256[] memory outputs = new uint256[](_trackedAssetsLength);
 
-        (
-            uint256[] memory outPutAssetPriceSortedAssetIndex,
-            uint256[] memory outPutAssetBalance,
-            uint256 _sortedAssetCount
-        ) = _calculateSortedAssets(_trackedAssetsCopy, _assetPrices);
+        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
+            address _trackedAsset = _trackedAssets[i];
+            uint256 _balance = balanceOfToken(_trackedAsset, address(this));
+            if (_balance > 0) {
+                uint256 _value = _calculateAssetValue(
+                    _assetPrices,
+                    _assetDecimals,
+                    i,
+                    _trackedAsset,
+                    _balance
+                );
 
-        for (uint256 i = 0; i < _sortedAssetCount; i++) {
-            uint256 _assetIndex = outPutAssetPriceSortedAssetIndex[i];
-            address _trackedAsset = _trackedAssetsCopy[_assetIndex];
-            uint256 _balance = outPutAssetBalance[_assetIndex];
-
-            uint256 _value = _calculateAssetValue(
-                _assetPrices,
-                _assetDecimals,
-                _assetIndex,
-                _trackedAsset,
-                _balance
-            );
-
-            if (_value >= _needTransferAmountCopy) {
-                outputs[_assetIndex] = (_balance * _needTransferAmountCopy) / _value;
-                break;
-            } else {
-                outputs[_assetIndex] = _balance;
-                _needTransferAmountCopy = _needTransferAmountCopy - _value;
+                if (_value >= _needTransferAmount) {
+                    outputs[i] = (_balance * _needTransferAmount) / _value;
+                    break;
+                } else {
+                    outputs[i] = _balance;
+                    _needTransferAmount = _needTransferAmount - _value;
+                }
             }
         }
         return outputs;
@@ -367,49 +384,6 @@ contract Vault is VaultStorage {
 
         uint256 _value = _balance.mulTruncateScale(_assetPrice, 10**_assetDecimal);
         return _value;
-    }
-
-    /// @notice calculate need transfer amount from vault ,set to outputs order by oracle price
-    function _calculateSortedAssets(address[] memory _trackedAssets, uint256[] memory _assetPrices)
-        internal
-        view
-        returns (
-            uint256[] memory outPutAssetPriceSortedAssetIndex,
-            uint256[] memory outPutAssetBalance,
-            uint256 _sortedAssetCount
-        )
-    {
-        address[] memory _trackedAssetsCopy = _trackedAssets;
-        uint256 _trackedAssetsLength = _trackedAssetsCopy.length;
-
-        outPutAssetBalance = new uint256[](_trackedAssetsLength);
-        outPutAssetPriceSortedAssetIndex = new uint256[](_trackedAssetsLength);
-        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
-            address trackedAsset = _trackedAssetsCopy[i];
-            uint256 balance = balanceOfToken(trackedAsset, address(this));
-            if (balance > 0) {
-                outPutAssetBalance[i] = balance;
-                outPutAssetPriceSortedAssetIndex[_sortedAssetCount] = i;
-                uint256 _assetPrice = _getAssetPrice(_assetPrices, i, trackedAsset);
-                for (uint256 j = 0; j < _sortedAssetCount; j++) {
-                    uint256 _currentAssetIndex = outPutAssetPriceSortedAssetIndex[j];
-
-                    uint256 _currentSortedIndexAssetPrice = _getAssetPrice(
-                        _assetPrices,
-                        _currentAssetIndex,
-                        _trackedAssetsCopy[_currentAssetIndex]
-                    );
-                    if (_assetPrice >= _currentSortedIndexAssetPrice) {
-                        for (uint256 k = _sortedAssetCount; k > j; k--) {
-                            outPutAssetPriceSortedAssetIndex[k] = outPutAssetPriceSortedAssetIndex[k - 1];
-                        }
-                        outPutAssetPriceSortedAssetIndex[j] = i;
-                        break;
-                    }
-                }
-                _sortedAssetCount = _sortedAssetCount + 1;
-            }
-        }
     }
 
     // @notice exchange token to _asset form vault and transfer to user
@@ -539,6 +513,131 @@ contract Vault is VaultStorage {
         }
     }
 
+    function _checkBurn(
+        uint256 _usdiBalance,
+        uint256 _amount,
+        address _asset,
+        IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
+    ) internal {
+        require(
+            _amount > 0 && _amount <= _usdiBalance,
+            "Amount must be greater than 0 and less than or equal to balance"
+        );
+        checkIsSupportAsset(_asset);
+
+        for (uint256 i = 0; i < _exchangeTokens.length; i++) {
+            require(
+                _exchangeTokens[i].toToken == _asset ||
+                    _exchangeTokens[i].toToken == _exchangeTokens[i].fromToken,
+                "toToken is invalid"
+            );
+        }
+    }
+
+    function _replayToVault(
+        uint256 _amount,
+        uint256 _usdiBalance,
+        address[] memory _trackedAssets,
+        uint256[] memory _assetPrices,
+        uint256[] memory _assetDecimals
+    ) internal returns (uint256, uint256) {
+        uint256 _totalAssetInVault = 0;
+        //price in vault
+        for (uint256 i = 0; i < _trackedAssets.length; i++) {
+            address _trackedAsset = _trackedAssets[i];
+            uint256 _assetBalancesInVault = balanceOfToken(_trackedAsset, address(this));
+            if (_assetBalancesInVault > 0) {
+                _totalAssetInVault =
+                    _totalAssetInVault +
+                    _calculateAssetValue(
+                        _assetPrices,
+                        _assetDecimals,
+                        i,
+                        _trackedAsset,
+                        _assetBalancesInVault
+                    );
+            }
+        }
+        uint256 _actualAmount = _amount;
+        // Calculate redeem fee
+        if (redeemFeeBps > 0) {
+            uint256 _redeemFee = (_actualAmount * redeemFeeBps) / MAX_BPS;
+            _actualAmount = _actualAmount - _redeemFee;
+        }
+        uint256 _currentTotalAssets = _totalAssetInVault + totalDebt;
+        uint256 _currentTotalShares = IPegToken(pegTokenAddress).totalShares();
+        uint256 _actualValue = (_actualAmount * _currentTotalAssets) / _currentTotalShares;
+        uint256 _sharesAmount;
+        if (_usdiBalance == _amount) {
+            _sharesAmount = IPegToken(pegTokenAddress).sharesOf(msg.sender);
+        } else {
+            _sharesAmount = IPegToken(pegTokenAddress).getSharesByUnderlyingUnits(_amount);
+        }
+
+        // vault not enough,withdraw from vault buffer
+        if (_totalAssetInVault < _actualAmount) {
+            _totalAssetInVault =
+                _totalAssetInVault +
+                _repayFromVaultBuffer(
+                    _actualAmount - _totalAssetInVault,
+                    _assetPrices,
+                    _assetDecimals,
+                    _trackedAssets,
+                    _currentTotalAssets,
+                    _currentTotalShares
+                );
+        }
+
+        // vault not enough,withdraw from withdraw queue strategy
+        if (_totalAssetInVault < _actualAmount) {
+            _repayFromWithdrawQueue(_actualAmount - _totalAssetInVault);
+        }
+        return (_sharesAmount, _actualValue);
+    }
+
+    function _burnAndTransfer(
+        address _asset,
+        IExchangeAggregator.ExchangeToken[] memory _exchangeTokens,
+        bool _needExchange,
+        uint256 _actualValue,
+        address[] memory _trackedAssets,
+        uint256[] memory _assetPrices,
+        uint256[] memory _assetDecimals
+    )
+        internal
+        returns (
+            address[] memory _assets,
+            uint256[] memory _amounts,
+            uint256 _actuallyReceivedAmount
+        )
+    {
+        // calculate need transfer amount from vault ,set to outputs
+        uint256[] memory _outputs = _calculateOutputs(
+            _actualValue,
+            _trackedAssets,
+            _assetPrices,
+            _assetDecimals
+        );
+        if (_needExchange) {
+            (_assets, _amounts, _actuallyReceivedAmount) = _exchangeAndTransfer(
+                _asset,
+                _outputs,
+                _assetPrices,
+                _assetDecimals,
+                _trackedAssets,
+                _exchangeTokens
+            );
+        } else {
+            (_assets, _amounts, _actuallyReceivedAmount) = _withoutExchangeTransfer(
+                _outputs,
+                _assetPrices,
+                _assetDecimals,
+                _trackedAssets
+            );
+        }
+        return (_assets, _amounts, _actuallyReceivedAmount);
+    }
+
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
     /// @param _asset one of StableCoin asset
@@ -556,102 +655,45 @@ contract Vault is VaultStorage {
         nonReentrant
         returns (address[] memory _assets, uint256[] memory _amounts)
     {
-        IExchangeAggregator.ExchangeToken[] memory _exchangeTokensCopy = _exchangeTokens;
-        {
-            require(
-                _amount > 0 && _amount <= usdi.balanceOf(msg.sender),
-                "Amount must be greater than 0 and less than or equal to balance"
-            );
-            checkIsSupportAsset(_asset);
-
-            for (uint256 i = 0; i < _exchangeTokensCopy.length; i++) {
-                require(
-                    _exchangeTokensCopy[i].toToken == _asset ||
-                        _exchangeTokensCopy[i].toToken == _exchangeTokensCopy[i].fromToken,
-                    "toToken is invalid"
-                );
-            }
-        }
-
-        uint256 _actualAmount = _amount;
-        uint256 _redeemFee = 0;
-        // Calculate redeem fee
-        if (redeemFeeBps > 0) {
-            _redeemFee = (_amount * redeemFeeBps) / MAX_BPS;
-            _actualAmount = _amount - _redeemFee;
-        }
+        uint256 _usdiBalance = IPegToken(pegTokenAddress).balanceOf(msg.sender);
+        _checkBurn(_usdiBalance, _amount, _asset, _exchangeTokens);
 
         address[] memory _trackedAssets = _getTrackedAssets();
         uint256[] memory _assetPrices = new uint256[](_trackedAssets.length);
         uint256[] memory _assetDecimals = new uint256[](_trackedAssets.length);
-        uint256 _totalAssetInVault = 0;
-        {
-            //price in vault
-            for (uint256 i = 0; i < _trackedAssets.length; i++) {
-                address _trackedAsset = _trackedAssets[i];
-                uint256 _assetBalancesInVault = balanceOfToken(_trackedAsset, address(this));
-                if (_assetBalancesInVault > 0) {
-                    _totalAssetInVault =
-                        _totalAssetInVault +
-                        _calculateAssetValue(
-                            _assetPrices,
-                            _assetDecimals,
-                            i,
-                            _trackedAsset,
-                            _assetBalancesInVault
-                        );
-                }
-            }
-            // vault not enough,withdraw from vault buffer
-            if (_totalAssetInVault < _actualAmount) {
-                _totalAssetInVault =
-                    _totalAssetInVault +
-                    _repayFromVaultBuffer(
-                        _actualAmount - _totalAssetInVault,
-                        _assetPrices,
-                        _assetDecimals,
-                        _trackedAssets
-                    );
-            }
-
-            // vault not enough,withdraw from withdraw queue strategy
-            if (_totalAssetInVault < _actualAmount) {
-                _repayFromWithdrawQueue(_actualAmount - _totalAssetInVault);
-            }
-        }
+        (uint256 _sharesAmount, uint256 _actualValue) = _replayToVault(
+            _amount,
+            _usdiBalance,
+            _trackedAssets,
+            _assetPrices,
+            _assetDecimals
+        );
 
         uint256 _actuallyReceivedAmount = 0;
-        {
-            // calculate need transfer amount from vault ,set to outputs
-            uint256[] memory _outputs = _calculateOutputs(
-                _actualAmount,
-                _trackedAssets,
-                _assetPrices,
-                _assetDecimals
-            );
-            if (_needExchange) {
-                (_assets, _amounts, _actuallyReceivedAmount) = _exchangeAndTransfer(
-                    _asset,
-                    _outputs,
-                    _assetPrices,
-                    _assetDecimals,
-                    _trackedAssets,
-                    _exchangeTokensCopy
-                );
-            } else {
-                (_assets, _amounts, _actuallyReceivedAmount) = _withoutExchangeTransfer(
-                    _outputs,
-                    _assetPrices,
-                    _assetDecimals,
-                    _trackedAssets
-                );
-            }
-        }
+        (_assets, _amounts, _actuallyReceivedAmount) = _burnAndTransfer(
+            _asset,
+            _exchangeTokens,
+            _needExchange,
+            _actualValue,
+            _trackedAssets,
+            _assetPrices,
+            _assetDecimals
+        );
 
         if (_minimumUsdAmount > 0) {
             require(_actuallyReceivedAmount >= _minimumUsdAmount, "amount lower than minimum");
         }
-        _burnUSDIAndCheckRebase(_asset, _actualAmount + _redeemFee, _actuallyReceivedAmount);
+        _burnUSDIAndCheckRebase(
+            _asset,
+            _amount,
+            _actuallyReceivedAmount,
+            _sharesAmount,
+            _assets,
+            _amounts,
+            _assetPrices,
+            _assetDecimals,
+            _trackedAssets
+        );
     }
 
     /// @notice Vault and vault buffer holds asset value directly in USD
@@ -687,18 +729,35 @@ contract Vault is VaultStorage {
     function _burnUSDIAndCheckRebase(
         address _asset,
         uint256 _amount,
-        uint256 _actualAmount
+        uint256 _actualAmount,
+        uint256 _shareAmount,
+        address[] memory _assets,
+        uint256[] memory _amounts,
+        uint256[] memory _assetPrices,
+        uint256[] memory _assetDecimals,
+        address[] memory _trackedAssets
     ) internal {
-        usdi.burn(msg.sender, _amount);
+        IPegToken(pegTokenAddress).burnShares(msg.sender, _shareAmount);
 
         // Until we can prove that we won't affect the prices of our assets
         // by withdrawing them, this should be here.
         // It's possible that a strategy was off on its asset total, perhaps
         // a reward token sold for more or for less than anticipated.
         if (_amount >= rebaseThreshold && !rebasePaused) {
-            _rebase();
+            uint256 _totalValueInVault;
+            uint256 _trackedAssetsLength = _trackedAssets.length;
+            for (uint256 i = 0; i < _trackedAssetsLength; i++) {
+                address _trackedAsset = _trackedAssets[i];
+                uint256 _balance = balanceOfToken(_trackedAsset, address(this));
+                if (_balance > 0) {
+                    _totalValueInVault =
+                        _totalValueInVault +
+                        _calculateAssetValue(_assetPrices, _assetDecimals, i, _trackedAsset, _balance);
+                }
+            }
+            _rebase(_totalValueInVault);
         }
-        emit Burn(msg.sender, _asset, _amount, _actualAmount);
+        emit Burn(msg.sender, _asset, _amount, _actualAmount, _shareAmount, _assets, _amounts);
     }
 
     /**
@@ -733,7 +792,8 @@ contract Vault is VaultStorage {
 
     /// @notice Change USDi supply with Vault total assets.
     function rebase() external nonReentrant {
-        _rebase();
+        uint256 _totalValueInVault = _totalValueInVault();
+        _rebase(_totalValueInVault);
     }
 
     /**
@@ -741,41 +801,50 @@ contract Vault is VaultStorage {
      *      strategies and update the supply of USDI, optionally sending a
      *      portion of the yield to the trustee.
      */
-    function _rebase() internal whenNotEmergency whenNotRebasePaused whenNotAdjustPosition {
-        uint256 _usdiSupply = usdi.totalSupply();
-        if (_usdiSupply == 0 || usdi.rebasingCredits() < 1e27) {
+    function _rebase(uint256 _totalValueInVault)
+        internal
+        whenNotEmergency
+        whenNotRebasePaused
+        whenNotAdjustPosition
+    {
+        uint256 _totalShares = IPegToken(pegTokenAddress).totalShares();
+        if (_totalShares == 0) {
             return;
         }
 
-        uint256 _vaultValue = _totalValueInVault() + totalDebt;
-
-        // Yield fee collection
-        address _treasuryAddress = treasury;
-        // gas savings
-        if (
-            trusteeFeeBps > 0 &&
-            _treasuryAddress != address(0) &&
-            _vaultValue > _usdiSupply &&
-            (_vaultValue - _usdiSupply) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff
-        ) {
-            uint256 yield = _vaultValue - _usdiSupply;
-            uint256 fee = (yield * trusteeFeeBps) / MAX_BPS;
-            require(yield > fee, "Fee must not be greater than yield");
-            if (fee > 0) {
-                usdi.mint(_treasuryAddress, fee);
+        uint256 _pricePerShare = pricePerShare;
+        uint256 _usdiSupply = _totalShares.mulTruncate(_pricePerShare);
+        uint256 _vaultValue = _totalValueInVault + totalDebt;
+        {
+            // Yield fee collection
+            address _treasuryAddress = treasury;
+            uint256 _trusteeFeeBps = trusteeFeeBps;
+            // gas savings
+            if (
+                _trusteeFeeBps > 0 &&
+                _treasuryAddress != address(0) &&
+                _vaultValue > _usdiSupply &&
+                (_vaultValue - _usdiSupply) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff
+            ) {
+                uint256 yield = _vaultValue - _usdiSupply;
+                uint256 fee = (yield * _trusteeFeeBps) / MAX_BPS;
+                require(yield > fee, "Fee must not be greater than yield");
+                if (fee > 0) {
+                    uint256 _shareAmount = _calculateShare(fee, _vaultValue, _totalShares);
+                    IPegToken(pegTokenAddress).mintShares(_treasuryAddress, _shareAmount);
+                    _totalShares = _totalShares + _shareAmount;
+                    // Only rachet USDi supply upwards
+                    _usdiSupply = _totalShares * _totalShares.mulTruncate(_pricePerShare);
+                }
             }
         }
 
-        // Only rachet USDi supply upwards
-        _usdiSupply = usdi.totalSupply();
         // Final check should use latest value
         if (
-            (_vaultValue > _usdiSupply &&
-                (_vaultValue - _usdiSupply) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff) ||
-            (_usdiSupply > _vaultValue &&
-                (_usdiSupply - _vaultValue) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff)
+            _vaultValue > _usdiSupply &&
+            (_vaultValue - _usdiSupply) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff
         ) {
-            usdi.changeSupply(_vaultValue);
+            pricePerShare = _vaultValue.divPrecisely(_totalShares);
         }
     }
 

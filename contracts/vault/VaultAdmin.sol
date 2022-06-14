@@ -87,6 +87,20 @@ contract VaultAdmin is VaultStorage {
         emit MaxSupplyDiffChanged(_maxSupplyDiff);
     }
 
+    /**
+     * @dev Sets the maximum allowable difference between
+     * total supply and backing assets' value.
+     */
+    function setPricePerShare(uint256 _pricePerShare) external onlyRole(BocRoles.GOV_ROLE) {
+        pricePerShare = _pricePerShare;
+        emit PricePerShareChanged(_pricePerShare);
+    }
+
+    function setPegTokenAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
+        require(_address != address(0), "PegTokenAddress ad is 0");
+        pegTokenAddress = _address;
+    }
+
     function setStrategyEnforceChangeLimit(address _strategy, bool _enabled) external isVaultManager {
         strategies[_strategy].enforceChangeLimit = _enabled;
     }
@@ -598,20 +612,23 @@ contract VaultAdmin is VaultStorage {
         console.log("(_totalValueInVault, totalDebt, _transferValue,_usdiSupply)=");
         console.log(_totalValueInVault, totalDebt, _transferValue,_usdiSupply);
         uint256 _vaultValue = _totalValueInVault + totalDebt - _transferValue;
-        // Yield fee collection
-        address _treasuryAddress = treasury;
-        // gas savings
-        if (
-            trusteeFeeBps > 0 &&
-            _treasuryAddress != address(0) &&
-            _vaultValue > _usdiSupply &&
-            (_vaultValue - _usdiSupply) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff
-        ) {
-            uint256 yield = _vaultValue - _usdiSupply;
-            uint256 fee = (yield * trusteeFeeBps) / MAX_BPS;
-            require(yield > fee, "Fee must not be greater than yield");
-            if (fee > 0) {
-                usdi.mint(_treasuryAddress, fee);
+        {
+            // Yield fee collection
+            address _treasuryAddress = treasury;
+            uint256 _trusteeFeeBps = trusteeFeeBps;
+            // gas savings
+            if (
+                _trusteeFeeBps > 0 &&
+                _treasuryAddress != address(0) &&
+                _vaultValue > _usdiSupply &&
+                (_vaultValue - _usdiSupply) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff
+            ) {
+                uint256 yield = _vaultValue - _usdiSupply;
+                uint256 fee = (yield * _trusteeFeeBps) / MAX_BPS;
+                require(yield > fee, "Fee must not be greater than yield");
+                if (fee > 0) {
+                    usdi.mint(_treasuryAddress, fee);
+                }
             }
         }
 
