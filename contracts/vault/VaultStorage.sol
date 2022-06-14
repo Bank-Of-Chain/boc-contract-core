@@ -56,12 +56,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         address[] _assets,
         uint256[] _amounts
     );
-    event BurnWithoutExchange(
-        address _account,
-        address[] _assets,
-        uint256[] _amounts,
-        uint256 _burnAmount
-    );
     event Exchange(
         address _platform,
         address _srcAsset,
@@ -98,8 +92,8 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
     event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
-    event PricePerShareChanged(uint256 _pricePerShare);
     event SetWithdrawalQueue(address[] _queues);
+    event Rebase(uint256 _totalShares, uint256 _totalValue, uint256 _newPricePerShare);
     event StartAdjustPosition(
         uint256 _totalDebtOfBeforeAdjustPosition,
         address[] _trackedAssets,

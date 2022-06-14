@@ -62,8 +62,8 @@ interface IVault {
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
     event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
-    event PricePerShareChanged(uint256 _pricePerShare);
     event SetWithdrawalQueue(address[] queues);
+    event Rebase(uint256 _totalShares, uint256 _totalValue, uint256 _newPricePerShare);
     event StrategyReported(
         address indexed strategy,
         uint256 gain,
@@ -164,11 +164,11 @@ interface IVault {
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
     /// @param _asset one of StableCoin asset
-    /// @param _minimumUsdAmount Minimum usd to receive in return
+    /// @param _minimumAmount Minimum usd to receive in return
     function burn(
         uint256 _amount,
         address _asset,
-        uint256 _minimumUsdAmount,
+        uint256 _minimumAmount,
         bool _needExchange,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
     ) external returns (address[] memory _assets, uint256[] memory _amounts);
@@ -327,8 +327,6 @@ interface IVault {
     function accessControlProxy() external view returns (address);
 
     function setVaultBufferAddress(address _address) external;
-
-    function setPricePerShare(uint256 _pricePerShare) external;
 
     function setPegTokenAddress(address _address) external;
 }
