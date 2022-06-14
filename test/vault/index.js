@@ -184,7 +184,7 @@ describe("Vault", function () {
 
         console.log('vault Buffer');
         vaultBuffer = await VaultBuffer.new();
-        await vaultBuffer.initialize('Sharei', 'Sharei', vault.address, usdi.address,accessControlProxy.address);
+        await vaultBuffer.initialize('Sharei', 'Sharei', vault.address, pegToken.address,accessControlProxy.address);
 
         const dripper = await Dripper.new();
         await dripper.initialize(accessControlProxy.address, vault.address, MFC.USDT_ADDRESS);
@@ -323,7 +323,7 @@ describe("Vault", function () {
         await topUpUsdcByAddress(amount, testAdapter.address);
         await topUpDaiByAddress(amount, testAdapter.address);
 
-        await iVault.setTrusteeFeeBps(1000, {from: governance});
+        // await iVault.setTrusteeFeeBps(1000, {from: governance});
 
         await iVault.setMaxSupplyDiff(1, {from: governance});
 
@@ -399,6 +399,8 @@ describe("Vault", function () {
         const gasUsed = tx.receipt.gasUsed;
         console.log('endAdjustPosition gasUsed: %d', gasUsed);
         console.log("调仓后farmer1的usdi的balance:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
+        console.log("调仓后farmer1的pricePerShare:%s", new BigNumber(await iVault.pricePerShare()).toFixed());
+        console.log("调仓后farmer1的sharesOf:%s", new BigNumber(await pegToken.sharesOf(farmer1)).toFixed());
         console.log("调仓后vault缓存池总资金(包含vaultBuffer):%s,总价值(包含vaultBuffer)：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
 
         const _amount = new BigNumber(await pegToken.balanceOf(farmer1)).div(4).multipliedBy(1).toFixed();
