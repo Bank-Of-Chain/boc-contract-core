@@ -93,7 +93,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
     event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
     event SetWithdrawalQueue(address[] _queues);
-    event Rebase(uint256 _totalShares, uint256 _totalValue, uint256 _newPricePerShare);
+    event Rebase(uint256 _totalShares, uint256 _totalValue, uint256 _newUnderlyingUnitsPerShare);
     event StartAdjustPosition(
         uint256 _totalDebtOfBeforeAdjustPosition,
         address[] _trackedAssets,
@@ -168,7 +168,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     // totalDebt before Adjust Position
     uint256 internal totalDebtOfBeforeAdjustPosition;
     // totalAsset/totalShare
-    uint256 public pricePerShare;
+    uint256 public underlyingUnitsPerShare;
     // usdi PegToken address
     address internal pegTokenAddress;
 

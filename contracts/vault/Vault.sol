@@ -722,7 +722,7 @@ contract Vault is VaultStorage {
         } else {
             _shareAmount = (_amount * _totalShares) / _totalAssets;
             if (_shareAmount == 0) {
-                _shareAmount = _amount.divPreciselyScale(pricePerShare, 1e27);
+                _shareAmount = _amount.divPreciselyScale(underlyingUnitsPerShare, 1e27);
                 if (_shareAmount == 0) {
                     _shareAmount = _amount * 1e9;
                 }
@@ -965,7 +965,7 @@ contract Vault is VaultStorage {
         }
         uint256 _currentTotalAssets = _totalAssetInVault + totalDebt;
         uint256 _currentTotalShares = IPegToken(pegTokenAddress).totalShares();
-        uint256 _currentTotalSupply = _currentTotalShares.mulTruncateScale(pricePerShare, 1e27);
+        uint256 _currentTotalSupply = _currentTotalShares.mulTruncateScale(underlyingUnitsPerShare, 1e27);
         uint256 _actualValue = (_actualAmount * _currentTotalAssets) / _currentTotalSupply;
         uint256 _sharesAmount;
         if (_usdiBalance == _amount) {
@@ -1132,14 +1132,14 @@ contract Vault is VaultStorage {
             return;
         }
 
-        uint256 _pricePerShare = pricePerShare;
-        uint256 _usdiSupply = _totalShares.mulTruncateScale(_pricePerShare, 1e27);
+        uint256 _underlyingUnitsPerShare = underlyingUnitsPerShare;
+        uint256 _usdiSupply = _totalShares.mulTruncateScale(_underlyingUnitsPerShare, 1e27);
         if (_totalAssets > _usdiSupply) {
-            console.log("(_pricePerShare,_usdiSupply,_totalValue - _usdiSupply)=");
-            console.log(_pricePerShare, _usdiSupply, (_totalAssets - _usdiSupply));
+            console.log("(_underlyingUnitsPerShare,_usdiSupply,_totalValue - _usdiSupply)=");
+            console.log(_underlyingUnitsPerShare, _usdiSupply, (_totalAssets - _usdiSupply));
         } else {
-            console.log("(_pricePerShare,_usdiSupply,_usdiSupply - _totalValue)=");
-            console.log(_pricePerShare, _usdiSupply, (_usdiSupply - _totalAssets));
+            console.log("(_underlyingUnitsPerShare,_usdiSupply,_usdiSupply - _totalValue)=");
+            console.log(_underlyingUnitsPerShare, _usdiSupply, (_usdiSupply - _totalAssets));
         }
 
         // Final check should use latest value
@@ -1160,16 +1160,16 @@ contract Vault is VaultStorage {
                         IPegToken(pegTokenAddress).mintShares(_treasuryAddress, _sharesAmount);
                         _totalShares = _totalShares + _sharesAmount;
                         // Only rachet USDi supply upwards
-                        _usdiSupply = _totalShares * _totalShares.mulTruncateScale(_pricePerShare, 1e27);
+                        _usdiSupply = _totalShares * _totalShares.mulTruncateScale(_underlyingUnitsPerShare, 1e27);
                     }
                 }
             }
             console.log("(_totalShares,_totalValue):", _totalShares, _totalAssets);
-            uint256 _newPricePerShare = _totalAssets.divPreciselyScale(_totalShares, 1e27);
-            console.log("(_newPricePerShare,_pricePerShare):", _newPricePerShare, _pricePerShare);
-            if (_newPricePerShare != _pricePerShare) {
-                pricePerShare = _newPricePerShare;
-                emit Rebase(_totalShares, _totalAssets, _newPricePerShare);
+            uint256 _newUnderlyingUnitsPerShare = _totalAssets.divPreciselyScale(_totalShares, 1e27);
+            console.log("(_newUnderlyingUnitsPerShare,_underlyingUnitsPerShare):", _newUnderlyingUnitsPerShare, _underlyingUnitsPerShare);
+            if (_newUnderlyingUnitsPerShare != _underlyingUnitsPerShare) {
+                underlyingUnitsPerShare = _newUnderlyingUnitsPerShare;
+                emit Rebase(_totalShares, _totalAssets, _newUnderlyingUnitsPerShare);
             }
         }
     }
