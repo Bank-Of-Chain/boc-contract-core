@@ -325,9 +325,9 @@ describe("Vault", function () {
 
         // await iVault.setTrusteeFeeBps(1000, {from: governance});
 
-        await iVault.setMaxSupplyDiff(1, {from: governance});
+        await iVault.setRebaseThreshold(1, {from: governance});
 
-        console.log('maxSupplyDiff: %s', (await iVault.maxSupplyDiff()).toString());
+        console.log('rebaseThreshold: %s', (await iVault.rebaseThreshold()).toString());
 
 
         //开启调仓

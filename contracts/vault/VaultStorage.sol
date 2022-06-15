@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import "hardhat/console.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/IterableIntMap.sol";
-import "../library/IterableUintMap.sol";
 import "../library/StableMath.sol";
 import "../token/USDi.sol";
 import "../token/IPegToken.sol";
@@ -23,7 +22,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     using StableMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
-    using IterableUintMap for IterableUintMap.AddressToUintMap;
 
     struct StrategyParams {
         //last report timestamp
@@ -91,7 +89,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event TreasuryAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
-    event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
     event SetWithdrawalQueue(address[] _queues);
     event Rebase(uint256 _totalShares, uint256 _totalValue, uint256 _newUnderlyingUnitsPerShare);
     event StartAdjustPosition(
@@ -132,9 +129,9 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     bool public emergencyShutdown;
     // Pausing bools
     bool public rebasePaused;
-    // Mints over this amount automatically rebase. 18 decimals.
+    // over this difference ratio automatically rebase. rebaseThreshold is the numerator and the denominator is 10000000 x/10000000.
     uint256 public rebaseThreshold;
-    // Threshold percentage for rebase 10000000
+    // Deprecated
     uint256 public maxSupplyDiff;
     // Amount of yield collected in basis points
     uint256 public trusteeFeeBps;
@@ -159,6 +156,8 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
 
     //vault Buffer Address
     address public vaultBufferAddress;
+    // usdi PegToken address
+    address public pegTokenAddress;
     // Assets held in Vault from vault buffer
     mapping(address => uint256) internal transferFromVaultBufferAssetsMap;
     // redeem Assets where ad
@@ -169,8 +168,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     uint256 internal totalDebtOfBeforeAdjustPosition;
     // totalAsset/totalShare
     uint256 public underlyingUnitsPerShare;
-    // usdi PegToken address
-    address internal pegTokenAddress;
 
     //max percentage 10000000/10000000
     uint256 internal constant TEN_MILLION_BPS = 10000000;

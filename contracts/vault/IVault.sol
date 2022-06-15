@@ -61,7 +61,6 @@ interface IVault {
     event TreasuryAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
-    event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
     event SetWithdrawalQueue(address[] queues);
     event Rebase(uint256 _totalShares, uint256 _totalValue, uint256 _newUnderlyingUnitsPerShare);
     event StrategyReported(
@@ -212,12 +211,6 @@ interface IVault {
     function setRedeemFeeBps(uint256 _redeemFeeBps) external;
 
     /**
-     * @dev Sets the maximum allowable difference between
-     * total supply and backing assets' value.
-     */
-    function setMaxSupplyDiff(uint256 _maxSupplyDiff) external;
-
-    /**
      * @dev Sets the treasuryAddress that can receive a portion of yield.
      *      Setting to the zero address disables this feature.
      */
@@ -293,7 +286,7 @@ interface IVault {
     // Pausing bools
     function rebasePaused() external view returns (bool);
 
-    // Mints over this amount automatically rebase. 18 decimals.
+    // over this difference ratio automatically rebase. rebaseThreshold is the numerator and the denominator is 10000000 x/10000000.
     function rebaseThreshold() external view returns (uint256);
 
     // Amount of yield collected in basis points
@@ -304,9 +297,6 @@ interface IVault {
 
     //all strategy asset
     function totalDebt() external view returns (uint256);
-
-    //Threshold percentage for rebase 10000000
-    function maxSupplyDiff() external view returns (uint256);
 
     //exchangeManager
     function exchangeManager() external view returns (address);
@@ -327,7 +317,11 @@ interface IVault {
 
     function setVaultBufferAddress(address _address) external;
 
+    function vaultBufferAddress(address _address) external view returns (address);
+
     function setPegTokenAddress(address _address) external;
+
+    function pegTokenAddress() external view returns (address);
 
     function setAdminImpl(address newImpl) external;
 }

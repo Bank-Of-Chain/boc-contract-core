@@ -28,9 +28,9 @@ contract VaultAdmin is VaultStorage {
     }
 
     /**
-     * @dev Set a minimum amount of OUSD in a mint or redeem that triggers a
+     * @dev Set a minimum difference ratio automatically rebase.
      * rebase
-     * @param _threshold OUSD amount with 18 fixed decimals.
+     * @param _threshold _threshold is the numerator and the denominator is 10000000 (x/10000000).
      */
     function setRebaseThreshold(uint256 _threshold) external isVaultManager {
         rebaseThreshold = _threshold;
@@ -75,16 +75,6 @@ contract VaultAdmin is VaultStorage {
         require(_basis <= 5000, "basis cannot exceed 50%");
         trusteeFeeBps = _basis;
         emit TrusteeFeeBpsChanged(_basis);
-    }
-
-    /**
-     * @dev Sets the maximum allowable difference between
-     * total supply and backing assets' value.
-     */
-    function setMaxSupplyDiff(uint256 _maxSupplyDiff) external isVaultManager {
-        require(_maxSupplyDiff <= TEN_MILLION_BPS, "basis cannot exceed 10000000");
-        maxSupplyDiff = _maxSupplyDiff;
-        emit MaxSupplyDiffChanged(_maxSupplyDiff);
     }
 
     function setPegTokenAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {

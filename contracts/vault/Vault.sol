@@ -17,7 +17,6 @@ contract Vault is VaultStorage {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
-    using IterableUintMap for IterableUintMap.AddressToUintMap;
 
     function initialize(
         address _accessControlProxy,
@@ -357,7 +356,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Change USDi supply with Vault total assets.
-    function rebase() external {
+    function rebase() external nonReentrant {
         uint256 _totalAssets = _totalValueInVault() + totalDebt;
         _rebaseWhenNotAdjustPosition(_totalAssets);
     }
@@ -1110,7 +1109,6 @@ contract Vault is VaultStorage {
         internal
         whenNotEmergency
         whenNotRebasePaused
-        nonReentrant
     {
         console.log("(_totalShares,_totalValue):", _totalShares, _totalAssets);
         if (_totalShares == 0) {
@@ -1130,7 +1128,7 @@ contract Vault is VaultStorage {
         // Final check should use latest value
         if (
             _totalAssets > _usdiSupply &&
-            (_totalAssets - _usdiSupply) * TEN_MILLION_BPS > _usdiSupply * maxSupplyDiff
+            (_totalAssets - _usdiSupply) * TEN_MILLION_BPS > _usdiSupply * rebaseThreshold
         ) {
             // Yield fee collection
             address _treasuryAddress = treasury;
