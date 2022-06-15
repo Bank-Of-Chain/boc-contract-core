@@ -14,9 +14,9 @@ interface IVaultBuffer {
     /// @param _amounts transfer token amount
     function transferCashToVault(address[] memory _assets, uint256[] memory _amounts) external;
 
-    /// @notice distribute USDi to users that pendingShare's holder.
-    function distributeByVault() external;
+    function openDistribute() external;
 
-    /// @notice distribute USDi to users that pendingShare's holder.
-    function distributeByKeeper() external;
+    function distributeWhenDistributing() external returns(bool);
+
+    function distributeOnce() external returns(bool);
 }
