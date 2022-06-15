@@ -148,6 +148,7 @@ contract Vault is VaultStorage {
         uint256[] memory _amounts,
         uint256 _minimumAmount
     ) external whenNotEmergency whenNotAdjustPosition nonReentrant returns (uint256) {
+        require(!IVaultBuffer(vaultBufferAddress).isDistributing(),"is distributing");
         uint256 _shareAmount = _estimateMint(_assets, _amounts);
         if (_minimumAmount > 0) {
             require(_shareAmount >= _minimumAmount, "Mint amount lower than minimum");
@@ -510,7 +511,7 @@ contract Vault is VaultStorage {
                 beforeAdjustPositionAssetsMap[_trackedAsset] = 0;
                 transferFromVaultBufferAssetsMap[_trackedAsset] = 0;
             }
-            IVaultBuffer(vaultBufferAddress).distributeByVault();
+            IVaultBuffer(vaultBufferAddress).openDistribute();
             adjustPositionPeriod = false;
         }
 

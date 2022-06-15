@@ -19,4 +19,10 @@ interface IVaultBuffer {
     function distributeWhenDistributing() external returns(bool);
 
     function distributeOnce() external returns(bool);
+
+    function isDistributing() external returns(bool);
+
+    function getDistributeLimit() external view returns (uint256);
+
+    function setDistributeLimit(uint256 _limit) external;
 }

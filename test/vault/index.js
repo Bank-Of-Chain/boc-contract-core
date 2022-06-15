@@ -398,6 +398,11 @@ describe("Vault", function () {
         const tx = await iVault.endAdjustPosition({from: keeper});
         const gasUsed = tx.receipt.gasUsed;
         console.log('endAdjustPosition gasUsed: %d', gasUsed);
+
+        console.log('start distributeWhenDistributing');
+        await vaultBuffer.distributeWhenDistributing({from: keeper});
+        console.log('end distributeWhenDistributing');
+
         console.log("调仓后farmer1的usdi的balance:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
         console.log("调仓后farmer1的underlyingUnitsPerShare:%s", new BigNumber(await iVault.underlyingUnitsPerShare()).toFixed());
         console.log("调仓后farmer1的sharesOf:%s", new BigNumber(await pegToken.sharesOf(farmer1)).toFixed());
@@ -580,6 +585,11 @@ describe("Vault", function () {
         tx = await iVault.endAdjustPosition({from: keeper});
         gasUsed = tx.receipt.gasUsed;
         console.log('endAdjustPosition gasUsed: %d', gasUsed);
+
+        console.log('start distributeWhenDistributing');
+        await vaultBuffer.distributeWhenDistributing({from: keeper});
+        console.log('end distributeWhenDistributing');
+
         console.log("调仓后farmer1的usdi的balance:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
         console.log("调仓后farmer2的usdi的balance:%s", new BigNumber(await pegToken.balanceOf(farmer2)).toFixed());
         console.log("调仓后vault缓存池总资金(包含vaultBuffer):%s,总价值(包含vaultBuffer)：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
