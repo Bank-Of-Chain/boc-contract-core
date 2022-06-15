@@ -187,7 +187,7 @@ contract Vault is VaultStorage {
         address[] memory _trackedAssets = _getTrackedAssets();
         uint256[] memory _assetPrices = new uint256[](_trackedAssets.length);
         uint256[] memory _assetDecimals = new uint256[](_trackedAssets.length);
-        (uint256 _sharesAmount, uint256 _actualValue) = _replayToVault(
+        (uint256 _sharesAmount, uint256 _actualAsset) = _replayToVault(
             _amount,
             _accountBalance,
             _trackedAssets,
@@ -200,7 +200,7 @@ contract Vault is VaultStorage {
             _asset,
             _exchangeTokens,
             _needExchange,
-            _actualValue,
+            _actualAsset,
             _trackedAssets,
             _assetPrices,
             _assetDecimals
@@ -216,9 +216,9 @@ contract Vault is VaultStorage {
             _sharesAmount,
             _assets,
             _amounts,
+            _trackedAssets,
             _assetPrices,
-            _assetDecimals,
-            _trackedAssets
+            _assetDecimals
         );
     }
 
@@ -567,14 +567,14 @@ contract Vault is VaultStorage {
         uint256 _trackedAssetsLength = _trackedAssets.length;
         uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
         uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
-        uint256 _totalValueInVault = _totalValueInVault(_assetPrices, _assetDecimals, _trackedAssets);
+        uint256 _totalValueInVault = _totalValueInVault(_trackedAssets, _assetPrices, _assetDecimals);
         return _totalValueInVault;
     }
 
     function _totalValueInVault(
+        address[] memory _trackedAssets,
         uint256[] memory _assetPrices,
-        uint256[] memory _assetDecimals,
-        address[] memory _trackedAssets
+        uint256[] memory _assetDecimals
     ) internal view returns (uint256) {
         uint256 _totalValueInVault;
         uint256 _trackedAssetsLength = _trackedAssets.length;
@@ -621,47 +621,47 @@ contract Vault is VaultStorage {
     }
 
     /// @notice withdraw from strategy queue
-    function _repayFromWithdrawQueue(uint256 needWithdrawValue) internal {
-        uint256 totalWithdrawValue;
+    function _repayFromWithdrawQueue(uint256 _needWithdrawValue) internal {
+        uint256 _totalWithdrawValue;
         for (uint256 i = 0; i < withdrawQueue.length; i++) {
             address _strategy = withdrawQueue[i];
             if (_strategy == ZERO_ADDRESS) break;
 
             //            uint256 strategyTotalValue = _checkValueInStrategyByRedeem(_strategy, _assetDecimals, _assetRedeemPrices);
-            uint256 strategyTotalValue = strategies[_strategy].totalDebt;
-            if (strategyTotalValue <= 0) {
+            uint256 _strategyTotalValue = strategies[_strategy].totalDebt;
+            if (_strategyTotalValue <= 0) {
                 continue;
             }
 
-            uint256 strategyWithdrawValue;
-            if (needWithdrawValue > strategyTotalValue) {
-                strategyWithdrawValue = strategyTotalValue;
-                needWithdrawValue -= strategyWithdrawValue;
+            uint256 _strategyWithdrawValue;
+            if (_needWithdrawValue > _strategyTotalValue) {
+                _strategyWithdrawValue = _strategyTotalValue;
+                _needWithdrawValue -= _strategyWithdrawValue;
             } else {
-                strategyWithdrawValue = needWithdrawValue;
-                needWithdrawValue = 0;
+                _strategyWithdrawValue = _needWithdrawValue;
+                _needWithdrawValue = 0;
             }
             // console.log('start withdrawn from %s numerator %d denominator %d', _strategy, strategyWithdrawValue, strategyTotalValue);
             (address[] memory _assets, uint256[] memory _amounts) = IStrategy(_strategy).repay(
-                strategyWithdrawValue,
-                strategyTotalValue
+                _strategyWithdrawValue,
+                _strategyTotalValue
             );
             emit RepayFromStrategy(
                 _strategy,
-                strategyWithdrawValue,
-                strategyTotalValue,
+                _strategyWithdrawValue,
+                _strategyTotalValue,
                 _assets,
                 _amounts
             );
 
-            strategies[_strategy].totalDebt -= strategyWithdrawValue;
-            totalWithdrawValue += strategyWithdrawValue;
+            strategies[_strategy].totalDebt -= _strategyWithdrawValue;
+            _totalWithdrawValue += _strategyWithdrawValue;
 
-            if (needWithdrawValue <= 0) {
+            if (_needWithdrawValue <= 0) {
                 break;
             }
         }
-        totalDebt -= totalWithdrawValue;
+        totalDebt -= _totalWithdrawValue;
     }
 
     /// @notice withdraw from vault buffer
@@ -797,9 +797,9 @@ contract Vault is VaultStorage {
     function _exchangeAndTransfer(
         address _asset,
         uint256[] memory _outputs,
+        address[] memory _trackedAssets,
         uint256[] memory _assetPrices,
         uint256[] memory _assetDecimals,
-        address[] memory _trackedAssets,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
     )
         internal
@@ -890,9 +890,9 @@ contract Vault is VaultStorage {
     // @notice without exchange token and transfer form vault to user
     function _withoutExchangeTransfer(
         uint256[] memory _outputs,
+        address[] memory _trackedAssets,
         uint256[] memory _assetPrices,
-        uint256[] memory _assetDecimals,
-        address[] memory _trackedAssets
+        uint256[] memory _assetDecimals
     )
         internal
         returns (
@@ -926,7 +926,10 @@ contract Vault is VaultStorage {
         address _asset,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
     ) internal {
-        require(_amount > 0 && _amount <= _accountBalance, "Amount must be gt 0 and lt or eq the balance");
+        require(
+            _amount > 0 && _amount <= _accountBalance,
+            "Amount must be gt 0 and lt or eq the balance"
+        );
         checkIsSupportAsset(_asset);
 
         for (uint256 i = 0; i < _exchangeTokens.length; i++) {
@@ -944,8 +947,8 @@ contract Vault is VaultStorage {
         address[] memory _trackedAssets,
         uint256[] memory _assetPrices,
         uint256[] memory _assetDecimals
-    ) internal returns (uint256 _sharesAmount, uint256 _actualValue) {
-        uint256 _totalAssetInVault = _totalValueInVault(_assetPrices, _assetDecimals, _trackedAssets);
+    ) internal returns (uint256 _sharesAmount, uint256 _actualAsset) {
+        uint256 _totalAssetInVault = _totalValueInVault(_trackedAssets, _assetPrices, _assetDecimals);
         uint256 _actualAmount = _amount;
         uint256 _currentTotalAssets = _totalAssetInVault + totalDebt;
         uint256 _currentTotalShares = IPegToken(pegTokenAddress).totalShares();
@@ -964,15 +967,15 @@ contract Vault is VaultStorage {
                 _underlyingUnitsPerShare,
                 1e27
             );
-            _actualValue = (_actualAmount * _currentTotalAssets) / _currentTotalSupply;
+            _actualAsset = (_actualAmount * _currentTotalAssets) / _currentTotalSupply;
         }
 
         // vault not enough,withdraw from vault buffer
-        if (_totalAssetInVault < _actualAmount) {
+        if (_totalAssetInVault < _actualAsset) {
             _totalAssetInVault =
                 _totalAssetInVault +
                 _repayFromVaultBuffer(
-                    _actualAmount - _totalAssetInVault,
+                    _actualAsset - _totalAssetInVault,
                     _assetPrices,
                     _assetDecimals,
                     _trackedAssets,
@@ -982,8 +985,8 @@ contract Vault is VaultStorage {
         }
 
         // vault not enough,withdraw from withdraw queue strategy
-        if (_totalAssetInVault < _actualAmount) {
-            _repayFromWithdrawQueue(_actualAmount - _totalAssetInVault);
+        if (_totalAssetInVault < _actualAsset) {
+            _repayFromWithdrawQueue(_actualAsset - _totalAssetInVault);
         }
     }
 
@@ -991,7 +994,7 @@ contract Vault is VaultStorage {
         address _asset,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens,
         bool _needExchange,
-        uint256 _actualValue,
+        uint256 _actualAsset,
         address[] memory _trackedAssets,
         uint256[] memory _assetPrices,
         uint256[] memory _assetDecimals
@@ -1005,7 +1008,7 @@ contract Vault is VaultStorage {
     {
         // calculate need transfer amount from vault ,set to outputs
         uint256[] memory _outputs = _calculateOutputs(
-            _actualValue,
+            _actualAsset,
             _trackedAssets,
             _assetPrices,
             _assetDecimals
@@ -1014,17 +1017,17 @@ contract Vault is VaultStorage {
             (_assets, _amounts, _actuallyReceivedAmount) = _exchangeAndTransfer(
                 _asset,
                 _outputs,
+                _trackedAssets,
                 _assetPrices,
                 _assetDecimals,
-                _trackedAssets,
                 _exchangeTokens
             );
         } else {
             (_assets, _amounts, _actuallyReceivedAmount) = _withoutExchangeTransfer(
                 _outputs,
+                _trackedAssets,
                 _assetPrices,
-                _assetDecimals,
-                _trackedAssets
+                _assetDecimals
             );
         }
         return (_assets, _amounts, _actuallyReceivedAmount);
@@ -1057,9 +1060,9 @@ contract Vault is VaultStorage {
         uint256 _shareAmount,
         address[] memory _assets,
         uint256[] memory _amounts,
+        address[] memory _trackedAssets,
         uint256[] memory _assetPrices,
-        uint256[] memory _assetDecimals,
-        address[] memory _trackedAssets
+        uint256[] memory _assetDecimals
     ) internal {
         IPegToken(pegTokenAddress).burnShares(msg.sender, _shareAmount);
 
@@ -1068,7 +1071,7 @@ contract Vault is VaultStorage {
         // It's possible that a strategy was off on its asset total, perhaps
         // a reward token sold for more or for less than anticipated.
         if (!rebasePaused) {
-            uint256 _totalValueInVault = _totalValueInVault(_assetPrices, _assetDecimals, _trackedAssets);
+            uint256 _totalValueInVault = _totalValueInVault(_trackedAssets, _assetPrices, _assetDecimals);
             _rebaseWhenNotAdjustPosition(_totalValueInVault + totalDebt);
         }
         emit Burn(msg.sender, _asset, _amount, _actualAmount, _shareAmount, _assets, _amounts);
@@ -1099,7 +1102,7 @@ contract Vault is VaultStorage {
         uint256[] memory _assetPrices,
         uint256 _assetIndex,
         address _asset
-    ) internal view returns (uint256 ) {
+    ) internal view returns (uint256) {
         uint256 _price = _assetPrices[_assetIndex];
         if (_price == 0) {
             _price = _priceUSD(_asset);
