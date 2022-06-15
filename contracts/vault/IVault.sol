@@ -198,9 +198,9 @@ interface IVault {
     function setAdjustPositionPeriod(bool _adjustPositionPeriod) external;
 
     /**
-     * @dev Set a minimum amount of OUSD in a mint or redeem that triggers a
+     * @dev Set a minimum difference ratio automatically rebase.
      * rebase
-     * @param _threshold OUSD amount with 18 fixed decimals.
+     * @param _threshold _threshold is the numerator and the denominator is 10000000 (x/10000000).
      */
     function setRebaseThreshold(uint256 _threshold) external;
 
