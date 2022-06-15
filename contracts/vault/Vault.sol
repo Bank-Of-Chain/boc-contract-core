@@ -314,7 +314,7 @@ contract Vault is VaultStorage {
             }
         }
 
-        uint256 _minMount = _toAmounts[_minProductIndex];
+        uint256 _minAmount = _toAmounts[_minProductIndex];
         uint256 _minAspect = _ratios[_minProductIndex];
         uint256 _lendValue;
         for (uint256 i = 0; i < _toAmounts.length; i++) {
@@ -325,7 +325,7 @@ contract Vault is VaultStorage {
                 // console.log(' minProductIndex %d minMount %d minAspect %d', minProductIndex, minMount, minAspect);
 
                 if (!_isWantRatioIgnorable && _ratios[i] > 0) {
-                    _actualAmount = (_ratios[i] * _minMount) / _minAspect;
+                    _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
                 }
                 _lendValue =
                 _lendValue +
@@ -1218,34 +1218,34 @@ contract Vault is VaultStorage {
         uint256[] memory _claimAmounts,
         uint256 _lendValue
     ) private {
-        StrategyParams memory strategyParam = strategies[_strategy];
-        uint256 lastStrategyTotalDebt = strategyParam.totalDebt + _lendValue;
-        uint256 nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();
-        uint256 gain = 0;
-        uint256 loss = 0;
+        StrategyParams memory _strategyParam = strategies[_strategy];
+        uint256 _lastStrategyTotalDebt = _strategyParam.totalDebt + _lendValue;
+        uint256 _nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();
+        uint256 _gain = 0;
+        uint256 _loss = 0;
 
-        if (nowStrategyTotalDebt > lastStrategyTotalDebt) {
-            gain = nowStrategyTotalDebt - lastStrategyTotalDebt;
-        } else if (nowStrategyTotalDebt < lastStrategyTotalDebt) {
-            loss = lastStrategyTotalDebt - nowStrategyTotalDebt;
+        if (_nowStrategyTotalDebt > _lastStrategyTotalDebt) {
+            _gain = _nowStrategyTotalDebt - _lastStrategyTotalDebt;
+        } else if (_nowStrategyTotalDebt < _lastStrategyTotalDebt) {
+            _loss = _lastStrategyTotalDebt - _nowStrategyTotalDebt;
         }
 
-        if (strategyParam.enforceChangeLimit) {
-            if (gain > 0) {
+        if (_strategyParam.enforceChangeLimit) {
+            if (_gain > 0) {
                 require(
-                    gain <= ((lastStrategyTotalDebt * strategyParam.profitLimitRatio) / MAX_BPS),
+                    _gain <= ((_lastStrategyTotalDebt * _strategyParam.profitLimitRatio) / MAX_BPS),
                     "GL"
                 );
-            } else if (loss > 0) {
-                require(loss <= ((lastStrategyTotalDebt * strategyParam.lossLimitRatio) / MAX_BPS), "LL");
+            } else if (_loss > 0) {
+                require(_loss <= ((_lastStrategyTotalDebt * _strategyParam.lossLimitRatio) / MAX_BPS), "LL");
             }
         } else {
             strategies[_strategy].enforceChangeLimit = true;
             // The check is turned off only once and turned back on.
         }
 
-        strategies[_strategy].totalDebt = nowStrategyTotalDebt;
-        totalDebt = totalDebt + nowStrategyTotalDebt + _lendValue - lastStrategyTotalDebt;
+        strategies[_strategy].totalDebt = _nowStrategyTotalDebt;
+        totalDebt = totalDebt + _nowStrategyTotalDebt + _lendValue - _lastStrategyTotalDebt;
 
         strategies[_strategy].lastReport = block.timestamp;
         uint256 _type = 0;
@@ -1254,10 +1254,10 @@ contract Vault is VaultStorage {
         }
         emit StrategyReported(
             _strategy,
-            gain,
-            loss,
-            lastStrategyTotalDebt,
-            nowStrategyTotalDebt,
+            _gain,
+            _loss,
+            _lastStrategyTotalDebt,
+            _nowStrategyTotalDebt,
             _rewardTokens,
             _claimAmounts,
             _type

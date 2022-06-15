@@ -209,7 +209,7 @@ contract VaultBuffer is
         return true;
     }
 
-    function mint(address _sender, uint256 _amount) external onlyVault {
+    function mint(address _sender, uint256 _amount) external payable onlyVault {
         _mint(_sender, _amount);
     }
 

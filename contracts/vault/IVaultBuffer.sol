@@ -7,7 +7,7 @@ interface IVaultBuffer {
     /// @notice mint pending shares
     /// @param _sender user account address
     /// @param _amount mint amount
-    function mint(address _sender, uint256 _amount) external;
+    function mint(address _sender, uint256 _amount) external payable;
 
     /// @notice transfer cash to vault
     /// @param _assets transfer token
