@@ -841,7 +841,7 @@ contract Vault is VaultStorage {
     }
 
     // @notice without exchange token and transfer form vault to user
-    function _withoutExchangeTransfer(
+    function _transfer(
         uint256[] memory _outputs,
         address[] memory _trackedAssets,
         uint256[] memory _assetPrices,
@@ -970,7 +970,7 @@ contract Vault is VaultStorage {
                 _exchangeTokens
             );
         }
-        uint256 _actuallyReceivedAmount = _withoutExchangeTransfer(
+        uint256 _actuallyReceivedAmount = _transfer(
             _outputs,
             _trackedAssets,
             _assetPrices,
