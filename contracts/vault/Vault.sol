@@ -181,15 +181,15 @@ contract Vault is VaultStorage {
         nonReentrant
         returns (address[] memory _assets, uint256[] memory _amounts)
     {
-        uint256 _usdiBalance = IPegToken(pegTokenAddress).balanceOf(msg.sender);
-        _checkAssetAndExchangeTokens(_usdiBalance, _amount, _asset, _exchangeTokens);
+        uint256 _accountBalance = IPegToken(pegTokenAddress).balanceOf(msg.sender);
+        _checkAssetAndExchangeTokens(_accountBalance, _amount, _asset, _exchangeTokens);
 
         address[] memory _trackedAssets = _getTrackedAssets();
         uint256[] memory _assetPrices = new uint256[](_trackedAssets.length);
         uint256[] memory _assetDecimals = new uint256[](_trackedAssets.length);
         (uint256 _sharesAmount, uint256 _actualValue) = _replayToVault(
             _amount,
-            _usdiBalance,
+            _accountBalance,
             _trackedAssets,
             _assetPrices,
             _assetDecimals
@@ -921,12 +921,12 @@ contract Vault is VaultStorage {
     }
 
     function _checkAssetAndExchangeTokens(
-        uint256 _usdiBalance,
+        uint256 _accountBalance,
         uint256 _amount,
         address _asset,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
     ) internal {
-        require(_amount > 0 && _amount <= _usdiBalance, "Amount must be gt 0 and lt or eq the balance");
+        require(_amount > 0 && _amount <= _accountBalance, "Amount must be gt 0 and lt or eq the balance");
         checkIsSupportAsset(_asset);
 
         for (uint256 i = 0; i < _exchangeTokens.length; i++) {
@@ -940,7 +940,7 @@ contract Vault is VaultStorage {
 
     function _replayToVault(
         uint256 _amount,
-        uint256 _usdiBalance,
+        uint256 _accountBalance,
         address[] memory _trackedAssets,
         uint256[] memory _assetPrices,
         uint256[] memory _assetDecimals
@@ -951,15 +951,14 @@ contract Vault is VaultStorage {
         uint256 _currentTotalShares = IPegToken(pegTokenAddress).totalShares();
         {
             uint256 _underlyingUnitsPerShare = underlyingUnitsPerShare;
-            if (_usdiBalance == _actualAmount) {
+            if (_accountBalance == _actualAmount) {
                 _sharesAmount = IPegToken(pegTokenAddress).sharesOf(msg.sender);
             } else {
                 _sharesAmount = _actualAmount.divPreciselyScale(_underlyingUnitsPerShare, 1e27);
             }
             // Calculate redeem fee
             if (redeemFeeBps > 0) {
-                uint256 _redeemFee = (_actualAmount * redeemFeeBps) / MAX_BPS;
-                _actualAmount = _actualAmount - _redeemFee;
+                _actualAmount = _actualAmount - (_actualAmount * redeemFeeBps) / MAX_BPS;
             }
             uint256 _currentTotalSupply = _currentTotalShares.mulTruncateScale(
                 _underlyingUnitsPerShare,
