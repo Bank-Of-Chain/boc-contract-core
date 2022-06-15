@@ -1084,25 +1084,29 @@ contract Vault is VaultStorage {
         uint256 _assetIndex,
         address _asset
     ) internal view returns (uint256) {
-        if (_assetDecimals[_assetIndex] == 0) {
-            _assetDecimals[_assetIndex] = trackedAssetDecimalsMap[_asset];
+        uint256 _decimal = _assetDecimals[_assetIndex];
+        if (_decimal == 0) {
+            _decimal = trackedAssetDecimalsMap[_asset];
+            _assetDecimals[_assetIndex] = _decimal;
         }
-        return _assetDecimals[_assetIndex];
+        return _decimal;
     }
 
     /**
      * @notice Get an array of the supported asset prices in USD
-     * @return _price prices in USD (1e18)
+     * @return  prices in USD (1e18)
      */
     function _getAssetPrice(
         uint256[] memory _assetPrices,
         uint256 _assetIndex,
         address _asset
-    ) internal view returns (uint256 _price) {
-        if (_assetPrices[_assetIndex] == 0) {
-            _assetPrices[_assetIndex] = _priceUSD(_asset);
+    ) internal view returns (uint256 ) {
+        uint256 _price = _assetPrices[_assetIndex];
+        if (_price == 0) {
+            _price = _priceUSD(_asset);
+            _assetPrices[_assetIndex] = _price;
         }
-        _price = _assetPrices[_assetIndex];
+        return _price;
     }
 
     function _rebase(uint256 _totalShares, uint256 _totalAssets)
