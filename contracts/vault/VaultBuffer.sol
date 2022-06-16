@@ -80,7 +80,7 @@ contract VaultBuffer is
 
     receive() external payable {}
 
-    function mint(address _sender, uint256 _amount) external onlyVault {
+    function mint(address _sender, uint256 _amount) external payable onlyVault {
         _mint(_sender, _amount);
     }
 
