@@ -51,6 +51,15 @@ contract VaultAdmin is VaultStorage {
      * @dev Sets the treasuryAddress that can receive a portion of yield.
      *      Setting to the zero address disables this feature.
      */
+    function setUnderlyingUnitsPerShare(uint256 _underlyingUnitsPerShare) external onlyRole(BocRoles.GOV_ROLE) {
+        require(underlyingUnitsPerShare == 0 && _underlyingUnitsPerShare > 0, "init only once and must above 0");
+        underlyingUnitsPerShare = _underlyingUnitsPerShare;
+    }
+
+    /**
+     * @dev Sets the treasuryAddress that can receive a portion of yield.
+     *      Setting to the zero address disables this feature.
+     */
     function setTreasuryAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
         treasury = _address;
         emit TreasuryAddressChanged(_address);

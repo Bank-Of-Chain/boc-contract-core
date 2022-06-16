@@ -73,7 +73,7 @@ module.exports = {
     },
   },
   preprocess: {
-    eachLine: removeConsoleLog(bre => true),
+    eachLine: removeConsoleLog(bre => bre.network.name !== 'hardhat' && bre.network.name !== 'localhost'),
   },
   gasReporter: {
     enabled: true,
