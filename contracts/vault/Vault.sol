@@ -511,7 +511,9 @@ contract Vault is VaultStorage {
                 beforeAdjustPositionAssetsMap[_trackedAsset] = 0;
                 transferFromVaultBufferAssetsMap[_trackedAsset] = 0;
             }
-            IVaultBuffer(vaultBufferAddress).openDistribute();
+            if(!IVaultBuffer(vaultBufferAddress).isDistributing()){
+                IVaultBuffer(vaultBufferAddress).openDistribute();
+            }
             adjustPositionPeriod = false;
         }
 
@@ -715,7 +717,7 @@ contract Vault is VaultStorage {
             );
             IPegToken(pegTokenAddress).mintShares(vaultBufferAddress, _totalTransferShares);
 
-            emit USDiSwapCash(_totalTransferValue, _transferAssets, _amounts);
+            emit PegTokenSwapCash(_totalTransferValue, _transferAssets, _amounts);
         }
         return _totalTransferValue;
     }
