@@ -717,7 +717,7 @@ contract Vault is VaultStorage {
             );
             IPegToken(pegTokenAddress).mintShares(vaultBufferAddress, _totalTransferShares);
 
-            emit USDiSwapCash(_totalTransferValue, _transferAssets, _amounts);
+            emit PegTokenSwapCash(_totalTransferValue, _transferAssets, _amounts);
         }
         return _totalTransferValue;
     }

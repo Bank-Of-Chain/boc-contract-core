@@ -214,7 +214,7 @@ describe("Vault", function () {
         await mockS3CoinStrategy.initialize(vault.address, harvester.address);
 
         iVault = await IVault.at(vault.address);
-        await iVault.setUSDiAddress(usdi.address);
+        // await iVault.setUSDiAddress(usdi.address);
         await iVault.setVaultBufferAddress(vaultBuffer.address);
         await iVault.setPegTokenAddress(pegToken.address);
     });

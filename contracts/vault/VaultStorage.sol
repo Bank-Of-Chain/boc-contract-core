@@ -104,7 +104,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         uint256 _totalValueOfAfterAdjustPosition,
         uint256 _totalValueOfBeforeAdjustPosition
     );
-    event USDiSwapCash(uint256 _usdiAmount, address[] _assets, uint256[] _amounts);
+    event PegTokenSwapCash(uint256 _pegTokenAmount, address[] _assets, uint256[] _amounts);
 
     address internal constant ZERO_ADDRESS = address(0);
 

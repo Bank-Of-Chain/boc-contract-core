@@ -86,7 +86,7 @@ interface IVault {
         uint256 _totalValueOfAfterAdjustPosition,
         uint256 _totalValueOfBeforeAdjustPosition
     );
-    event USDiSwapCash(uint256 _usdiAmount, address[] _assets, uint256[] _amounts);
+    event PegTokenSwapCash(uint256 _pegTokenAmount, address[] _assets, uint256[] _amounts);
 
     /// @notice Version of vault
     function getVersion() external pure returns (string memory);
@@ -216,10 +216,10 @@ interface IVault {
      */
     function setTreasuryAddress(address _address) external;
 
-    /**
-     * @dev Set the USDi address after initialization(only once)
-     */
-    function setUSDiAddress(address _address) external;
+//    /**
+//     * @dev Set the USDi address after initialization(only once)
+//     */
+//    function setUSDiAddress(address _address) external;
 
     /**
      * @dev Sets the TrusteeFeeBps to the percentage of yield that should be
