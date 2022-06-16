@@ -350,12 +350,15 @@ describe("Vault", function () {
 
     it('验证：Vault可正常lend', async function () {
         let addToVaultStrategies = new Array();
+        let withdrawQueque = new Array();
         addToVaultStrategies.push({
             strategy: mockS3CoinStrategy.address,
             profitLimitRatio: 100,
             lossLimitRatio: 100
         });
+        withdrawQueque.push(mockS3CoinStrategy.address);
         await iVault.addStrategy(addToVaultStrategies, {from: governance});
+        await iVault.setWithdrawalQueue(withdrawQueque, {from: governance});
 
         const beforeUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
         console.log("lend前vault的usdt的balance:%s", beforeUsdt);
