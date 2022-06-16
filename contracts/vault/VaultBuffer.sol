@@ -28,6 +28,8 @@ contract VaultBuffer is
     event OpenDistribute();
     event CloseDistribute();
 
+    address constant NATIVE_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
     IterableUintMap.AddressToUintMap private _balances;
 
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -74,6 +76,10 @@ contract VaultBuffer is
         _distributeLimit = 50;
     }
 
+    fallback() external payable {}
+
+    receive() external payable {}
+
     function mint(address _sender, uint256 _amount) external onlyVault {
         _mint(_sender, _amount);
     }
@@ -84,7 +90,11 @@ contract VaultBuffer is
             uint256 amount = _amounts[i];
             if (amount > 0) {
                 address asset = _assets[i];
-                IERC20Upgradeable(asset).safeTransfer(vault, amount);
+                if (asset == NATIVE_TOKEN) {
+                    payable(vault).transfer(amount);
+                } else {
+                    IERC20Upgradeable(asset).safeTransfer(vault, amount);
+                }
             }
         }
     }
@@ -110,7 +120,12 @@ contract VaultBuffer is
         assert(!IVault(vault).adjustPositionPeriod());
         address[] memory assets = IVault(vault).getTrackedAssets();
         for (uint256 i = 0; i < assets.length; i++) {
-            assert(IERC20Upgradeable(assets[i]).balanceOf(address(this)) == 0);
+            address asset = assets[i];
+            if (asset == NATIVE_TOKEN) {
+                require(address(this).balance == 0, "cash remain.");
+            } else {
+                require(IERC20Upgradeable(asset).balanceOf(address(this)) == 0, "cash remain.");
+            }
         }
 
         bool result = _distribute();
