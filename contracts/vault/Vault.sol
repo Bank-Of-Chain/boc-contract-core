@@ -511,7 +511,9 @@ contract Vault is VaultStorage {
                 beforeAdjustPositionAssetsMap[_trackedAsset] = 0;
                 transferFromVaultBufferAssetsMap[_trackedAsset] = 0;
             }
-            IVaultBuffer(vaultBufferAddress).openDistribute();
+            if(!IVaultBuffer(vaultBufferAddress).isDistributing()){
+                IVaultBuffer(vaultBufferAddress).openDistribute();
+            }
             adjustPositionPeriod = false;
         }
 
