@@ -750,7 +750,7 @@ contract Vault is VaultStorage {
         uint256[] memory _assetDecimals
     ) internal view returns (uint256[] memory) {
         uint256 _trackedAssetsLength = _trackedAssets.length;
-        uint256[] memory outputs = new uint256[](_trackedAssetsLength);
+        uint256[] memory _outputs = new uint256[](_trackedAssetsLength);
 
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
@@ -765,15 +765,15 @@ contract Vault is VaultStorage {
                 );
 
                 if (_value >= _needTransferAmount) {
-                    outputs[i] = (_balance * _needTransferAmount) / _value;
+                    _outputs[i] = (_balance * _needTransferAmount) / _value;
                     break;
                 } else {
-                    outputs[i] = _balance;
+                    _outputs[i] = _balance;
                     _needTransferAmount = _needTransferAmount - _value;
                 }
             }
         }
-        return outputs;
+        return _outputs;
     }
 
     /// @notice calculate Asset value in usd by oracle price
