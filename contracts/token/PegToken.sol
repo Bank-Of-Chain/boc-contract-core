@@ -94,7 +94,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
      * @dev Returns the amount of tokens in existence.
      */
     function totalSupply() public view override returns (uint256) {
-        return (_totalShares * IVault(vaultAddr).underlyingUnitsPerShare()) / 1e18;
+        return (_totalShares * IVault(vaultAddr).underlyingUnitsPerShare()) / 1e27;
     }
 
     /**
