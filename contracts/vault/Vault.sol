@@ -719,7 +719,7 @@ contract Vault is VaultStorage {
             IVaultBuffer(vaultBufferAddress).transferCashToVault(_transferAssets, _amounts);
 
             uint256 _totalTransferShares = _calculateShare(
-                _totalTransferVagitlue,
+                _totalTransferValue,
                 _totalAssets,
                 _totalShares
             );
