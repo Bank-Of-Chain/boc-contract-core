@@ -491,8 +491,8 @@ contract Vault is VaultStorage {
             if (_transferValueByUsdi > 0) {
                 uint256 _sharesAmount = _calculateShare(
                     _transferValueByUsdi,
-                    _totalShares,
-                    _totalValueOfNow - _transferValueByUsdi
+                    _totalValueOfNow - _transferValueByUsdi,
+                    _totalShares
                 );
                 console.log("_sharesAmount:", _sharesAmount);
                 if (_sharesAmount > 0) {
@@ -735,6 +735,8 @@ contract Vault is VaultStorage {
         uint256 _totalAssets,
         uint256 _totalShares
     ) internal view returns (uint256) {
+        console.log("_amount, _totalAssets, _totalShares");
+        console.log(_amount, _totalAssets, _totalShares);
         uint256 _shareAmount = 0;
         if (_totalAssets == 0) {
             _shareAmount = _amount * 1e9;
