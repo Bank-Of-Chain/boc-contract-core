@@ -742,15 +742,15 @@ contract Vault is VaultStorage {
         console.log("_amount, _totalAssets, _totalShares");
         console.log(_amount, _totalAssets, _totalShares);
         uint256 _shareAmount = 0;
-        if (_totalAssets == 0) {
-            _shareAmount = _amount * 1e9;
-        } else {
+        if (_totalAssets > 0 && _totalShares > 0) {
             _shareAmount = (_amount * _totalShares) / _totalAssets;
-            if (_shareAmount == 0) {
-                _shareAmount = _amount.divPreciselyScale(underlyingUnitsPerShare, 1e27);
-                if (_shareAmount == 0) {
-                    _shareAmount = _amount * 1e9;
-                }
+        }
+        if (_shareAmount == 0) {
+            uint256 _underlyingUnitsPerShare = underlyingUnitsPerShare;
+            if (_underlyingUnitsPerShare > 0) {
+                _shareAmount = _amount.divPreciselyScale(_underlyingUnitsPerShare, 1e27);
+            } else {
+                _shareAmount = _amount * 1e9;
             }
         }
         return _shareAmount;
