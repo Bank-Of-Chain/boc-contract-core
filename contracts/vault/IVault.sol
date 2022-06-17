@@ -37,12 +37,6 @@ interface IVault {
         address[] _assets,
         uint256[] _amounts
     );
-    event BurnWithoutExchange(
-        address _account,
-        address[] _assets,
-        uint256[] _amounts,
-        uint256 _burnAmount
-    );
     event Exchange(
         address _platform,
         address _srcAsset,
@@ -238,10 +232,6 @@ interface IVault {
         uint256 _lossRatioLimit,
         uint256 _profitLimitRatio
     ) external;
-
-    /***************************************
-                       Pause
-       ****************************************/
 
     /**
      * @dev Set the deposit paused flag to true to prevent rebasing.
