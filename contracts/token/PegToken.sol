@@ -9,6 +9,8 @@ import "../vault/IVault.sol";
 import "../library/BocRoles.sol";
 
 contract PegToken is IPegToken, Initializable, AccessControlMixin {
+    event MintShares(address account,uint256 shareAmount);
+    event BurnShares(address account,uint256 shareAmount);
     event PauseStateChanged(bool isPaused);
 
     string _name;
@@ -368,6 +370,8 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
 
         _totalShares = _totalShares + _sharesAmount;
         shares[_recipient] = shares[_recipient] + _sharesAmount;
+
+        emit MintShares(_recipient,_sharesAmount);
     }
 
     /**
@@ -393,6 +397,8 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
 
         _totalShares = _totalShares - _sharesAmount;
         shares[_account] = accountShares - _sharesAmount;
+
+        emit MintShares(_account,_sharesAmount);
     }
 
     function migrate(address[] calldata _accounts,uint256[] calldata _shares) external {
