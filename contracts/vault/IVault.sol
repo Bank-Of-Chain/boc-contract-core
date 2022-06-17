@@ -58,6 +58,7 @@ interface IVault {
     event RebaseUnpaused();
     event RebaseThresholdUpdated(uint256 _threshold);
     event TrusteeFeeBpsChanged(uint256 _basis);
+    event MinimumInvestmentAmountChanged(uint256 _minimumInvestmentAmount);
     event TreasuryAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
@@ -216,10 +217,10 @@ interface IVault {
      */
     function setTreasuryAddress(address _address) external;
 
-//    /**
-//     * @dev Set the USDi address after initialization(only once)
-//     */
-//    function setUSDiAddress(address _address) external;
+    //    /**
+    //     * @dev Set the USDi address after initialization(only once)
+    //     */
+    //    function setUSDiAddress(address _address) external;
 
     /**
      * @dev Sets the TrusteeFeeBps to the percentage of yield that should be
@@ -314,6 +315,12 @@ interface IVault {
     function valueInterpreter() external view returns (address);
 
     function accessControlProxy() external view returns (address);
+
+    // Minimum investment amount
+    function setMinimumInvestmentAmount(uint256 _minimumInvestmentAmount) external;
+
+    // Minimum investment amount
+    function minimumInvestmentAmount() external view returns (uint256);
 
     function setVaultBufferAddress(address _address) external;
 

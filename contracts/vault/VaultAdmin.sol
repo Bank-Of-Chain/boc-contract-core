@@ -48,11 +48,25 @@ contract VaultAdmin is VaultStorage {
     }
 
     /**
+     * @dev Sets Minimum Investment Amount
+     */
+    function setMinimumInvestmentAmount(uint256 _minimumInvestmentAmount) external isVaultManager {
+        minimumInvestmentAmount = _minimumInvestmentAmount;
+        emit MinimumInvestmentAmountChanged(_minimumInvestmentAmount);
+    }
+
+    /**
      * @dev init underlyingUnitsPerShare only once
      *      Setting to the zero disables this feature.
      */
-    function setUnderlyingUnitsPerShare(uint256 _underlyingUnitsPerShare) external onlyRole(BocRoles.GOV_ROLE) {
-        require(underlyingUnitsPerShare == 0 && _underlyingUnitsPerShare > 0, "init only once and must above 0");
+    function setUnderlyingUnitsPerShare(uint256 _underlyingUnitsPerShare)
+        external
+        onlyRole(BocRoles.GOV_ROLE)
+    {
+        require(
+            underlyingUnitsPerShare == 0 && _underlyingUnitsPerShare > 0,
+            "init only once and must above 0"
+        );
         underlyingUnitsPerShare = _underlyingUnitsPerShare;
     }
 
@@ -65,11 +79,11 @@ contract VaultAdmin is VaultStorage {
         emit TreasuryAddressChanged(_address);
     }
 
-//    function setUSDiAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
-//        require(address(usdi) == address(0), "USDi has been set");
-//        require(_address != address(0), "USDi ad is 0");
-//        usdi = USDi(_address);
-//    }
+    //    function setUSDiAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
+    //        require(address(usdi) == address(0), "USDi has been set");
+    //        require(_address != address(0), "USDi ad is 0");
+    //        usdi = USDi(_address);
+    //    }
 
     function setVaultBufferAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
         require(_address != address(0), "vaultBuffer ad is 0");

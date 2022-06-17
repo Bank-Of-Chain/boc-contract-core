@@ -3,7 +3,6 @@
 pragma solidity ^0.8.0;
 
 interface IVaultBuffer {
-
     /// @notice mint pending shares
     /// @param _sender user account address
     /// @param _amount mint amount
@@ -16,11 +15,11 @@ interface IVaultBuffer {
 
     function openDistribute() external;
 
-    function distributeWhenDistributing() external returns(bool);
+    function distributeWhenDistributing() external returns (bool);
 
-    function distributeOnce() external returns(bool);
+    function distributeOnce() external returns (bool);
 
-    function isDistributing() external returns(bool);
+    function isDistributing() external view returns (bool);
 
     function getDistributeLimit() external view returns (uint256);
 

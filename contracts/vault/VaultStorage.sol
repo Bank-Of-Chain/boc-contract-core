@@ -86,6 +86,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event RebaseUnpaused();
     event RebaseThresholdUpdated(uint256 _threshold);
     event TrusteeFeeBpsChanged(uint256 _basis);
+    event MinimumInvestmentAmountChanged(uint256 _minimumInvestmentAmount);
     event TreasuryAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
@@ -168,6 +169,8 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     uint256 internal totalDebtOfBeforeAdjustPosition;
     // totalAsset/totalShare
     uint256 public underlyingUnitsPerShare;
+    //Minimum investment amount
+    uint256 public minimumInvestmentAmount;
 
     //max percentage 10000000/10000000
     uint256 internal constant TEN_MILLION_BPS = 10000000;
