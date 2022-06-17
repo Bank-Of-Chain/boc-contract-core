@@ -1080,13 +1080,8 @@ contract Vault is VaultStorage {
 
         uint256 _underlyingUnitsPerShare = underlyingUnitsPerShare;
         uint256 _totalSupply = _totalShares.mulTruncateScale(_underlyingUnitsPerShare, 1e27);
-        if (_totalAssets > _totalSupply) {
-            console.log("(_underlyingUnitsPerShare,_totalSupply,_totalValue - _totalSupply)=");
-            console.log(_underlyingUnitsPerShare, _totalSupply, (_totalAssets - _totalSupply));
-        } else {
-            console.log("(_underlyingUnitsPerShare,_totalSupply,_totalSupply - _totalValue)=");
-            console.log(_underlyingUnitsPerShare, _totalSupply, (_totalSupply - _totalAssets));
-        }
+        console.log("(_underlyingUnitsPerShare,_totalSupply,_totalAssets) = ");
+        console.log(_underlyingUnitsPerShare, _totalSupply, _totalAssets );
 
         // Final check should use latest value
         if (
