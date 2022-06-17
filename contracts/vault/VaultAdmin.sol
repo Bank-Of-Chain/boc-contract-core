@@ -90,6 +90,11 @@ contract VaultAdmin is VaultStorage {
         vaultBufferAddress = _address;
     }
 
+    function setPegTokenAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
+        require(_address != address(0), "PegTokenAddress ad is 0");
+        pegTokenAddress = _address;
+    }
+
     /**
      * @dev Sets the TrusteeFeeBps to the percentage of yield that should be
      *      received in basis points.
@@ -98,11 +103,6 @@ contract VaultAdmin is VaultStorage {
         require(_basis <= 5000, "basis cannot exceed 50%");
         trusteeFeeBps = _basis;
         emit TrusteeFeeBpsChanged(_basis);
-    }
-
-    function setPegTokenAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
-        require(_address != address(0), "PegTokenAddress ad is 0");
-        pegTokenAddress = _address;
     }
 
     function setStrategyEnforceChangeLimit(address _strategy, bool _enabled) external isVaultManager {
@@ -117,10 +117,6 @@ contract VaultAdmin is VaultStorage {
         strategies[_strategy].lossLimitRatio = _lossRatioLimit;
         strategies[_strategy].profitLimitRatio = _profitLimitRatio;
     }
-
-    /***************************************
-                       Pause
-       ****************************************/
 
     /**
      * @dev Set the deposit paused flag to true to prevent rebasing.
