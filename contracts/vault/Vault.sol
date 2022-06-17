@@ -356,9 +356,9 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Change USDi supply with Vault total assets.
-    function rebase() external nonReentrant {
+    function rebase() external whenNotEmergency whenNotAdjustPosition whenNotRebasePaused nonReentrant {
         uint256 _totalAssets = _totalValueInVault() + totalDebt;
-        _rebaseWhenNotAdjustPosition(_totalAssets);
+        _rebase(_totalAssets);
     }
 
     function report(address[] memory _rewardTokens, uint256[] memory _claimAmounts)
@@ -395,7 +395,9 @@ contract Vault is VaultStorage {
             }
             uint256 _totalAssets = _totalValueInVault + totalDebt;
             uint256 _totalShares = IPegToken(pegTokenAddress).totalShares();
-            _rebase(_totalShares, _totalAssets);
+            if (!rebasePaused) {
+                _rebase(_totalAssets, _totalShares);
+            }
             IVaultBuffer(vaultBufferAddress).transferCashToVault(_trackedAssets, _transferAmounts);
         }
         uint256 _totalDebtOfBeforeAdjustPosition = totalDebt;
@@ -500,7 +502,9 @@ contract Vault is VaultStorage {
                     _totalShares = _totalShares + _sharesAmount;
                 }
             }
-            _rebase(_totalShares, _totalValueOfNow);
+            if (!rebasePaused) {
+                _rebase(_totalValueOfNow, _totalShares);
+            }
         }
 
         {
@@ -1031,7 +1035,7 @@ contract Vault is VaultStorage {
         // a reward token sold for more or for less than anticipated.
         if (!rebasePaused) {
             uint256 _totalValueInVault = _totalValueInVault(_trackedAssets, _assetPrices, _assetDecimals);
-            _rebaseWhenNotAdjustPosition(_totalValueInVault + totalDebt);
+            _rebase(_totalValueInVault + totalDebt);
         }
         emit Burn(msg.sender, _asset, _amount, _actualAmount, _shareAmount, _assets, _amounts);
     }
@@ -1070,11 +1074,7 @@ contract Vault is VaultStorage {
         return _price;
     }
 
-    function _rebase(uint256 _totalShares, uint256 _totalAssets)
-        internal
-        whenNotEmergency
-        whenNotRebasePaused
-    {
+    function _rebase(uint256 _totalAssets, uint256 _totalShares) internal {
         console.log("(_totalShares,_totalValue):", _totalShares, _totalAssets);
         if (_totalShares == 0) {
             return;
@@ -1102,10 +1102,6 @@ contract Vault is VaultStorage {
                     if (_sharesAmount > 0) {
                         IPegToken(pegTokenAddress).mintShares(_treasuryAddress, _sharesAmount);
                         _totalShares = _totalShares + _sharesAmount;
-                        // Only rachet USDi supply upwards
-                        _totalSupply =
-                            _totalShares *
-                            _totalShares.mulTruncateScale(_underlyingUnitsPerShare, 1e27);
                     }
                 }
             }
@@ -1125,9 +1121,9 @@ contract Vault is VaultStorage {
      *      strategies and update the supply of USDI, optionally sending a
      *      portion of the yield to the trustee.
      */
-    function _rebaseWhenNotAdjustPosition(uint256 _totalAssets) internal whenNotAdjustPosition {
+    function _rebase(uint256 _totalAssets) internal {
         uint256 _totalShares = IPegToken(pegTokenAddress).totalShares();
-        _rebase(_totalShares, _totalAssets);
+        _rebase(_totalAssets, _totalShares);
     }
 
     /// @notice check valid and exchange to want token
