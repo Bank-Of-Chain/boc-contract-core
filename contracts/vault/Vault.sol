@@ -326,6 +326,7 @@ contract Vault is VaultStorage {
 
                 if (!_isWantRatioIgnorable && _ratios[i] > 0) {
                     _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
+                    _toAmounts[i] = _actualAmount;
                 }
                 _lendValue =
                     _lendValue +
@@ -333,7 +334,6 @@ contract Vault is VaultStorage {
                         _want,
                         _actualAmount
                     );
-                _toAmounts[i] = _actualAmount;
                 // console.log('token %s actual amount %d', _wants[i], actualAmount);
                 IERC20Upgradeable(_want).safeTransfer(_strategy, _actualAmount);
             }
@@ -380,10 +380,11 @@ contract Vault is VaultStorage {
             bool _vaultBufferAboveZero
         ) = _calculateVault(_trackedAssets, true);
         if (_vaultBufferAboveZero) {
-            uint256[] memory _assetPrices = new uint256[](_trackedAssets.length);
-            uint256[] memory _assetDecimals = new uint256[](_trackedAssets.length);
+            uint256 _trackedAssetsLength = _trackedAssets.length;
+            uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
+            uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
             uint256 _totalValueInVault = 0;
-            for (uint256 i = 0; i < _trackedAssets.length; i++) {
+            for (uint256 i = 0; i < _trackedAssetsLength; i++) {
                 address _trackedAsset = _trackedAssets[i];
                 uint256 _amount = _vaultAmounts[i];
                 if (_amount > 0) {
