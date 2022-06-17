@@ -28,7 +28,15 @@ interface IVault {
     event RemoveStrategies(address[] _strategies);
     event RemoveStrategyByForce(address _strategy);
     event Mint(address _account, address[] _assets, uint256[] _amounts, uint256 _mintAmount);
-    event Burn(address _account, address _asset, uint256 _amount, uint256 _actualAmount);
+    event Burn(
+        address _account,
+        address _asset,
+        uint256 _amount,
+        uint256 _actualAmount,
+        uint256 _shareAmount,
+        address[] _assets,
+        uint256[] _amounts
+    );
     event BurnWithoutExchange(
         address _account,
         address[] _assets,
@@ -50,11 +58,12 @@ interface IVault {
     event RebaseUnpaused();
     event RebaseThresholdUpdated(uint256 _threshold);
     event TrusteeFeeBpsChanged(uint256 _basis);
+    event MinimumInvestmentAmountChanged(uint256 _minimumInvestmentAmount);
     event TreasuryAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
-    event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
     event SetWithdrawalQueue(address[] queues);
+    event Rebase(uint256 _totalShares, uint256 _totalValue, uint256 _newUnderlyingUnitsPerShare);
     event StrategyReported(
         address indexed strategy,
         uint256 gain,
@@ -78,7 +87,7 @@ interface IVault {
         uint256 _totalValueOfAfterAdjustPosition,
         uint256 _totalValueOfBeforeAdjustPosition
     );
-    event USDiSwapCash(uint256 _usdiAmount, address[] _assets, uint256[] _amounts);
+    event PegTokenSwapCash(uint256 _pegTokenAmount, address[] _assets, uint256[] _amounts);
 
     /// @notice Version of vault
     function getVersion() external pure returns (string memory);
@@ -111,6 +120,8 @@ interface IVault {
 
     /// @notice end  Adjust Position
     function endAdjustPosition() external;
+
+    function underlyingUnitsPerShare() external view returns (uint256);
 
     /**
      * @dev Internal to calculate total value of all assets held in Vault.
@@ -153,11 +164,11 @@ interface IVault {
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
     /// @param _asset one of StableCoin asset
-    /// @param _minimumUsdAmount Minimum usd to receive in return
+    /// @param _minimumAmount Minimum usd to receive in return
     function burn(
         uint256 _amount,
         address _asset,
-        uint256 _minimumUsdAmount,
+        uint256 _minimumAmount,
         bool _needExchange,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
     ) external returns (address[] memory _assets, uint256[] memory _amounts);
@@ -188,9 +199,9 @@ interface IVault {
     function setAdjustPositionPeriod(bool _adjustPositionPeriod) external;
 
     /**
-     * @dev Set a minimum amount of OUSD in a mint or redeem that triggers a
+     * @dev Set a minimum difference ratio automatically rebase.
      * rebase
-     * @param _threshold OUSD amount with 18 fixed decimals.
+     * @param _threshold _threshold is the numerator and the denominator is 10000000 (x/10000000).
      */
     function setRebaseThreshold(uint256 _threshold) external;
 
@@ -201,21 +212,15 @@ interface IVault {
     function setRedeemFeeBps(uint256 _redeemFeeBps) external;
 
     /**
-     * @dev Sets the maximum allowable difference between
-     * total supply and backing assets' value.
-     */
-    function setMaxSupplyDiff(uint256 _maxSupplyDiff) external;
-
-    /**
      * @dev Sets the treasuryAddress that can receive a portion of yield.
      *      Setting to the zero address disables this feature.
      */
     function setTreasuryAddress(address _address) external;
 
-    /**
-     * @dev Set the USDi address after initialization(only once)
-     */
-    function setUSDiAddress(address _address) external;
+    //    /**
+    //     * @dev Set the USDi address after initialization(only once)
+    //     */
+    //    function setUSDiAddress(address _address) external;
 
     /**
      * @dev Sets the TrusteeFeeBps to the percentage of yield that should be
@@ -282,7 +287,7 @@ interface IVault {
     // Pausing bools
     function rebasePaused() external view returns (bool);
 
-    // Mints over this amount automatically rebase. 18 decimals.
+    // over this difference ratio automatically rebase. rebaseThreshold is the numerator and the denominator is 10000000 x/10000000.
     function rebaseThreshold() external view returns (uint256);
 
     // Amount of yield collected in basis points
@@ -293,9 +298,6 @@ interface IVault {
 
     //all strategy asset
     function totalDebt() external view returns (uint256);
-
-    //Threshold percentage for rebase 10000000
-    function maxSupplyDiff() external view returns (uint256);
 
     //exchangeManager
     function exchangeManager() external view returns (address);
@@ -314,5 +316,21 @@ interface IVault {
 
     function accessControlProxy() external view returns (address);
 
+    // Minimum investment amount
+    function setMinimumInvestmentAmount(uint256 _minimumInvestmentAmount) external;
+
+    // Minimum investment amount
+    function minimumInvestmentAmount() external view returns (uint256);
+
     function setVaultBufferAddress(address _address) external;
+
+    function setUnderlyingUnitsPerShare(uint256 _underlyingUnitsPerShare) external;
+
+    function vaultBufferAddress(address _address) external view returns (address);
+
+    function setPegTokenAddress(address _address) external;
+
+    function pegTokenAddress() external view returns (address);
+
+    function setAdminImpl(address newImpl) external;
 }

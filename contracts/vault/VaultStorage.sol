@@ -5,9 +5,9 @@ pragma solidity ^0.8.0;
 import "hardhat/console.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/IterableIntMap.sol";
-import "../library/IterableUintMap.sol";
 import "../library/StableMath.sol";
 import "../token/USDi.sol";
+import "../token/IPegToken.sol";
 import "./IVaultBuffer.sol";
 import "../library/BocRoles.sol";
 import "../strategy/IStrategy.sol";
@@ -22,7 +22,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     using StableMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
-    using IterableUintMap for IterableUintMap.AddressToUintMap;
 
     struct StrategyParams {
         //last report timestamp
@@ -46,12 +45,14 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event RemoveStrategies(address[] _strategies);
     event RemoveStrategyByForce(address _strategy);
     event Mint(address _account, address[] _assets, uint256[] _amounts, uint256 _mintAmount);
-    event Burn(address _account, address _asset, uint256 _amount, uint256 _actualAmount);
-    event BurnWithoutExchange(
+    event Burn(
         address _account,
+        address _asset,
+        uint256 _amount,
+        uint256 _actualAmount,
+        uint256 _shareAmount,
         address[] _assets,
-        uint256[] _amounts,
-        uint256 _burnAmount
+        uint256[] _amounts
     );
     event Exchange(
         address _platform,
@@ -85,11 +86,12 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event RebaseUnpaused();
     event RebaseThresholdUpdated(uint256 _threshold);
     event TrusteeFeeBpsChanged(uint256 _basis);
+    event MinimumInvestmentAmountChanged(uint256 _minimumInvestmentAmount);
     event TreasuryAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
-    event MaxSupplyDiffChanged(uint256 _maxSupplyDiff);
     event SetWithdrawalQueue(address[] _queues);
+    event Rebase(uint256 _totalShares, uint256 _totalValue, uint256 _newUnderlyingUnitsPerShare);
     event StartAdjustPosition(
         uint256 _totalDebtOfBeforeAdjustPosition,
         address[] _trackedAssets,
@@ -103,7 +105,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         uint256 _totalValueOfAfterAdjustPosition,
         uint256 _totalValueOfBeforeAdjustPosition
     );
-    event USDiSwapCash(uint256 _usdiAmount, address[] _assets, uint256[] _amounts);
+    event PegTokenSwapCash(uint256 _pegTokenAmount, address[] _assets, uint256[] _amounts);
 
     address internal constant ZERO_ADDRESS = address(0);
 
@@ -128,9 +130,9 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     bool public emergencyShutdown;
     // Pausing bools
     bool public rebasePaused;
-    // Mints over this amount automatically rebase. 18 decimals.
+    // over this difference ratio automatically rebase. rebaseThreshold is the numerator and the denominator is 10000000 x/10000000.
     uint256 public rebaseThreshold;
-    // Threshold percentage for rebase 10000000
+    // Deprecated
     uint256 public maxSupplyDiff;
     // Amount of yield collected in basis points
     uint256 public trusteeFeeBps;
@@ -155,6 +157,8 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
 
     //vault Buffer Address
     address public vaultBufferAddress;
+    // usdi PegToken address
+    address public pegTokenAddress;
     // Assets held in Vault from vault buffer
     mapping(address => uint256) internal transferFromVaultBufferAssetsMap;
     // redeem Assets where ad
@@ -163,6 +167,10 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     mapping(address => uint256) internal beforeAdjustPositionAssetsMap;
     // totalDebt before Adjust Position
     uint256 internal totalDebtOfBeforeAdjustPosition;
+    // totalAsset/totalShare
+    uint256 public underlyingUnitsPerShare;
+    //Minimum investment amount
+    uint256 public minimumInvestmentAmount;
 
     //max percentage 10000000/10000000
     uint256 internal constant TEN_MILLION_BPS = 10000000;

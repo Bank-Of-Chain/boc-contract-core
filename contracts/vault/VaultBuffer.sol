@@ -25,6 +25,11 @@ contract VaultBuffer is
     using IterableUintMap for IterableUintMap.AddressToUintMap;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    event OpenDistribute();
+    event CloseDistribute();
+
+    address constant NATIVE_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
     IterableUintMap.AddressToUintMap private _balances;
 
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -35,25 +40,122 @@ contract VaultBuffer is
     string private _symbol;
 
     address public vault;
-    address public usdi;
+    address public pegTokenAddr;
+
+    bool public isDistributing;
+
+    uint256 private _distributeLimit;
 
     modifier onlyVault() {
         require(msg.sender == vault);
         _;
     }
 
+    function getDistributeLimit() external view returns (uint256) {
+        return _distributeLimit;
+    }
+
+    function setDistributeLimit(uint256 _limit) external isVaultManager {
+        assert(_limit > 0 && _limit < 500);
+        _distributeLimit = _limit;
+    }
+
     function initialize(
         string memory name_,
         string memory symbol_,
         address _vault,
-        address _usdi,
+        address _pegTokenAddr,
         address _accessControlProxy
     ) external initializer {
         _name = name_;
         _symbol = symbol_;
         vault = _vault;
-        usdi = _usdi;
+        pegTokenAddr = _pegTokenAddr;
         _initAccessControl(_accessControlProxy);
+
+        _distributeLimit = 50;
+    }
+
+    fallback() external payable {}
+
+    receive() external payable {}
+
+    function mint(address _sender, uint256 _amount) external payable onlyVault {
+        _mint(_sender, _amount);
+    }
+
+    function transferCashToVault(address[] memory _assets, uint256[] memory _amounts) external onlyVault {
+        uint256 len = _assets.length;
+        for (uint256 i = 0; i < len; i++) {
+            uint256 amount = _amounts[i];
+            if (amount > 0) {
+                address asset = _assets[i];
+                if (asset == NATIVE_TOKEN) {
+                    payable(vault).transfer(amount);
+                } else {
+                    IERC20Upgradeable(asset).safeTransfer(vault, amount);
+                }
+            }
+        }
+    }
+
+    function openDistribute() external onlyVault {
+        assert(!isDistributing);
+        isDistributing = true;
+
+        emit OpenDistribute();
+    }
+
+    function distributeWhenDistributing() external isKeeper returns (bool) {
+        assert(!IVault(vault).adjustPositionPeriod());
+        bool result = _distribute();
+        if (!result) {
+            isDistributing = false;
+            emit CloseDistribute();
+        }
+        return result;
+    }
+
+    function distributeOnce() external isKeeper returns (bool) {
+        assert(!IVault(vault).adjustPositionPeriod());
+        address[] memory assets = IVault(vault).getTrackedAssets();
+        for (uint256 i = 0; i < assets.length; i++) {
+            address asset = assets[i];
+            if (asset == NATIVE_TOKEN) {
+                require(address(this).balance == 0, "cash remain.");
+            } else {
+                require(IERC20Upgradeable(asset).balanceOf(address(this)) == 0, "cash remain.");
+            }
+        }
+
+        bool result = _distribute();
+        return result;
+    }
+
+    function _distribute() internal returns (bool) {
+        uint256 pendingToDistributeShares = _totalSupply;
+        if (pendingToDistributeShares > 0) {
+            uint256 pendingToDistributePegTokens = IERC20Upgradeable(pegTokenAddr).balanceOf(
+                address(this)
+            );
+            IERC20Upgradeable _pegToken = IERC20Upgradeable(pegTokenAddr);
+            uint256 len = _balances.length();
+            uint256 loopCount = len < _distributeLimit ? len : _distributeLimit;
+            for (uint256 i = loopCount; i > 0; i--) {
+                (address account, uint256 share) = _balances.at(i - 1);
+                _pegToken.safeTransfer(
+                    account,
+                    (share * pendingToDistributePegTokens) / pendingToDistributeShares
+                );
+                _burn(account, share);
+            }
+        }
+
+        if (_balances.length() == 0) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     /**
@@ -209,48 +311,6 @@ contract VaultBuffer is
         return true;
     }
 
-    function mint(address _sender, uint256 _amount) external onlyVault {
-        _mint(_sender, _amount);
-    }
-
-    function transferCashToVault(address[] memory _assets, uint256[] memory _amounts) external onlyVault {
-        uint256 len = _assets.length;
-        for (uint256 i = 0; i < len; i++) {
-            uint256 amount = _amounts[i];
-            if (amount > 0) {
-                address asset = _assets[i];
-                IERC20Upgradeable(asset).safeTransfer(vault, amount);
-            }
-        }
-    }
-
-    function distributeByVault() external onlyVault {
-        _distribute();
-    }
-
-    function distributeByKeeper() external isKeeper {
-        assert(!IVault(vault).adjustPositionPeriod());
-        address[] memory assets = IVault(vault).getTrackedAssets();
-        for (uint256 i = 0; i < assets.length; i++) {
-            assert(IERC20Upgradeable(assets[i]).balanceOf(address(this)) == 0);
-        }
-        _distribute();
-    }
-
-    function _distribute() internal {
-        uint256 _totalSupplyCurrent = _totalSupply;
-        if (_totalSupplyCurrent > 0) {
-            IERC20Upgradeable usdiToken = IERC20Upgradeable(usdi);
-            uint256 totalUsdi = usdiToken.balanceOf(address(this));
-            uint256 len = _balances.length();
-            for (uint256 i = len; i > 0; i--) {
-                (address account, uint256 share) = _balances.at(i - 1);
-                usdiToken.safeTransfer(account, (share * totalUsdi) / _totalSupplyCurrent);
-                _burn(account, share);
-            }
-        }
-    }
-
     /**
      * @dev Moves `amount` of tokens from `sender` to `recipient`.
      *
@@ -279,8 +339,8 @@ contract VaultBuffer is
         require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
         unchecked {
             // _balances[from] = fromBalance - amount;
-            uint256 newBalance = fromBalance - amount; 
-            if (newBalance == 0){
+            uint256 newBalance = fromBalance - amount;
+            if (newBalance == 0) {
                 _balances.remove(from);
             } else {
                 _balances.set(from, newBalance);
@@ -435,15 +495,4 @@ contract VaultBuffer is
         address to,
         uint256 amount
     ) internal virtual {}
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint256[45] private __gap;
-
-    function _getDecimals(address _token) internal view returns (uint256) {
-        return IERC20MetadataUpgradeable(_token).decimals();
-    }
 }
