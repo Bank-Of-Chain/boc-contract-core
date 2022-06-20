@@ -56,7 +56,7 @@ contract VaultBuffer is
     }
 
     function setDistributeLimit(uint256 _limit) external isVaultManager {
-        assert(_limit > 0 && _limit < 500);
+        assert(_limit > 0);
         _distributeLimit = _limit;
     }
 

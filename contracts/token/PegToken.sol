@@ -401,7 +401,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         emit MintShares(_account,_sharesAmount);
     }
 
-    function migrate(address[] calldata _accounts,uint256[] calldata _shares) external {
+    function migrate(address[] calldata _accounts,uint256[] calldata _shares) external onlyGovOrDelegate {
         assert(!_migrated);
         assert(_accounts.length == _shares.length);
         _migrated = true;
