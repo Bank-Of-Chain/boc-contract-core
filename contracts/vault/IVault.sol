@@ -52,6 +52,7 @@ interface IVault {
     event RebaseUnpaused();
     event RebaseThresholdUpdated(uint256 _threshold);
     event TrusteeFeeBpsChanged(uint256 _basis);
+    event MaxTimestampBetweenTwoReportedChanged(uint256 _maxTimestampBetweenTwoReported);
     event MinimumInvestmentAmountChanged(uint256 _minimumInvestmentAmount);
     event TreasuryAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
@@ -305,6 +306,14 @@ interface IVault {
     function valueInterpreter() external view returns (address);
 
     function accessControlProxy() external view returns (address);
+
+    /**
+     * @dev Sets the Maximum timestamp between two reported
+     */
+    function setMaxTimestampBetweenTwoReported(uint256 _maxTimestampBetweenTwoReported) external;
+
+    // Maximum timestamp between two reported
+    function maxTimestampBetweenTwoReported() external view returns (uint256);
 
     // Minimum investment amount
     function setMinimumInvestmentAmount(uint256 _minimumInvestmentAmount) external;

@@ -48,6 +48,17 @@ contract VaultAdmin is VaultStorage {
     }
 
     /**
+     * @dev Sets the Maximum timestamp between two reported
+     */
+    function setMaxTimestampBetweenTwoReported(uint256 _maxTimestampBetweenTwoReported)
+        external
+        isVaultManager
+    {
+        maxTimestampBetweenTwoReported = _maxTimestampBetweenTwoReported;
+        emit MaxTimestampBetweenTwoReportedChanged(_maxTimestampBetweenTwoReported);
+    }
+
+    /**
      * @dev Sets Minimum Investment Amount
      */
     function setMinimumInvestmentAmount(uint256 _minimumInvestmentAmount) external isVaultManager {
