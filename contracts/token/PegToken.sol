@@ -398,7 +398,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         _totalShares = _totalShares - _sharesAmount;
         shares[_account] = accountShares - _sharesAmount;
 
-        emit MintShares(_account,_sharesAmount);
+        emit BurnShares(_account,_sharesAmount);
     }
 
     function migrate(address[] calldata _accounts,uint256[] calldata _shares) external onlyGovOrDelegate {
