@@ -1169,7 +1169,7 @@ contract Vault is VaultStorage {
         }
 
         if (_strategyParam.enforceChangeLimit) {
-            if (block.timestamp - strategies[_strategy].lastReport < 604800) {
+            if (block.timestamp - strategies[_strategy].lastReport < maxTimestampBetweenTwoReported) {
                 if (_gain > 0) {
                     require(
                         _gain <= ((_lastStrategyTotalDebt * _strategyParam.profitLimitRatio) / MAX_BPS),

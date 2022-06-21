@@ -217,6 +217,8 @@ describe("Vault", function () {
         // await iVault.setUSDiAddress(usdi.address);
         await iVault.setVaultBufferAddress(vaultBuffer.address);
         await iVault.setPegTokenAddress(pegToken.address);
+        await iVault.setMaxTimestampBetweenTwoReported(604800, {from: governance});
+        console.log("maxTimestampBetweenTwoReported:",new BigNumber(await iVault.maxTimestampBetweenTwoReported()).toFixed());
     });
 
     it('验证：Vault可正常添加和移除Asset', async function () {
