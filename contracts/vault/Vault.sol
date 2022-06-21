@@ -1169,16 +1169,18 @@ contract Vault is VaultStorage {
         }
 
         if (_strategyParam.enforceChangeLimit) {
-            if (_gain > 0) {
-                require(
-                    _gain <= ((_lastStrategyTotalDebt * _strategyParam.profitLimitRatio) / MAX_BPS),
-                    "GL"
-                );
-            } else if (_loss > 0) {
-                require(
-                    _loss <= ((_lastStrategyTotalDebt * _strategyParam.lossLimitRatio) / MAX_BPS),
-                    "LL"
-                );
+            if (block.timestamp - strategies[_strategy].lastReport < 604800) {
+                if (_gain > 0) {
+                    require(
+                        _gain <= ((_lastStrategyTotalDebt * _strategyParam.profitLimitRatio) / MAX_BPS),
+                        "GL"
+                    );
+                } else if (_loss > 0) {
+                    require(
+                        _loss <= ((_lastStrategyTotalDebt * _strategyParam.lossLimitRatio) / MAX_BPS),
+                        "LL"
+                    );
+                }
             }
         } else {
             strategies[_strategy].enforceChangeLimit = true;
