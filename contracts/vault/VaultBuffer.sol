@@ -143,9 +143,12 @@ contract VaultBuffer is
             uint256 loopCount = len < _distributeLimit ? len : _distributeLimit;
             for (uint256 i = loopCount; i > 0; i--) {
                 (address account, uint256 share) = _balances.at(i - 1);
+                uint256 transferAmount = i == 0
+                    ? IERC20Upgradeable(pegTokenAddr).balanceOf(address(this))
+                    : (share * pendingToDistributePegTokens) / pendingToDistributeShares;
                 _pegToken.safeTransfer(
                     account,
-                    (share * pendingToDistributePegTokens) / pendingToDistributeShares
+                    transferAmount
                 );
                 _burn(account, share);
             }
