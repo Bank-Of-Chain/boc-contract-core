@@ -338,7 +338,6 @@ contract VaultBuffer is
         uint256 fromBalance = _balances.get(from);
         require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
         unchecked {
-            // _balances[from] = fromBalance - amount;
             uint256 newBalance = fromBalance - amount;
             if (newBalance == 0) {
                 _balances.remove(from);
@@ -346,7 +345,6 @@ contract VaultBuffer is
                 _balances.set(from, newBalance);
             }
         }
-        // _balances[to] += amount;
         _balances.plus(to, amount);
 
         emit Transfer(from, to, amount);
@@ -369,7 +367,6 @@ contract VaultBuffer is
         _beforeTokenTransfer(address(0), account, amount);
 
         _totalSupply += amount;
-        // _balances[account] += amount;
         _balances.plus(account, amount);
         emit Transfer(address(0), account, amount);
 
