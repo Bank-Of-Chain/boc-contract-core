@@ -12,6 +12,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     event MintShares(address account,uint256 shareAmount);
     event BurnShares(address account,uint256 shareAmount);
     event PauseStateChanged(bool isPaused);
+    event Migrate(address[] accounts);
 
     string _name;
 
@@ -282,9 +283,9 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         address _recipient,
         uint256 _amount
     ) internal {
-        uint256 ethiBalance = balanceOf(_sender);
+        uint256 senderBalance = balanceOf(_sender);
         uint256 _sharesToTransfer;
-        if (ethiBalance == _amount) {
+        if (senderBalance == _amount) {
             _sharesToTransfer = sharesOf(_sender);
         } else {
             _sharesToTransfer = getSharesByUnderlyingUnits(_amount);
@@ -411,6 +412,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
             _totalShares = _totalShares + _sharesAmount;
             shares[_recipient] = shares[_recipient] + _sharesAmount;
         }
+        emit Migrate(_accounts);
     }
     
 }
