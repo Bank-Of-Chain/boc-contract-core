@@ -135,17 +135,29 @@ contract VaultBuffer is
     function _distribute() internal returns (bool) {
         uint256 pendingToDistributeShares = _totalSupply;
         if (pendingToDistributeShares > 0) {
-            uint256 pendingToDistributePegTokens = IERC20Upgradeable(pegTokenAddr).balanceOf(
+            IERC20Upgradeable _pegToken = IERC20Upgradeable(pegTokenAddr);
+            uint256 pendingToDistributePegTokens = _pegToken.balanceOf(
                 address(this)
             );
-            IERC20Upgradeable _pegToken = IERC20Upgradeable(pegTokenAddr);
             uint256 len = _balances.length();
-            uint256 loopCount = len < _distributeLimit ? len : _distributeLimit;
+            bool lastDistribute = false;
+            uint256 loopCount;
+            if (len <= _distributeLimit){
+                lastDistribute = true;
+                loopCount = len;
+            } else {
+                loopCount = _distributeLimit;
+            }
+            
             for (uint256 i = loopCount; i > 0; i--) {
                 (address account, uint256 share) = _balances.at(i - 1);
+                //Prevents inexhaustible division with minimum precision
+                uint256 transferAmount = (i == 0 && lastDistribute)
+                    ? _pegToken.balanceOf(address(this))
+                    : (share * pendingToDistributePegTokens) / pendingToDistributeShares;
                 _pegToken.safeTransfer(
                     account,
-                    (share * pendingToDistributePegTokens) / pendingToDistributeShares
+                    transferAmount
                 );
                 _burn(account, share);
             }
