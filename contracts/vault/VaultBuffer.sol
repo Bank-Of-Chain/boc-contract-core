@@ -146,7 +146,7 @@ contract VaultBuffer is
                 lastDistribute = true;
                 loopCount = len;
             } else {
-                len = _distributeLimit;
+                loopCount = _distributeLimit;
             }
             
             for (uint256 i = loopCount; i > 0; i--) {
