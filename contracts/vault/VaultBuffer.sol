@@ -101,9 +101,13 @@ contract VaultBuffer is
 
     function openDistribute() external onlyVault {
         assert(!isDistributing);
-        isDistributing = true;
+        uint256 pegTokenBalance = IERC20Upgradeable(pegTokenAddr).balanceOf(address(this));
+        if (pegTokenBalance > 0){
+            isDistributing = true;
 
-        emit OpenDistribute();
+            emit OpenDistribute();
+        }
+
     }
 
     function distributeWhenDistributing() external isKeeper returns (bool) {
