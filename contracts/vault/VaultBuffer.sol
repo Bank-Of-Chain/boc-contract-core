@@ -165,6 +165,10 @@ contract VaultBuffer is
                 );
                 _burn(account, share);
             }
+
+            if(lastDistribute){
+                require(_pegToken.balanceOf(address(this)) == 0,'remain peg token after distribute.');
+            }
         }
 
         if (_balances.length() == 0) {
