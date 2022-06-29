@@ -102,12 +102,11 @@ contract VaultBuffer is
     function openDistribute() external onlyVault {
         assert(!isDistributing);
         uint256 pegTokenBalance = IERC20Upgradeable(pegTokenAddr).balanceOf(address(this));
-        if (pegTokenBalance > 0){
+        if (pegTokenBalance > 0) {
             isDistributing = true;
 
             emit OpenDistribute();
         }
-
     }
 
     function distributeWhenDistributing() external isKeeper returns (bool) {
@@ -140,35 +139,27 @@ contract VaultBuffer is
         uint256 pendingToDistributeShares = _totalSupply;
         if (pendingToDistributeShares > 0) {
             IERC20Upgradeable _pegToken = IERC20Upgradeable(pegTokenAddr);
-            uint256 pendingToDistributePegTokens = _pegToken.balanceOf(
-                address(this)
-            );
+            uint256 pendingToDistributePegTokens = _pegToken.balanceOf(address(this));
             uint256 len = _balances.length();
             bool lastDistribute = false;
             uint256 loopCount;
-            if (len <= _distributeLimit){
+            if (len <= _distributeLimit) {
                 lastDistribute = true;
                 loopCount = len;
             } else {
                 loopCount = _distributeLimit;
             }
-            
+
             for (uint256 i = loopCount; i > 0; i--) {
                 (address account, uint256 share) = _balances.at(i - 1);
                 //Prevents inexhaustible division with minimum precision
-                uint256 transferAmount = (i == 0 && lastDistribute)
+                uint256 transferAmount = (i - 1 == 0 && lastDistribute)
                     ? _pegToken.balanceOf(address(this))
                     : (share * pendingToDistributePegTokens) / pendingToDistributeShares;
-                _pegToken.safeTransfer(
-                    account,
-                    transferAmount
-                );
+                _pegToken.safeTransfer(account, transferAmount);
                 _burn(account, share);
             }
 
-            if(lastDistribute){
-                require(_pegToken.balanceOf(address(this)) == 0,'remain peg token after distribute.');
-            }
         }
 
         if (_balances.length() == 0) {
