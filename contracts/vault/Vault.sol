@@ -485,7 +485,6 @@ contract Vault is VaultStorage {
                 console.log("_sharesAmount:", _sharesAmount);
                 if (_sharesAmount > 0) {
                     IPegToken(pegTokenAddress).mintShares(vaultBufferAddress, _sharesAmount);
-                    _totalShares = _totalShares + _sharesAmount;
                 }
             }
         }
