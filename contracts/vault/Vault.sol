@@ -453,11 +453,11 @@ contract Vault is VaultStorage {
         console.log(_totalDebtOfNow, _totalDebtOfBefore, _totalValueOfNow, _totalValueOfBefore);
 
         {
-            uint256 _transferValueByUsdi = 0;
+            uint256 _transferAssets = 0;
             if (_totalValueOfNow > _totalValueOfBefore) {
                 uint256 _gain = _totalValueOfNow - _totalValueOfBefore;
                 if (_transferValue > 0) {
-                    _transferValueByUsdi =
+                    _transferAssets =
                         _transferValue +
                         (_gain * _transferValue) /
                         (_transferValue + _redeemValue);
@@ -465,28 +465,27 @@ contract Vault is VaultStorage {
             } else {
                 uint256 _loss = _totalValueOfBefore - _totalValueOfNow;
                 if (_transferValue > 0) {
-                    _transferValueByUsdi =
+                    _transferAssets =
                         _transferValue -
                         (_loss * _transferValue) /
                         (_transferValue + _redeemValue);
                 }
             }
             uint256 _totalShares = IPegToken(pegTokenAddress).totalShares();
-            console.log("_transferValueByUsdi:", _transferValueByUsdi);
-            if (_transferValueByUsdi > 0) {
+            if (!rebasePaused) {
+                _totalShares = _rebase(_totalValueOfNow - _transferAssets, _totalShares);
+            }
+            console.log("_transferAssets:", _transferAssets);
+            if (_transferAssets > 0) {
                 uint256 _sharesAmount = _calculateShare(
-                    _transferValueByUsdi,
-                    _totalValueOfNow - _transferValueByUsdi,
+                    _transferAssets,
+                    _totalValueOfNow - _transferAssets,
                     _totalShares
                 );
                 console.log("_sharesAmount:", _sharesAmount);
                 if (_sharesAmount > 0) {
                     IPegToken(pegTokenAddress).mintShares(vaultBufferAddress, _sharesAmount);
-                    _totalShares = _totalShares + _sharesAmount;
                 }
-            }
-            if (!rebasePaused) {
-                _rebase(_totalValueOfNow, _totalShares);
             }
         }
 
@@ -1018,10 +1017,10 @@ contract Vault is VaultStorage {
         _rebase(_totalAssets, _totalShares);
     }
 
-    function _rebase(uint256 _totalAssets, uint256 _totalShares) internal {
+    function _rebase(uint256 _totalAssets, uint256 _totalShares) internal returns (uint256) {
         console.log("(_totalShares,_totalValue):", _totalShares, _totalAssets);
         if (_totalShares == 0) {
-            return;
+            return _totalShares;
         }
 
         uint256 _underlyingUnitsPerShare = underlyingUnitsPerShare;
@@ -1058,6 +1057,7 @@ contract Vault is VaultStorage {
                 emit Rebase(_totalShares, _totalAssets, _newUnderlyingUnitsPerShare);
             }
         }
+        return _totalShares;
     }
 
     /// @notice check valid and exchange to want token

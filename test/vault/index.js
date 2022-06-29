@@ -217,6 +217,8 @@ describe("Vault", function () {
         // await iVault.setUSDiAddress(usdi.address);
         await iVault.setVaultBufferAddress(vaultBuffer.address);
         await iVault.setPegTokenAddress(pegToken.address);
+        await iVault.setRebaseThreshold(1);
+        await iVault.setUnderlyingUnitsPerShare(new BigNumber(10).pow(18).toFixed());
         await iVault.setMaxTimestampBetweenTwoReported(604800, {from: governance});
         console.log("maxTimestampBetweenTwoReported:",new BigNumber(await iVault.maxTimestampBetweenTwoReported()).toFixed());
     });
