@@ -25,10 +25,7 @@ library Helpers {
      */
     function getDecimals(address _token) internal view returns (uint256) {
         uint256 decimals = IBasicToken(_token).decimals();
-        require(
-            decimals >= 2 && decimals <= 27,
-            "Token must have sufficient decimal places"
-        );
+        require(decimals > 0, "Token must have sufficient decimal places");
 
         return decimals;
     }
