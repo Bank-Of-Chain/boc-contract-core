@@ -454,13 +454,17 @@ contract Vault is VaultStorage {
 
         {
             uint256 _transferAssets = 0;
+            uint256 _old2LendAssets = 0;
+            if (_vaultValueOfNow + _transferValue < _vaultValueOfBefore) {
+                _old2LendAssets = _vaultValueOfBefore - _vaultValueOfNow - _transferValue;
+            }
             if (_totalValueOfNow > _totalValueOfBefore) {
                 uint256 _gain = _totalValueOfNow - _totalValueOfBefore;
                 if (_transferValue > 0) {
                     _transferAssets =
                         _transferValue +
                         (_gain * _transferValue) /
-                        (_transferValue + _redeemValue);
+                        (_transferValue + _redeemValue + _old2LendAssets);
                 }
             } else {
                 uint256 _loss = _totalValueOfBefore - _totalValueOfNow;
@@ -468,7 +472,7 @@ contract Vault is VaultStorage {
                     _transferAssets =
                         _transferValue -
                         (_loss * _transferValue) /
-                        (_transferValue + _redeemValue);
+                        (_transferValue + _redeemValue + _old2LendAssets);
                 }
             }
             uint256 _totalShares = IPegToken(pegTokenAddress).totalShares();
@@ -901,6 +905,8 @@ contract Vault is VaultStorage {
         uint256 _totalAssetInVault = _totalValueInVault(_trackedAssets, _assetPrices, _assetDecimals);
         uint256 _actualAmount = _amount;
         uint256 _currentTotalAssets = _totalAssetInVault + totalDebt;
+        console.log("_actualAmount,_totalAssetInVault,_currentTotalAssets");
+        console.log(_actualAmount, _totalAssetInVault, _currentTotalAssets);
         uint256 _currentTotalShares = IPegToken(pegTokenAddress).totalShares();
         {
             uint256 _underlyingUnitsPerShare = underlyingUnitsPerShare;
@@ -913,11 +919,16 @@ contract Vault is VaultStorage {
             if (redeemFeeBps > 0) {
                 _actualAmount = _actualAmount - (_actualAmount * redeemFeeBps) / MAX_BPS;
             }
+            console.log("(_accountBalance, _amount, _actualAmount, _sharesAmount) = ");
+            console.log(_accountBalance, _amount, _actualAmount, _sharesAmount);
             uint256 _currentTotalSupply = _currentTotalShares.mulTruncateScale(
                 _underlyingUnitsPerShare,
                 1e27
             );
             _actualAsset = (_actualAmount * _currentTotalAssets) / _currentTotalSupply;
+
+            console.log("_currentTotalAssets,_currentTotalSupply,_actualAsset");
+            console.log(_currentTotalAssets, _currentTotalSupply, _actualAsset);
         }
 
         // vault not enough,withdraw from vault buffer
@@ -1042,6 +1053,8 @@ contract Vault is VaultStorage {
                 require(_yield > _fee, "Fee must not be greater than yield");
                 if (_fee > 0) {
                     uint256 _sharesAmount = (_fee * _totalShares) / (_totalAssets - _fee);
+                    console.log("(_yield, _fee, _sharesAmount) = ");
+                    console.log(_yield, _fee, _sharesAmount);
                     if (_sharesAmount > 0) {
                         IPegToken(pegTokenAddress).mintShares(_treasuryAddress, _sharesAmount);
                         _totalShares = _totalShares + _sharesAmount;
