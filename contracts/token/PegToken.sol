@@ -13,6 +13,13 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     event BurnShares(address account,uint256 shareAmount);
     event PauseStateChanged(bool isPaused);
     event Migrate(address[] accounts);
+    /**
+     * @dev Emitted when `value` tokens are moved from one account (`from`) to
+     * another (`to`).
+     *
+     * Note that `value` may be zero.
+     */
+    event Transfer(address indexed _from, address indexed _to, uint256 _amount, uint256 sharesAmount);
 
     string _name;
 
@@ -291,7 +298,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
             _sharesToTransfer = getSharesByUnderlyingUnits(_amount);
         }
         _transferShares(_sender, _recipient, _sharesToTransfer);
-        emit Transfer(_sender, _recipient, _amount);
+        emit Transfer(_sender, _recipient, _amount, _sharesToTransfer);
     }
 
     /**
