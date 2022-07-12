@@ -123,7 +123,7 @@ describe("Vault", function () {
         accessControlProxy.initialize(governance, governance, vault.address, keeper);
 
         console.log('deploy ChainlinkPriceFeed');
-        // 预言机
+        // oracle
         const primitives = new Array();
         const aggregators = new Array();
         const heartbeats = new Array();
@@ -180,17 +180,17 @@ describe("Vault", function () {
 
         console.log('deploy PegToken');
         pegToken = await PegToken.new();
-        await pegToken.initialize('USDi', 'USDi', 18, vault.address, accessControlProxy.address);
+        await pegToken.initialize('USD Peg Token', 'USDi', 18, vault.address, accessControlProxy.address);
 
         console.log('vault Buffer');
         vaultBuffer = await VaultBuffer.new();
-        await vaultBuffer.initialize('Sharei', 'Sharei', vault.address, pegToken.address,accessControlProxy.address);
+        await vaultBuffer.initialize('USD Peg Token Ticket', 'tUSDi', vault.address, pegToken.address,accessControlProxy.address);
 
         const dripper = await Dripper.new();
         await dripper.initialize(accessControlProxy.address, vault.address, MFC.USDT_ADDRESS);
 
         console.log('deploy Treasury');
-        // 国库
+        // treasury
         treasury = await Treasury.new();
         await treasury.initialize(accessControlProxy.address);
 
@@ -209,7 +209,7 @@ describe("Vault", function () {
         console.log("DAI_CALC:", new BigNumber(await valueInterpreter.calcCanonicalAssetValueInUsd(MFC.DAI_ADDRESS, new BigNumber(10 ** 18))).toFixed());
         console.log("DAI_CALC(2):", new BigNumber(await valueInterpreter.calcCanonicalAssetValueInUsd(MFC.DAI_ADDRESS, new BigNumber(2))).toFixed());
         console.log('mockS3CoinStrategy USDi');
-        // 策略
+        // Strategy
         mockS3CoinStrategy = await MockS3CoinStrategy.new();
         await mockS3CoinStrategy.initialize(vault.address, harvester.address);
 
@@ -223,20 +223,20 @@ describe("Vault", function () {
         console.log("maxTimestampBetweenTwoReported:",new BigNumber(await iVault.maxTimestampBetweenTwoReported()).toFixed());
     });
 
-    it('验证：Vault可正常添加和移除Asset', async function () {
+    it('Verify: Vault can add and remove Assets normally', async function () {
         const preLength = (await iVault.getSupportAssets()).length
-        console.log('添加前Asset的个数=', preLength);
+        console.log('Number of Assets before adding=', preLength);
         await iVault.addAsset(underlyingAddress, {from: governance});
         const lastLength = (await iVault.getSupportAssets()).length
-        console.log('添加后Asset的个数=', lastLength);
+        console.log('Number of Assets after adding=', lastLength);
         Utils.assertBNGt(lastLength, preLength);
         await iVault.removeAsset(underlyingAddress, {from: governance});
         const removeLastLength = (await iVault.getSupportAssets()).length
-        console.log('移除后Asset的个数=', removeLastLength);
+        console.log('Number of Assets after removal=', removeLastLength);
         Utils.assertBNGt(lastLength, removeLastLength);
     });
 
-    it('验证：Vault可正常添加移除所有策略', async function () {
+    it('Verify: Vault can add and remove all policies normally', async function () {
         let addToVaultStrategies = new Array();
         addToVaultStrategies.push({
             strategy: mockS3CoinStrategy.address,
@@ -246,14 +246,14 @@ describe("Vault", function () {
 
         await iVault.addStrategy(addToVaultStrategies, {from: governance});
         let strategyAddresses = await iVault.getStrategies();
-        console.log('添加前策略的个数=', strategyAddresses.length);
+        console.log('Number of policies before adding=', strategyAddresses.length);
         await iVault.removeStrategy(strategyAddresses, {from: governance});
         const length = (await iVault.getStrategies()).length;
-        console.log('移除后策略的个数=', length);
+        console.log('Number of policies after removal=', length);
         Utils.assertBNEq(length, 0);
     });
 
-    it('验证：Vault可正常投资', async function () {
+    it('Verify：Vault can be invested normally', async function () {
         await iVault.addAsset(MFC.DAI_ADDRESS, {from: governance});
         await iVault.addAsset(MFC.USDC_ADDRESS, {from: governance});
         await iVault.addAsset(underlyingAddress, {from: governance});
@@ -263,11 +263,11 @@ describe("Vault", function () {
         let _amounts = new Array();
         _amounts.push(depositAmount);
         let _minimumUsdiAmount = 0;
-        console.log("投资前vault的usdt的balance:", new BigNumber(await underlying.balanceOf(iVault.address)).div(10 ** tokenDecimals).toFixed());
-        console.log("投资前vaultBuffer的usdt的balance:", new BigNumber(await underlying.balanceOf(vaultBuffer.address)).div(10 ** tokenDecimals).toFixed());
-        console.log("投资前farmer1的usdi的balance:", new BigNumber(await pegToken.balanceOf(farmer1)).div(10 ** usdiDecimals).toFixed());
-        console.log("投资前farmer1的sharei的balance:", new BigNumber(await vaultBuffer.balanceOf(farmer1)).div(10 ** vaultBufferDecimals).toFixed());
-        console.log("投资前farmer1的usdt的balance:", new BigNumber(await underlying.balanceOf(farmer1)).div(10 ** tokenDecimals).toFixed());
+        console.log("Balance of usdt of vault before investing:", new BigNumber(await underlying.balanceOf(iVault.address)).div(10 ** tokenDecimals).toFixed());
+        console.log("Balance of usdt of vaultBuffer before investing", new BigNumber(await underlying.balanceOf(vaultBuffer.address)).div(10 ** tokenDecimals).toFixed());
+        console.log("Balance of usdi of farmer1 before investing:", new BigNumber(await pegToken.balanceOf(farmer1)).div(10 ** usdiDecimals).toFixed());
+        console.log("Balance of tUSDi of farmer1 before investing:", new BigNumber(await vaultBuffer.balanceOf(farmer1)).div(10 ** vaultBufferDecimals).toFixed());
+        console.log("Balance of usdt of farmer1 before investing:", new BigNumber(await underlying.balanceOf(farmer1)).div(10 ** tokenDecimals).toFixed());
 
         await underlying.approve(iVault.address, 0, {
             from: farmer1
@@ -279,17 +279,17 @@ describe("Vault", function () {
         await iVault.mint(_assets, _amounts, _minimumUsdiAmount, {from: farmer1});
         const balance = new BigNumber(await vaultBuffer.balanceOf(farmer1)).toFixed();
 
-        console.log("投资后vault的usdt的balance:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
-        console.log("投资后vaultBuffer的usdt的balance:%s", new BigNumber(await underlying.balanceOf(vaultBuffer.address)).toFixed());
-        console.log("投资后farmer1的sharei的balance:%s", balance);
-        console.log("投资后farmer1的usdt的balance:%s", new BigNumber(await underlying.balanceOf(farmer1)).toFixed());
-        console.log("投资后vault缓存池总资金:%s,总价值：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
+        console.log("Balance of usdt of vault after investment:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdt of vaultBuffer after investment:%s", new BigNumber(await underlying.balanceOf(vaultBuffer.address)).toFixed());
+        console.log("Balance of tUSDi of vaultBuffer after investment:%s", balance);
+        console.log("Balance of usdt of farmer1 after investment:%s", new BigNumber(await underlying.balanceOf(farmer1)).toFixed());
+        console.log("Total assets in vault cache pool after investment:%s,Total assets(include vault buffer):%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
 
         Utils.assertBNGt(balance, 0);
     });
 
 
-    it('验证：Vault可正常投资其他币种', async function () {
+    it('Verify：Vault can be invested in other assets normally', async function () {
         let _assets = new Array();
         _assets.push(MFC.USDC_ADDRESS);
         _assets.push(MFC.DAI_ADDRESS);
@@ -311,17 +311,17 @@ describe("Vault", function () {
             from: farmer1
         });
 
-        console.log("投资前farmer1的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(farmer1)).toFixed());
-        console.log("投资前farmer1的dai的balance:%s", new BigNumber(await daiToken.balanceOf(farmer1)).toFixed());
+        console.log("Balance of usdc of farmer1 before investing:%s", new BigNumber(await usdcToken.balanceOf(farmer1)).toFixed());
+        console.log("Balance of dai of farmer1 before investing:%s", new BigNumber(await daiToken.balanceOf(farmer1)).toFixed());
 
         await iVault.mint(_assets, _amounts, 0, {from: farmer1});
 
-        console.log("投资后vault池总资金:%s,总价值：%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
-        console.log("投资后vault策略总资金:%s,总价值：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
-        console.log("投资后vault缓存池总资金:%s,总价值：%s", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed(), new BigNumber(await iVault.totalValueInVault()).toFixed());
-        console.log("投资后vault缓存池总资金(包含vaultBuffer):%s,总价值(包含vaultBuffer)：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
+        console.log("totalAssets after investment:%s,total vault:%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
+        console.log("totalDebt after investment:%s,totalValueInStrategies：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
+        console.log("valueOfTrackedTokens after investmen:%s,totalValueInVault：%s", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed(), new BigNumber(await iVault.totalValueInVault()).toFixed());
+        console.log("valueOfTrackedTokensIncludeVaultBuffer after investmen:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
 
-        // 充一亿
+        // Charge 100 million
         const amount = new BigNumber(10).pow(14);
         await topUpUsdtByAddress(amount, testAdapter.address);
         await topUpUsdcByAddress(amount, testAdapter.address);
@@ -333,26 +333,25 @@ describe("Vault", function () {
 
         console.log('rebaseThreshold: %s', (await iVault.rebaseThreshold()).toString());
 
-
-        //开启调仓
+        //startAdjustPosition
         const tx = await iVault.startAdjustPosition({from: keeper});
         const gasUsed = tx.receipt.gasUsed;
         console.log('startAdjustPosition gasUsed: %d', gasUsed);
 
         const beforeBalance = new BigNumber(await usdcToken.balanceOf(farmer1)).div(10 ** tokenDecimals).toFixed();
 
-        console.log("开启调仓后vault的usdt的balance:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
-        console.log("开启调仓后vault的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
-        console.log("开启调仓后vault的dai的balance:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
-        console.log("开启调仓后farmer1的usdi的balance:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
-        console.log("开启调仓后farmer1的usdt的balance:%s", new BigNumber(await underlying.balanceOf(farmer1)).toFixed());
-        console.log("开启调仓后farmer1的dai的balance:%s", new BigNumber(await daiToken.balanceOf(farmer1)).toFixed());
-        console.log("开启调仓后farmer1的usdc的balance:%s", beforeBalance);
-        console.log("开启调仓后vault缓存池总资金(包含vaultBuffer):%s,总价值(包含vaultBuffer)：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
+        console.log("Balance of usdt of vault after start adjust position:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdc of vault after start adjust position:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of dai of vault after start adjust position:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdi of farmer1 after start adjust position:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
+        console.log("Balance of usdt of farmer1 after start adjust position:%s", new BigNumber(await underlying.balanceOf(farmer1)).toFixed());
+        console.log("Balance of dai of farmer1 after start adjust position:%s", new BigNumber(await daiToken.balanceOf(farmer1)).toFixed());
+        console.log("Balance of usdc of farmer1 after start adjust position:%s", beforeBalance);
+        console.log("valueOfTrackedTokensIncludeVaultBuffer after start adjust position:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
 
     });
 
-    it('验证：Vault可正常lend', async function () {
+    it('Verify：Vault can be lend normally', async function () {
         let addToVaultStrategies = new Array();
         let withdrawQueque = new Array();
         addToVaultStrategies.push({
@@ -365,9 +364,9 @@ describe("Vault", function () {
         await iVault.setWithdrawalQueue(withdrawQueque, {from: governance});
 
         const beforeUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
-        console.log("lend前vault的usdt的balance:%s", beforeUsdt);
-        console.log("lend前vault的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
-        console.log("lend前vault的dai的balance:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdt of vault before lend:%s", beforeUsdt);
+        console.log("Balance of usdc of vault before lend:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of dai of vault before lend:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
         console.log("(usdt,usdc,dai)=(%s,%s,%s)", depositAmount.toFixed(), usdcDepositAmount.toFixed(), daiDepositAmount.toFixed());
         let tokens = [MFC.USDT_ADDRESS, MFC.USDC_ADDRESS, MFC.DAI_ADDRESS];
         let amounts = [depositAmount.toFixed(), usdcDepositAmount.toFixed(), daiDepositAmount.toFixed()];
@@ -391,15 +390,15 @@ describe("Vault", function () {
 
         await iVault.lend(mockS3CoinStrategy.address, exchangeArray);
 
-        console.log("lend后vault池总资金:%s,总价值：%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
-        console.log("lend后vault策略总资金:%s,总价值：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
-        console.log("lend后vault缓存池总资金:%s,总价值：%s", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed(), new BigNumber(await iVault.totalValueInVault()).toFixed());
-        console.log("开启调仓后vault缓存池总资金(包含vaultBuffer):%s,总价值(包含vaultBuffer)：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
+        console.log("totalAssets after lend:%s,totalValue：%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
+        console.log("totalDebt after lend:%s,totalValueInStrategies：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
+        console.log("valueOfTrackedTokens after lend:%s,totalValueInVault：%s", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed(), new BigNumber(await iVault.totalValueInVault()).toFixed());
+        console.log("valueOfTrackedTokensIncludeVaultBuffer after lend:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
 
         const afterUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
-        console.log("lend后vault的usdt的balance:%s", afterUsdt);
-        console.log("lend后vault的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
-        console.log("lend后vault的dai的balance:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdt of vault after lend:%s", afterUsdt);
+        console.log("Balance of usdc of vault after lend:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of dai of vault after lend:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
         Utils.assertBNGt(beforeUsdt, afterUsdt);
 
         const tx = await iVault.endAdjustPosition({from: keeper});
@@ -410,15 +409,15 @@ describe("Vault", function () {
         await vaultBuffer.distributeWhenDistributing({from: keeper});
         console.log('end distributeWhenDistributing');
 
-        console.log("调仓后farmer1的usdi的balance:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
-        console.log("调仓后farmer1的underlyingUnitsPerShare:%s", new BigNumber(await iVault.underlyingUnitsPerShare()).toFixed());
-        console.log("调仓后farmer1的sharesOf:%s", new BigNumber(await pegToken.sharesOf(farmer1)).toFixed());
-        console.log("调仓后vault缓存池总资金(包含vaultBuffer):%s,总价值(包含vaultBuffer)：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
+        console.log("Balance of farmer1 of vault after end adjust position:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
+        console.log("underlyingUnitsPerShare after end adjust position:%s", new BigNumber(await iVault.underlyingUnitsPerShare()).toFixed());
+        console.log("Pegtoken share of farmer1 after end adjust position:%s", new BigNumber(await pegToken.sharesOf(farmer1)).toFixed());
+        console.log("valueOfTrackedTokensIncludeVaultBuffer after end adjust position:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
 
         const _amount = new BigNumber(await pegToken.balanceOf(farmer1)).div(4).multipliedBy(1).toFixed();
         const _toAsset = MFC.USDC_ADDRESS;
-        console.log("赎回币种为:USDC");
-        console.log("赎回usdi的数量:%s", new BigNumber(_amount).toFixed());
+        console.log("withdraw asset:USDC");
+        console.log("Number of usdi withdraw:%s", new BigNumber(_amount).toFixed());
         const resp = await iVault.burn.call(_amount, _toAsset, 0, false, [], {
             from: farmer1
         });
@@ -453,27 +452,27 @@ describe("Vault", function () {
 
         const afterBalance = new BigNumber(await usdcToken.balanceOf(farmer1)).toFixed();
 
-        console.log("赎回后vault的usdt的balance:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
-        console.log("赎回后vault的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
-        console.log("赎回后vault的dai的balance:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
-        console.log("赎回后farmer1的usdi的balance:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
-        console.log("赎回后farmer1的usdt的balance:%s", new BigNumber(await underlying.balanceOf(farmer1)).toFixed());
-        console.log("赎回后farmer1的dai的balance:%s", new BigNumber(await daiToken.balanceOf(farmer1)).toFixed());
-        console.log("赎回后farmer1的usdc的balance:%s", afterBalance);
+        console.log("Balance of usdt of vault after withdraw:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdc of vault after withdraw:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of dai of vault after withdraw:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdi of farmer1 after withdraw:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
+        console.log("Balance of usdt of farmer1 after withdraw:%s", new BigNumber(await underlying.balanceOf(farmer1)).toFixed());
+        console.log("Balance of dai of farmer1 after withdraw:%s", new BigNumber(await daiToken.balanceOf(farmer1)).toFixed());
+        console.log("Balance of usdc of farmer1 after withdraw:%s", afterBalance);
         Utils.assertBNGt(afterBalance, beforeBalance);
 
-        console.log("赎回后vault缓存池总资金(包含vaultBuffer):%s,总价值(包含vaultBuffer)：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
+        console.log("valueOfTrackedTokensIncludeVaultBuffer after withdraw:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
 
-        console.log("充值usdc前vault缓存池总资金(包含vaultBuffer):%s,总价值(包含vaultBuffer)：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
+        console.log("valueOfTrackedTokensIncludeVaultBuffer after withdraw:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
         const usdcIEREC20Mint = await IEREC20Mint.at(MFC.USDC_ADDRESS);
         await usdcIEREC20Mint.transfer(mockS3CoinStrategy.address, new BigNumber(await usdcToken.balanceOf(farmer1)).div(1000).toFixed(), {
             from: farmer1,
         });
-        console.log("充值usdc后vault缓存池总资金(包含vaultBuffer):%s,总价值(包含vaultBuffer)：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
+        console.log("valueOfTrackedTokensIncludeVaultBuffer after transfer usdc to vault:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
 
     });
 
-    it('验证：Vault新资金进入', async function () {
+    it('Verify：Vault new asset deposit', async function () {
         let _assets = new Array();
         _assets.push(MFC.USDT_ADDRESS);
         _assets.push(MFC.USDC_ADDRESS);
@@ -504,38 +503,38 @@ describe("Vault", function () {
             from: farmer2
         });
 
-        console.log("投资前farmer2的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(farmer2)).toFixed());
-        console.log("投资前farmer2的dai的balance:%s", new BigNumber(await daiToken.balanceOf(farmer2)).toFixed());
-        console.log("投资前farmer2的usdt的balance:%s", new BigNumber(await underlying.balanceOf(farmer2)).toFixed());
+        console.log("Balance of usdc of farmer2 before deposit:%s", new BigNumber(await usdcToken.balanceOf(farmer2)).toFixed());
+        console.log("Balance of dai of farmer2 before deposit:%s", new BigNumber(await daiToken.balanceOf(farmer2)).toFixed());
+        console.log("Balance of usdt of farmer2 before deposit:%s", new BigNumber(await underlying.balanceOf(farmer2)).toFixed());
 
         console.log("adjustPositionPeriod:%s",await iVault.adjustPositionPeriod());
 
-        console.log("mint前vault的usdt的balance:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
-        console.log("mint前vault的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
-        console.log("mint前vault的dai的balance:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdt of vault before deposit:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdc of vault before deposit:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of dai of vault before deposit:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
         await iVault.mint(_assets, _amounts, 0, {from: farmer2});
-        console.log("mint后vault的usdt的balance:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
-        console.log("mint后vault的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
-        console.log("mint后vault的dai的balance:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdt of vault after deposit:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdc of vault after deposit:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of dai of vault after deposit:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
 
-        console.log("投资后farmer2的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(farmer2)).toFixed());
-        console.log("投资后farmer2的dai的balance:%s", new BigNumber(await daiToken.balanceOf(farmer2)).toFixed());
-        console.log("投资后farmer2的usdt的balance:%s", new BigNumber(await underlying.balanceOf(farmer2)).toFixed());
-        console.log("投资后farmer2的sharei的balance:%s", new BigNumber(await vaultBuffer.balanceOf(farmer2)).toFixed());
+        console.log("Balance of usdc of farmer2 after deposit:%s", new BigNumber(await usdcToken.balanceOf(farmer2)).toFixed());
+        console.log("Balance of dai of farmer2 after deposit:%s", new BigNumber(await daiToken.balanceOf(farmer2)).toFixed());
+        console.log("Balance of usdt of farmer2 after deposit:%s", new BigNumber(await underlying.balanceOf(farmer2)).toFixed());
+        console.log("Balance of tusdi of farmer2 after deposit:%s", new BigNumber(await vaultBuffer.balanceOf(farmer2)).toFixed());
 
-        console.log("投资后vault池总资金:%s,总价值：%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
-        console.log("投资后vault策略总资金:%s,总价值：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
-        console.log("投资后vault缓存池总资金:%s,总价值：%s", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed(), new BigNumber(await iVault.totalValueInVault()).toFixed());
-        console.log("投资后vault缓存池总资金(包含vaultBuffer):%s,总价值(包含vaultBuffer)：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
+        console.log("totalAssets after deposit:%s,totalValue：%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
+        console.log("totalDebt after deposit:%s,totalValueInStrategies：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
+        console.log("valueOfTrackedTokens after deposit:%s,totalValueInVault：%s", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed(), new BigNumber(await iVault.totalValueInVault()).toFixed());
+        console.log("valueOfTrackedTokensIncludeVaultBuffer after deposit:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
 
-        //开启调仓
-        console.log("开启调仓");
+        //startAdjustPosition
+        console.log("startAdjustPosition");
         let tx =  await iVault.startAdjustPosition({from: keeper});
         let gasUsed = tx.receipt.gasUsed;
         console.log('startAdjustPosition gasUsed: %d', gasUsed);
-        console.log("redeem前vault的usdt的balance:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
-        console.log("redeem前vault的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
-        console.log("redeem前vault的dai的balance:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdt of vault before redeem:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdc of vault before redeem:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of dai of vault before redeem:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
         console.log("(amount,totalDebt)=(%s,%s)", new BigNumber(await iVault.totalDebt()).div(5).toFixed(),new BigNumber(await iVault.totalDebt()).toFixed());
         let beforeUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
         console.log("redeem amount: %s",new BigNumber(await iVault.totalDebt()).div(5).toFixed())
@@ -544,18 +543,18 @@ describe("Vault", function () {
         console.log('redeem gasUsed: %d', gasUsed);
         let afterUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
 
-        console.log("redeem后vault的usdt的balance:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
-        console.log("redeem后vault的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
-        console.log("redeem后vault的dai的balance:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdt of vault after redeem:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdc of vault after redeem:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of dai vault after redeem:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
 
-        console.log("redeem后vault的valueOfTrackedTokens:%s", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed());
-        console.log("redeem后vault的totalAssets:%s", new BigNumber(await iVault.totalAssets()).toFixed());
+        console.log("valueOfTrackedTokens after redeem:%s", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed());
+        console.log("totalAssets  after redeem:%s", new BigNumber(await iVault.totalAssets()).toFixed());
         Utils.assertBNGt(afterUsdt, beforeUsdt);
 
         beforeUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
-        console.log("lend前vault的usdt的balance:%s", beforeUsdt);
-        console.log("lend前vault的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
-        console.log("lend前vault的dai的balance:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdt of vault before lend:%s", beforeUsdt);
+        console.log("Balance of usdc of vault before lend:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of dai of vault before lend:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
         console.log("(usdt,usdc,dai)=(%s,%s,%s)", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed(), new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed(), new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
         let tokens = [MFC.USDT_ADDRESS, MFC.USDC_ADDRESS, MFC.DAI_ADDRESS];
         let amounts = [new BigNumber(await underlying.balanceOf(iVault.address)).toFixed(), new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed(), new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed()];
@@ -579,14 +578,14 @@ describe("Vault", function () {
 
         await iVault.lend(mockS3CoinStrategy.address, exchangeArray);
 
-        console.log("lend后vault池总资金:%s,总价值：%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
-        console.log("lend后vault策略总资金:%s,总价值：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
-        console.log("lend后vault缓存池总资金:%s,总价值：%s", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed(), new BigNumber(await iVault.totalValueInVault()).toFixed());
+        console.log("totalAssets after lend:%s,totalValue：%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
+        console.log("totalDebt after lend:%s,totalValueInStrategies：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
+        console.log("valueOfTrackedTokens after lend:%s,totalValueInVault：%s", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed(), new BigNumber(await iVault.totalValueInVault()).toFixed());
 
         afterUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
-        console.log("lend后vault的usdt的balance:%s", afterUsdt);
-        console.log("lend后vault的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
-        console.log("lend后vault的dai的balance:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of usdt of vault after lend:%s", afterUsdt);
+        console.log("Balance of usdc of vault after lend:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
+        console.log("Balance of dai of vault after lend:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
         Utils.assertBNGt(beforeUsdt, afterUsdt);
 
         tx = await iVault.endAdjustPosition({from: keeper});
@@ -597,27 +596,8 @@ describe("Vault", function () {
         await vaultBuffer.distributeWhenDistributing({from: keeper});
         console.log('end distributeWhenDistributing');
 
-        console.log("调仓后farmer1的usdi的balance:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
-        console.log("调仓后farmer2的usdi的balance:%s", new BigNumber(await pegToken.balanceOf(farmer2)).toFixed());
-        console.log("调仓后vault缓存池总资金(包含vaultBuffer):%s,总价值(包含vaultBuffer)：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
+        console.log("Balance of usdi of farmer1 after end adjust position:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
+        console.log("Balance of usdi of farmer2 after end adjust position:%s", new BigNumber(await pegToken.balanceOf(farmer2)).toFixed());
+        console.log("valueOfTrackedTokensIncludeVaultBuffer after end adjust position:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
     });
-
-    //
-    // it('验证：Vault可正常redeem', async function () {
-    //     console.log("redeem前vault的usdt的balance:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
-    //     console.log("redeem前vault的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
-    //     console.log("redeem前vault的dai的balance:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
-    //     console.log("(amount,totalDebt)=(%s,%s)", new BigNumber(await iVault.totalDebt()).div(5).toFixed(),new BigNumber(await iVault.totalDebt()).toFixed());
-    //     const beforUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
-    //     await iVault.redeem(mockS3CoinStrategy.address, new BigNumber(await iVault.totalDebt()).div(5).toFixed());
-    //     const afterUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
-    //
-    //     console.log("redeem后vault的usdt的balance:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
-    //     console.log("redeem后vault的usdc的balance:%s", new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed());
-    //     console.log("redeem后vault的dai的balance:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
-    //
-    //     console.log("redeem后vault的valueOfTrackedTokens:%s", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed());
-    //     console.log("redeem后vault的totalAssets:%s", new BigNumber(await iVault.totalAssets()).toFixed());
-    //     Utils.assertBNGt(afterUsdt, beforUsdt);
-    // });
 });

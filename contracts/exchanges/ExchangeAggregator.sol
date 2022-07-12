@@ -48,10 +48,10 @@ contract ExchangeAggregator is AccessControlMixin {
         emit ExchangeAdapterAdded(_exchangeAdapters);
     }
 
-    // address platform：调用的兑换平台
-    // uint8 _method：兑换平台的兑换方法
-    // bytes calldata _data ：兑换二进制参数
-    // IExchangeAdapter.SwapDescription calldata _sd：链内传入的修改结构体
+    // address platform：Called exchange platforms
+    // uint8 _method：method of the exchange platform
+    // bytes calldata _data ：binary parameters
+    // IExchangeAdapter.SwapDescription calldata _sd：
     function swap(address _platform, uint8 _method, bytes calldata _data, IExchangeAdapter.SwapDescription calldata _sd)
     external
     returns (uint256){

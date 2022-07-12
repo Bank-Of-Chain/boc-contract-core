@@ -28,10 +28,10 @@ contract TestAdapter is IExchangeAdapter {
     ) external override returns (uint256) {
         console.log('[TestAdapter] swap:_sd.srcToken:%s, balanceOf:%s', _sd.srcToken, IERC20Upgradeable(_sd.srcToken).balanceOf(address(this)));
         console.log('[TestAdapter] swap:_sd.dstToken:%s, balanceOf:%s', _sd.dstToken, IERC20Upgradeable(_sd.dstToken).balanceOf(address(this)));
-        // 估算一下大概能换多少目标币
+        // Estimate how many target coins can be exchanged
         uint256 amount = IValueInterpreter(valueInterpreter).calcCanonicalAssetValue(_sd.srcToken, _sd.amount, _sd.dstToken);
         console.log('[TestAdapter] swap:_sd.amount=%s, amount=%s', _sd.amount, amount);
-        // 模拟兑换环节，损失千分之三
+        // Mock exchange
         uint256 expectAmount = (amount * 1000) / 1000;
         IERC20Upgradeable(_sd.dstToken).safeTransfer(_sd.receiver, expectAmount);
         return expectAmount;

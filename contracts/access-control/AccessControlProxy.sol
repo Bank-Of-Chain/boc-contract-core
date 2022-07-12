@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import '@openzeppelin/contracts/access/AccessControlEnumerable.sol';
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
-//治理者代理，部署后owner会转移给多签账户
+//Governor agent, after deployment owner will transfer to multi-signature account
 contract AccessControlProxy is Initializable, AccessControlEnumerable {
 
     /// same privileges as `gov_role`

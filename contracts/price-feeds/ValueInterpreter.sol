@@ -111,11 +111,11 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     }
 
     /*
-     * 资产的usd价值
-     * _baseAsset: 源token地址
-     * _amount: 源token数量
-     * @return usd(1e18)
-     */
+    * Calculate the usd value of a specified number of assets
+    * _baseAsset: Source token address
+    * _amount: Number of source token
+    * @return usd(1e18)
+    */
     function calcCanonicalAssetValueInUsd(address _baseAsset, uint256 _amount)
         external
         view
@@ -132,10 +132,10 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     }
 
     /*
-     * baseUnit数量资产的usd价值
-     * _baseAsset: 源token地址
-     * @return usd(1e18)
-     */
+   * Calculate the usd value of baseUnit volume assets
+   * _baseAsset: asset token address
+   * @return usd(1e18)
+    */
     function price(address _baseAsset)
         external
         view

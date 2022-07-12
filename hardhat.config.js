@@ -57,7 +57,7 @@ module.exports = {
     localhost: {
       url: 'http://localhost:8545',
       allowUnlimitedContractSize: true,
-      // 执行打块时使用的gasPrice，单位：wei
+      // GasPrice used when performing blocking, in wei
       // gasPrice: 100 * 10 ** 9,
       timeout: 1800000,
 
