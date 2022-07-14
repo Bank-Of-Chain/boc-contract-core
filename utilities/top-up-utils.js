@@ -42,7 +42,7 @@ async function topUpMain(token, tokenHolder, toAddress, amount) {
  */
 async function topUpMainV2(token, toAddress, amount) {
     const TOKEN = await IEREC20Mint.at(token);
-    const tokenName = await TOKEN.name();;
+    const tokenName = await TOKEN.name();
     const tokenOwner = await TOKEN.owner();
 
     // Send 10 ETH to the wallet account to make sure the transaction of withdrawing money from it works.
