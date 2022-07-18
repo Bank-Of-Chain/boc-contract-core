@@ -409,9 +409,9 @@ describe("Vault", function () {
         await vaultBuffer.distributeWhenDistributing({from: keeper});
         console.log('end distributeWhenDistributing');
 
-        console.log("Balance of farmer1 of vault after end adjust position:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
+        console.log("Balance of usdi of farmer1 after end adjust position:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
         console.log("underlyingUnitsPerShare after end adjust position:%s", new BigNumber(await iVault.underlyingUnitsPerShare()).toFixed());
-        console.log("Pegtoken share of farmer1 after end adjust position:%s", new BigNumber(await pegToken.sharesOf(farmer1)).toFixed());
+        console.log("Balance of share of farmer1 after end adjust position:%s", new BigNumber(await pegToken.sharesOf(farmer1)).toFixed());
         console.log("valueOfTrackedTokensIncludeVaultBuffer after end adjust position:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
 
         const _amount = new BigNumber(await pegToken.balanceOf(farmer1)).div(4).multipliedBy(1).toFixed();
@@ -472,7 +472,7 @@ describe("Vault", function () {
 
     });
 
-    it('Verify：Vault new asset deposit', async function () {
+    it('Verify：new funds deposit to vault', async function () {
         let _assets = new Array();
         _assets.push(MFC.USDT_ADDRESS);
         _assets.push(MFC.USDC_ADDRESS);
