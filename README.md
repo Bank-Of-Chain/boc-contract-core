@@ -1,6 +1,6 @@
 ## Desc
 
-This project is the core project of Bank Of Chain Protocol,  includes the implementation of Vault, BaseStrategy, AccessControl, ExchangeAggregator, ValueInterpreter, Harvester, and USDi core contracts.
+This project is the core project of Bank Of Chain Protocol,  includes the implementation of Vault, VaultBuffer, BaseStrategy, BaseClaimableStrategy, AccessControl, ExchangeAggregator, ValueInterpreter, Harvester and usdi core contracts.
 
 The project is developed using the [Hardhat framework.](https://hardhat.org/) The RPC node service uses [Alchemy](https://www.alchemy.com/).
 
@@ -23,9 +23,9 @@ Second you should register a account from  [Alchemy](https://www.alchemy.com/) ,
 ```json
 {
     "alchemyKey": {
-        "dev": "LkaC5kaCGk8i5CIzO1kkuJrw3186Nkza",
-        "mumbai": "lPKBjBeb6fpagGIr507PVfZqZOMyVixY",
-        "prod": "loEIR05jr3z-_yaIgKbJij_X9S44CEDM"
+        "dev": "XX",
+        "mumbai": "XX",
+        "prod": "XX"
     }
 }
 ```
