@@ -162,7 +162,7 @@ contract VaultAdmin is VaultStorage {
         require(assetSet.contains(_asset), "not exist");
         require(
             IERC20Upgradeable(_asset).balanceOf(vaultBufferAddress) == 0,
-            "vaultBuffer exit this asset"
+            "vaultBuffer exist this asset"
         );
         assetSet.remove(_asset);
         trackedAssetsMap.minus(_asset, 1);
