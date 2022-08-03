@@ -11,6 +11,7 @@ import "hardhat/console.sol";
 
 contract MockS3CoinStrategy is BaseStrategy {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+
     function initialize(address _vault, address _harvester) public initializer {
         address[] memory _wants = new address[](3);
         // USDT
@@ -22,13 +23,7 @@ contract MockS3CoinStrategy is BaseStrategy {
         super._initialize(_vault, _harvester, 23, _wants);
     }
 
-    function getVersion()
-        external
-        pure
-        virtual
-        override
-        returns (string memory)
-    {
+    function getVersion() external pure virtual override returns (string memory) {
         return "0.0.1";
     }
 
@@ -51,6 +46,16 @@ contract MockS3CoinStrategy is BaseStrategy {
         _ratios[2] = 10**IERC20MetadataUpgradeable(wants[2]).decimals() * 4;
     }
 
+    function getOutputsInfo() external view virtual override returns (OutputInfo[] memory outputsInfo) {
+        outputsInfo = new OutputInfo[](1);
+        OutputInfo memory info = outputsInfo[0];
+        info.outputCode = 0;
+        info.outputTokens = new address[](3);
+        info.outputTokens[0] = wants[0];
+        info.outputTokens[1] = wants[1];
+        info.outputTokens[2] = wants[2];
+    }
+
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
         public
@@ -68,19 +73,11 @@ contract MockS3CoinStrategy is BaseStrategy {
         _amounts = new uint256[](_tokens.length);
         for (uint256 i = 0; i < _tokens.length; i++) {
             _tokens[i] = wants[i];
-            _amounts[i] = IERC20Upgradeable(_tokens[i]).balanceOf(
-                address(this)
-            );
+            _amounts[i] = IERC20Upgradeable(_tokens[i]).balanceOf(address(this));
         }
     }
 
-    function get3rdPoolAssets()
-        external
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function get3rdPoolAssets() external view virtual override returns (uint256) {
         return type(uint256).max;
     }
 
@@ -88,10 +85,7 @@ contract MockS3CoinStrategy is BaseStrategy {
         public
         view
         virtual
-        returns (
-            address[] memory _rewardsTokens,
-            uint256[] memory _pendingAmounts
-        )
+        returns (address[] memory _rewardsTokens, uint256[] memory _pendingAmounts)
     {
         _rewardsTokens = new address[](0);
         _pendingAmounts = new uint256[](0);
@@ -100,32 +94,30 @@ contract MockS3CoinStrategy is BaseStrategy {
     function claimRewards()
         internal
         virtual
-        returns (
-            address[] memory _rewardsTokens,
-            uint256[] memory _claimAmounts
-        )
+        returns (address[] memory _rewardsTokens, uint256[] memory _claimAmounts)
     {
         _rewardsTokens = new address[](0);
         _claimAmounts = new uint256[](0);
     }
 
-    function depositTo3rdPool(
-        address[] memory _assets,
-        uint256[] memory _amounts
-    ) internal virtual override {
-        for (uint256 i = 0; i < _assets.length; i++) {
-            uint256 _amount = _amounts[i]/1000;
-            if(_amount>0){
-                IERC20Upgradeable(_assets[i]).safeTransfer(harvester,_amount);
-            }
-        }
-    }
-
-    function withdrawFrom3rdPool(uint256 _withdrawShares, uint256 _totalShares)
+    function depositTo3rdPool(address[] memory _assets, uint256[] memory _amounts)
         internal
         virtual
         override
     {
+        for (uint256 i = 0; i < _assets.length; i++) {
+            uint256 _amount = _amounts[i] / 1000;
+            if (_amount > 0) {
+                IERC20Upgradeable(_assets[i]).safeTransfer(harvester, _amount);
+            }
+        }
+    }
+
+    function withdrawFrom3rdPool(
+        uint256 _withdrawShares,
+        uint256 _totalShares,
+        uint256 _outputCode
+    ) internal virtual override {
         // _assets = new address[](wants.length);
         // _amounts = new uint256[](_assets.length);
         // for (uint256 i = 0; i < _assets.length; i++) {

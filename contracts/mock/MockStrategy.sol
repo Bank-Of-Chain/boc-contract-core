@@ -51,6 +51,14 @@ contract MockStrategy is BaseStrategy {
         _ratios[0] = 1;
     }
 
+    function getOutputsInfo() external view virtual override returns (OutputInfo[] memory outputsInfo){
+        outputsInfo = new OutputInfo[](1);
+        OutputInfo memory info = outputsInfo[0];
+        info.outputCode = 0;
+        info.outputTokens = new address[](1);
+        info.outputTokens[0] = mock3rdPool.underlyingToken();
+    }
+
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
         public
@@ -117,7 +125,7 @@ contract MockStrategy is BaseStrategy {
         mock3rdPool.deposit(_assets, _amounts);
     }
 
-    function withdrawFrom3rdPool(uint256 _withdrawShares, uint256 _totalShares)
+    function withdrawFrom3rdPool(uint256 _withdrawShares, uint256 _totalShares,uint256 _outputCode)
         internal
         virtual
         override

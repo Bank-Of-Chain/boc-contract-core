@@ -244,7 +244,7 @@ contract VaultAdmin is VaultStorage {
      */
     function _removeStrategy(address _addr, bool _force) internal {
         // Withdraw all assets
-        try IStrategy(_addr).repay(MAX_BPS, MAX_BPS) {} catch {
+        try IStrategy(_addr).repay(MAX_BPS, MAX_BPS, 0) {} catch {
             if (!_force) {
                 revert();
             }

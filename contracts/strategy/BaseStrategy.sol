@@ -16,14 +16,14 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using StableMath for uint256;
 
+    struct OutputInfo {
+        uint256 outputCode; //0：default path，Greater than 0：specify output path
+        address[] outputTokens; //output tokens
+    }
+
     event Borrow(address[] _assets, uint256[] _amounts);
 
-    event Repay(
-        uint256 _withdrawShares,
-        uint256 _totalShares,
-        address[] _assets,
-        uint256[] _amounts
-    );
+    event Repay(uint256 _withdrawShares, uint256 _totalShares, address[] _assets, uint256[] _amounts);
 
     event SetIsWantRatioIgnorable(bool oldValue, bool newValue);
 
@@ -66,10 +66,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     function name() external pure virtual returns (string memory);
 
     /// @notice True means that can ignore ratios given by wants info
-    function setIsWantRatioIgnorable(bool _isWantRatioIgnorable)
-        external
-        isVaultManager
-    {
+    function setIsWantRatioIgnorable(bool _isWantRatioIgnorable) external isVaultManager {
         bool oldValue = isWantRatioIgnorable;
         isWantRatioIgnorable = _isWantRatioIgnorable;
         emit SetIsWantRatioIgnorable(oldValue, _isWantRatioIgnorable);
@@ -86,6 +83,9 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     function getWants() external view returns (address[] memory) {
         return wants;
     }
+
+    // @notice Provide the strategy output path when withdraw.
+    function getOutputsInfo() external view virtual returns (OutputInfo[] memory outputsInfo);
 
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
@@ -112,9 +112,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         } else {
             uint256 totalUsdValue = 0;
             for (uint256 i = 0; i < tokens.length; i++) {
-                totalUsdValue =
-                    totalUsdValue +
-                    queryTokenValue(tokens[i], amounts[i]);
+                totalUsdValue = totalUsdValue + queryTokenValue(tokens[i], amounts[i]);
             }
             return totalUsdValue;
         }
@@ -133,10 +131,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
             for (uint256 i = 0; i < _tokens.length; i++) {
                 uint256 amount = _amounts[i];
                 if (amount > 0) {
-                    assetsInUSD += amount.scaleBy(
-                        18,
-                        IERC20MetadataUpgradeable(_tokens[i]).decimals()
-                    );
+                    assetsInUSD += amount.scaleBy(18, IERC20MetadataUpgradeable(_tokens[i]).decimals());
                 }
             }
         }
@@ -149,10 +144,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     function harvest()
         external
         virtual
-        returns (
-            address[] memory _rewardsTokens,
-            uint256[] memory _claimAmounts
-        )
+        returns (address[] memory _rewardsTokens, uint256[] memory _claimAmounts)
     {
         vault.report(_rewardsTokens, _claimAmounts);
     }
@@ -160,10 +152,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     /// @notice Strategy borrow funds from vault
     /// @param _assets borrow token address
     /// @param _amounts borrow token amount
-    function borrow(address[] memory _assets, uint256[] memory _amounts)
-        external
-        onlyVault
-    {
+    function borrow(address[] memory _assets, uint256[] memory _amounts) external onlyVault {
         depositTo3rdPool(_assets, _amounts);
         emit Borrow(_assets, _amounts);
     }
@@ -171,23 +160,19 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     /// @notice Strategy repay the funds to vault
     /// @param _repayShares Numerator
     /// @param _totalShares Denominator
-    function repay(uint256 _repayShares, uint256 _totalShares)
-        public
-        virtual
-        onlyVault
-        returns (address[] memory _assets, uint256[] memory _amounts)
-    {
-        require(
-            _repayShares > 0 && _totalShares >= _repayShares,
-            "cannot repay 0 shares"
-        );
+    function repay(
+        uint256 _repayShares,
+        uint256 _totalShares,
+        uint256 _outputCode
+    ) public virtual onlyVault returns (address[] memory _assets, uint256[] memory _amounts) {
+        require(_repayShares > 0 && _totalShares >= _repayShares, "cannot repay 0 shares");
         _assets = wants;
         uint256[] memory balancesBefore = new uint256[](_assets.length);
         for (uint256 i = 0; i < _assets.length; i++) {
             balancesBefore[i] = balanceOfToken(_assets[i]);
         }
 
-        withdrawFrom3rdPool(_repayShares, _totalShares);
+        withdrawFrom3rdPool(_repayShares, _totalShares, _outputCode);
         _amounts = new uint256[](_assets.length);
         for (uint256 i = 0; i < _assets.length; i++) {
             uint256 balanceAfter = balanceOfToken(_assets[i]);
@@ -206,23 +191,18 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     /// @notice Strategy deposit funds to 3rd pool.
     /// @param _assets deposit token address
     /// @param _amounts deposit token amount
-    function depositTo3rdPool(
-        address[] memory _assets,
-        uint256[] memory _amounts
-    ) internal virtual;
+    function depositTo3rdPool(address[] memory _assets, uint256[] memory _amounts) internal virtual;
 
     /// @notice Strategy withdraw the funds from 3rd pool.
     /// @param _withdrawShares Numerator
     /// @param _totalShares Denominator
-    function withdrawFrom3rdPool(uint256 _withdrawShares, uint256 _totalShares)
-        internal
-        virtual;
+    function withdrawFrom3rdPool(
+        uint256 _withdrawShares,
+        uint256 _totalShares,
+        uint256 _outputCode
+    ) internal virtual;
 
-    function balanceOfToken(address tokenAddress)
-        internal
-        view
-        returns (uint256)
-    {
+    function balanceOfToken(address tokenAddress) internal view returns (uint256) {
         return IERC20Upgradeable(tokenAddress).balanceOf(address(this));
     }
 
@@ -232,22 +212,11 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     }
 
     /// @notice Query the value of Token.
-    function queryTokenValue(address _token, uint256 _amount)
-        internal
-        view
-        returns (uint256 valueInUSD)
-    {
-        valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(
-            _token,
-            _amount
-        );
+    function queryTokenValue(address _token, uint256 _amount) internal view returns (uint256 valueInUSD) {
+        valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(_token, _amount);
     }
 
-    function decimalUnitOfToken(address _token)
-        internal
-        view
-        returns (uint256)
-    {
+    function decimalUnitOfToken(address _token) internal view returns (uint256) {
         return 10**IERC20MetadataUpgradeable(_token).decimals();
     }
 
@@ -259,10 +228,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         for (uint256 i = 0; i < _assets.length; i++) {
             uint256 amount = _amounts[i];
             if (amount > 0) {
-                IERC20Upgradeable(_assets[i]).safeTransfer(
-                    address(_target),
-                    amount
-                );
+                IERC20Upgradeable(_assets[i]).safeTransfer(address(_target), amount);
             }
         }
     }
