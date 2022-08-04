@@ -33,7 +33,7 @@ abstract contract BaseClaimableStrategy is BaseStrategy {
     /// @notice Strategy repay the funds to vault
     /// @param _repayShares Numerator
     /// @param _totalShares Denominator
-    function repay(uint256 _repayShares, uint256 _totalShares)
+    function repay(uint256 _repayShares, uint256 _totalShares,uint256 _outputCode)
         public
         virtual
         override
@@ -49,6 +49,6 @@ abstract contract BaseClaimableStrategy is BaseStrategy {
             // transfer reward token to harvester
             transferTokensToTarget(harvester, _rewardsTokens, _claimAmounts);
         }
-        return super.repay(_repayShares, _totalShares);
+        return super.repay(_repayShares, _totalShares,_outputCode);
     }
 }

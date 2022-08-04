@@ -11,12 +11,7 @@ interface IStrategy {
         uint256[] _claimAmounts
     );
     event Borrow(address[] _assets, uint256[] _amounts);
-    event Repay(
-        uint256 _withdrawShares,
-        uint256 _totalShares,
-        address[] _assets,
-        uint256[] _amounts
-    );
+    event Repay(uint256 _withdrawShares, uint256 _totalShares, address[] _assets, uint256[] _amounts);
 
     /// @notice Version of strategy
     function getVersion() external pure returns (string memory);
@@ -40,10 +35,7 @@ interface IStrategy {
     function harvester() external view returns (address);
 
     /// @notice Provide the strategy need underlying token and ratio
-    function getWantsInfo()
-        external
-        view
-        returns (address[] memory _assets, uint256[] memory _ratios);
+    function getWantsInfo() external view returns (address[] memory _assets, uint256[] memory _ratios);
 
     /// @notice Provide the strategy need underlying token
     function getWants() external view returns (address[] memory _wants);
@@ -66,12 +58,7 @@ interface IStrategy {
     function get3rdPoolAssets() external view returns (uint256);
 
     /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
-    function harvest()
-        external
-        returns (
-            address[] memory _rewardsTokens,
-            uint256[] memory _claimAmounts
-        );
+    function harvest() external returns (address[] memory _rewardsTokens, uint256[] memory _claimAmounts);
 
     /// @notice asset in usd (1e18)
     function checkBalance() external view returns (uint256 assetsInUSD);
@@ -79,15 +66,16 @@ interface IStrategy {
     /// @notice Strategy borrow funds from vault
     /// @param _assets borrow token address
     /// @param _amounts borrow token amount
-    function borrow(address[] memory _assets, uint256[] memory _amounts)
-        external;
+    function borrow(address[] memory _assets, uint256[] memory _amounts) external;
 
     /// @notice Strategy repay the funds to vault
     /// @param _withdrawShares Numerator
     /// @param _totalShares Denominator
-    function repay(uint256 _withdrawShares, uint256 _totalShares)
-        external
-        returns (address[] memory _assets, uint256[] memory _amounts);
+    function repay(
+        uint256 _withdrawShares,
+        uint256 _totalShares,
+        uint256 _ouputCode
+    ) external returns (address[] memory _assets, uint256[] memory _amounts);
 
     /// @notice getter isWantRatioIgnorable
     function isWantRatioIgnorable() external view returns (bool);
