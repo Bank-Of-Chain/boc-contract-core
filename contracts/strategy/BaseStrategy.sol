@@ -63,7 +63,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     function getVersion() external pure virtual returns (string memory);
 
     /// @notice Name of strategy
-    function name() external pure virtual returns (string memory);
+    function name() external view virtual returns (string memory);
 
     /// @notice True means that can ignore ratios given by wants info
     function setIsWantRatioIgnorable(bool _isWantRatioIgnorable) external isVaultManager {
