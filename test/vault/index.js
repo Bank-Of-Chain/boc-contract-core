@@ -538,7 +538,7 @@ describe("Vault", function () {
         console.log("(amount,totalDebt)=(%s,%s)", new BigNumber(await iVault.totalDebt()).div(5).toFixed(),new BigNumber(await iVault.totalDebt()).toFixed());
         let beforeUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
         console.log("redeem amount: %s",new BigNumber(await iVault.totalDebt()).div(5).toFixed())
-        tx =  await iVault.redeem(mockS3CoinStrategy.address, new BigNumber(await iVault.totalDebt()).div(5).toFixed());
+        tx =  await iVault.redeem(mockS3CoinStrategy.address, new BigNumber(await iVault.totalDebt()).div(5).toFixed(), 0);
         gasUsed = tx.receipt.gasUsed;
         console.log('redeem gasUsed: %d', gasUsed);
         let afterUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
@@ -599,5 +599,25 @@ describe("Vault", function () {
         console.log("Balance of usdi of farmer1 after end adjust position:%s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
         console.log("Balance of usdi of farmer2 after end adjust position:%s", new BigNumber(await pegToken.balanceOf(farmer2)).toFixed());
         console.log("valueOfTrackedTokensIncludeVaultBuffer after end adjust position:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
+    });
+
+    it('Verify：burn from strategy', async function (){
+        await iVault.rebase();
+        console.log("totalValueInStrategies before withdraw: %s",new BigNumber(await iVault.totalValueInStrategies()).toFixed());
+        console.log("totalAssets before withdraw: %s",new BigNumber(await iVault.totalAssets()).toFixed());
+        console.log("Balance of usdi of farmer1 before withdraw: %s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
+        console.log("Balance of usdi of farmer2 before withdraw: %s", new BigNumber(await pegToken.balanceOf(farmer2)).toFixed());
+        let _amount =  new BigNumber(await pegToken.balanceOf(farmer1)).toFixed();
+        await iVault.burn(_amount, MFC.USDT_ADDRESS, 0, false, [], {from: farmer1});
+        console.log("totalValueInStrategies after farmer1 withdraw: %s",new BigNumber(await iVault.totalValueInStrategies()).toFixed());
+        _amount =  new BigNumber(await pegToken.balanceOf(farmer2)).minus(new BigNumber(10).pow(18)).toFixed();
+        await iVault.burn(_amount, MFC.USDT_ADDRESS, 0, false, [], {from: farmer2});
+        const totalValueInStrategies = new BigNumber(await iVault.totalValueInStrategies()).toFixed();
+        console.log("totalValueInStrategies after withdraw: %s",totalValueInStrategies);
+        console.log("totalAssets after withdraw: %s",new BigNumber(await iVault.totalAssets()).toFixed());
+        console.log("Balance of usdi of farmer1 after withdraw: %s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
+        console.log("Balance of usdi of farmer2 after withdraw: %s", new BigNumber(await pegToken.balanceOf(farmer2)).toFixed());
+
+        Utils.assertBNEq(totalValueInStrategies, 0);
     });
 });

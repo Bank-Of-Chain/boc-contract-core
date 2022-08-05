@@ -233,7 +233,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice redeem the funds from specified strategy.
-    function redeem(address _strategy, uint256 _amount,uint256 _outputCode)
+    function redeem(address _strategy, uint256 _amount, uint256 _outputCode)
         external
         isKeeper
         isActiveStrategy(_strategy)
@@ -644,7 +644,12 @@ contract Vault is VaultStorage {
                 _strategyWithdrawValue = _strategyTotalValue;
                 _needWithdrawValue -= _strategyWithdrawValue;
             } else {
-                _strategyWithdrawValue = _needWithdrawValue;
+                //If there is less than 1u left, then all redemption
+                if(_needWithdrawValue + 1e18 >= _strategyTotalValue){
+                    _strategyWithdrawValue = _strategyTotalValue;
+                }else{
+                    _strategyWithdrawValue = _needWithdrawValue;
+                }
                 _needWithdrawValue = 0;
             }
             // console.log('start withdrawn from %s numerator %d denominator %d', _strategy, strategyWithdrawValue, strategyTotalValue);
