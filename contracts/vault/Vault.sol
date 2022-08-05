@@ -647,7 +647,7 @@ contract Vault is VaultStorage {
                 //If there is less than 1u left, then all redemption
                 if(_needWithdrawValue + 1e18 >= _strategyTotalValue){
                     _strategyWithdrawValue = _strategyTotalValue;
-                }else{
+                } else {
                     _strategyWithdrawValue = _needWithdrawValue;
                 }
                 _needWithdrawValue = 0;
