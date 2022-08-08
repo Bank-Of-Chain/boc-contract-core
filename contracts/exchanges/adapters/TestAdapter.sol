@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 
 import 'hardhat/console.sol';
 import '../IExchangeAdapter.sol';
+import "../../library/NativeToken.sol";
 import '../../price-feeds/IValueInterpreter.sol';
 import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
@@ -25,7 +26,7 @@ contract TestAdapter is IExchangeAdapter {
         uint8 _method,
         bytes calldata _encodedCallArgs,
         IExchangeAdapter.SwapDescription calldata _sd
-    ) external override returns (uint256) {
+    ) external payable override returns (uint256) {
         console.log('[TestAdapter] swap:_sd.srcToken:%s, balanceOf:%s', _sd.srcToken, IERC20Upgradeable(_sd.srcToken).balanceOf(address(this)));
         console.log('[TestAdapter] swap:_sd.dstToken:%s, balanceOf:%s', _sd.dstToken, IERC20Upgradeable(_sd.dstToken).balanceOf(address(this)));
         // Estimate how many target coins can be exchanged
@@ -33,7 +34,11 @@ contract TestAdapter is IExchangeAdapter {
         console.log('[TestAdapter] swap:_sd.amount=%s, amount=%s', _sd.amount, amount);
         // Mock exchange
         uint256 expectAmount = (amount * 1000) / 1000;
-        IERC20Upgradeable(_sd.dstToken).safeTransfer(_sd.receiver, expectAmount);
+        if (_sd.dstToken == NativeToken.NATIVE_TOKEN) {
+            payable(_sd.receiver).transfer(expectAmount);
+        } else {
+            IERC20Upgradeable(_sd.dstToken).safeTransfer(_sd.receiver, expectAmount);
+        }
         return expectAmount;
     }
 }

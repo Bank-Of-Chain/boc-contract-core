@@ -90,6 +90,15 @@ contract VaultAdmin is VaultStorage {
         emit TreasuryAddressChanged(_address);
     }
 
+    /**
+     * @dev Sets the exchangeManagerAddress that can receive a portion of yield.
+     */
+    function setExchangeManagerAddress(address _exchangeManagerAddress) external onlyRole(BocRoles.GOV_ROLE) {
+        require(_exchangeManagerAddress != address(0), "exchangeManager ad is 0");
+        exchangeManager = _exchangeManagerAddress;
+        emit ExchangeManagerAddressChanged(_exchangeManagerAddress);
+    }
+
     //    function setUSDiAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
     //        require(address(usdi) == address(0), "USDi has been set");
     //        require(_address != address(0), "USDi ad is 0");

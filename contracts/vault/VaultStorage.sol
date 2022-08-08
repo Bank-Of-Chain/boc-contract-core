@@ -89,6 +89,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event MaxTimestampBetweenTwoReportedChanged(uint256 _maxTimestampBetweenTwoReported);
     event MinimumInvestmentAmountChanged(uint256 _minimumInvestmentAmount);
     event TreasuryAddressChanged(address _address);
+    event ExchangeManagerAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
     event SetWithdrawalQueue(address[] _queues);

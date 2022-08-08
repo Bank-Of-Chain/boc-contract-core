@@ -8,6 +8,7 @@ import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import './IExchangeAggregator.sol';
 import 'hardhat/console.sol';
 import '../access-control/AccessControlMixin.sol';
+import "../library/NativeToken.sol";
 
 contract ExchangeAggregator is AccessControlMixin {
     using SafeERC20 for IERC20;
@@ -48,15 +49,22 @@ contract ExchangeAggregator is AccessControlMixin {
         emit ExchangeAdapterAdded(_exchangeAdapters);
     }
 
-    // address platform：Called exchange platforms
+    // address _platform：Called exchange platforms
     // uint8 _method：method of the exchange platform
     // bytes calldata _data ：binary parameters
     // IExchangeAdapter.SwapDescription calldata _sd：
     function swap(address _platform, uint8 _method, bytes calldata _data, IExchangeAdapter.SwapDescription calldata _sd)
     external
+    payable
     returns (uint256){
         require(exchangeAdapters.contains(_platform), 'error swap platform');
-        IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
+        if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
+            payable(_platform).transfer(_sd.amount);
+        }else{
+            console.log("_platform, _sd.amount");
+            console.log(_platform, _sd.amount);
+            IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
+        }
         return IExchangeAdapter(_platform).swap(_method, _data, _sd);
     }
 
@@ -72,5 +80,8 @@ contract ExchangeAggregator is AccessControlMixin {
             identifiers_[i] = IExchangeAdapter(exchangeAdapters_[i]).identifier();
         }
         return (exchangeAdapters_, identifiers_);
+    }
+
+    receive() external payable {
     }
 }
