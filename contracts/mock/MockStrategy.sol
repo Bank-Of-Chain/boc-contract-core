@@ -20,7 +20,7 @@ contract MockStrategy is BaseStrategy {
 
         address[] memory _wants = new address[](1);
         _wants[0] = mock3rdPool.underlyingToken();
-        super._initialize(_vault, _harvester, 23, _wants);
+        super._initialize(_vault, _harvester,'MockStrategy', 23, _wants);
     }
 
     function getVersion()
@@ -33,9 +33,6 @@ contract MockStrategy is BaseStrategy {
         return "0.0.1";
     }
 
-    function name() external pure virtual override returns (string memory) {
-        return "MockStrategy";
-    }
 
     function getWantsInfo()
         external
