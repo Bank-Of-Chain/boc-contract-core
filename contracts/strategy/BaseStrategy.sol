@@ -31,6 +31,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     IValueInterpreter public valueInterpreter;
     address public harvester;
     uint16 public protocol;
+    string public name;
     address[] public wants;
     bool public isWantRatioIgnorable;
 
@@ -42,11 +43,13 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     function _initialize(
         address _vault,
         address _harvester,
+        string memory _name,
         uint16 _protocol,
         address[] memory _wants
     ) internal {
         protocol = _protocol;
         harvester = _harvester;
+        name = _name;
         vault = IVault(_vault);
         valueInterpreter = IValueInterpreter(vault.valueInterpreter());
 
@@ -61,9 +64,6 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
     /// @notice Version of strategy
     function getVersion() external pure virtual returns (string memory);
-
-    /// @notice Name of strategy
-    function name() external view virtual returns (string memory);
 
     /// @notice True means that can ignore ratios given by wants info
     function setIsWantRatioIgnorable(bool _isWantRatioIgnorable) external isVaultManager {

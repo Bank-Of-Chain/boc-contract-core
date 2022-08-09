@@ -20,16 +20,16 @@ contract MockS3CoinStrategy is BaseStrategy {
         _wants[1] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
         // DAI
         _wants[2] = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-        super._initialize(_vault, _harvester, 23, _wants);
+        super._initialize(_vault, _harvester,'MockS3CoinStrategy', 23, _wants);
     }
 
     function getVersion() external pure virtual override returns (string memory) {
         return "0.0.1";
     }
 
-    function name() external pure virtual override returns (string memory) {
-        return "MockS3CoinStrategy";
-    }
+    // function name() external pure virtual override returns (string memory) {
+    //     return "MockS3CoinStrategy";
+    // }
 
     function getWantsInfo()
         external
