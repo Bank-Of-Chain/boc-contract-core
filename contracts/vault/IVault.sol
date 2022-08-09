@@ -55,6 +55,7 @@ interface IVault {
     event MaxTimestampBetweenTwoReportedChanged(uint256 _maxTimestampBetweenTwoReported);
     event MinimumInvestmentAmountChanged(uint256 _minimumInvestmentAmount);
     event TreasuryAddressChanged(address _address);
+    event ExchangeManagerAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
     event SetWithdrawalQueue(address[] queues);
@@ -176,7 +177,7 @@ interface IVault {
         external;
 
     /// @notice Withdraw the funds from specified strategy.
-    function redeem(address _strategy, uint256 _amount) external;
+    function redeem(address _strategy, uint256 _amount, uint256 _outputCode) external;
 
     function exchange(
         address _fromToken,
@@ -211,6 +212,11 @@ interface IVault {
      *      Setting to the zero address disables this feature.
      */
     function setTreasuryAddress(address _address) external;
+
+    /**
+    * @dev Sets the exchangeManagerAddress that can receive a portion of yield.
+     */
+    function setExchangeManagerAddress(address _exchangeManagerAddress) external;
 
     //    /**
     //     * @dev Set the USDi address after initialization(only once)

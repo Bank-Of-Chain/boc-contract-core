@@ -233,7 +233,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice redeem the funds from specified strategy.
-    function redeem(address _strategy, uint256 _amount,uint256 _outputCode)
+    function redeem(address _strategy, uint256 _amount, uint256 _outputCode)
         external
         isKeeper
         isActiveStrategy(_strategy)
@@ -459,6 +459,10 @@ contract Vault is VaultStorage {
             if (_vaultValueOfNow + _transferValue < _vaultValueOfBefore) {
                 _old2LendAssets = _vaultValueOfBefore - _vaultValueOfNow - _transferValue;
             }
+            if(_vaultValueOfBefore <= _transferValue){
+                _redeemValue = 0;
+                console.log("_redeemValue=",_redeemValue);
+            }
             if (_totalValueOfNow > _totalValueOfBefore) {
                 uint256 _gain = _totalValueOfNow - _totalValueOfBefore;
                 if (_transferValue > 0) {
@@ -469,18 +473,18 @@ contract Vault is VaultStorage {
                 }
             } else {
                 uint256 _loss = _totalValueOfBefore - _totalValueOfNow;
-                if (_transferValue > 0) {
+                if (_transferValue > 0 && _loss > 0) {
                     _transferAssets =
                         _transferValue -
                         (_loss * _transferValue) /
                         (_transferValue + _redeemValue + _old2LendAssets);
                 }
             }
+            console.log("_transferAssets:", _transferAssets);
             uint256 _totalShares = IPegToken(pegTokenAddress).totalShares();
             if (!rebasePaused) {
                 _totalShares = _rebase(_totalValueOfNow - _transferAssets, _totalShares);
             }
-            console.log("_transferAssets:", _transferAssets);
             if (_transferAssets > 0) {
                 uint256 _sharesAmount = _calculateShare(
                     _transferAssets,
@@ -644,7 +648,12 @@ contract Vault is VaultStorage {
                 _strategyWithdrawValue = _strategyTotalValue;
                 _needWithdrawValue -= _strategyWithdrawValue;
             } else {
-                _strategyWithdrawValue = _needWithdrawValue;
+                //If there is less than 1u left, then all redemption
+                if(_needWithdrawValue + 1e18 >= _strategyTotalValue){
+                    _strategyWithdrawValue = _strategyTotalValue;
+                } else {
+                    _strategyWithdrawValue = _needWithdrawValue;
+                }
                 _needWithdrawValue = 0;
             }
             // console.log('start withdrawn from %s numerator %d denominator %d', _strategy, strategyWithdrawValue, strategyTotalValue);

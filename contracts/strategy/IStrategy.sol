@@ -74,7 +74,7 @@ interface IStrategy {
     function repay(
         uint256 _withdrawShares,
         uint256 _totalShares,
-        uint256 _ouputCode
+        uint256 _outputCode
     ) external returns (address[] memory _assets, uint256[] memory _amounts);
 
     /// @notice getter isWantRatioIgnorable

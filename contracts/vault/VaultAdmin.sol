@@ -90,6 +90,15 @@ contract VaultAdmin is VaultStorage {
         emit TreasuryAddressChanged(_address);
     }
 
+    /**
+     * @dev Sets the exchangeManagerAddress that can receive a portion of yield.
+     */
+    function setExchangeManagerAddress(address _exchangeManagerAddress) external onlyRole(BocRoles.GOV_ROLE) {
+        require(_exchangeManagerAddress != address(0), "exchangeManager ad is 0");
+        exchangeManager = _exchangeManagerAddress;
+        emit ExchangeManagerAddressChanged(_exchangeManagerAddress);
+    }
+
     //    function setUSDiAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
     //        require(address(usdi) == address(0), "USDi has been set");
     //        require(_address != address(0), "USDi ad is 0");
@@ -243,10 +252,12 @@ contract VaultAdmin is VaultStorage {
      * @param _addr Address of the strategy to remove
      */
     function _removeStrategy(address _addr, bool _force) internal {
-        // Withdraw all assets
-        try IStrategy(_addr).repay(MAX_BPS, MAX_BPS, 0) {} catch {
-            if (!_force) {
-                revert();
+        if(strategies[_addr].totalDebt > 0){
+            // Withdraw all assets
+            try IStrategy(_addr).repay(MAX_BPS, MAX_BPS, 0) {} catch {
+                if (!_force) {
+                    revert();
+                }
             }
         }
 
@@ -261,7 +272,9 @@ contract VaultAdmin is VaultStorage {
                 trackedAssetsMap.remove(wantToken);
             }
         }
-        totalDebt -= strategies[_addr].totalDebt;
+        if(strategies[_addr].totalDebt > 0){
+            totalDebt -= strategies[_addr].totalDebt;
+        }
         delete strategies[_addr];
         strategySet.remove(_addr);
         _removeStrategyFromQueue(_addr);
