@@ -338,6 +338,4 @@ interface IVault {
     function pegTokenAddress() external view returns (address);
 
     function setAdminImpl(address newImpl) external;
-
-    function multicall(bytes[] calldata data) external returns (bytes[] memory results);
 }
