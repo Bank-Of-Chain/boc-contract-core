@@ -233,12 +233,11 @@ contract Vault is VaultStorage {
     }
 
     /// @notice redeem the funds from specified strategy.
-    function redeem(address _strategy, uint256 _amount, uint256 _outputCode)
-        external
-        isKeeper
-        isActiveStrategy(_strategy)
-        nonReentrant
-    {
+    function redeem(
+        address _strategy,
+        uint256 _amount,
+        uint256 _outputCode
+    ) external isKeeper isActiveStrategy(_strategy) nonReentrant {
         uint256 _strategyAssetValue = strategies[_strategy].totalDebt;
         require(_amount <= _strategyAssetValue);
 
@@ -256,8 +255,10 @@ contract Vault is VaultStorage {
                 }
             }
         }
-        strategies[_strategy].totalDebt -= _amount;
-        totalDebt -= _amount;
+        uint256 _nowStrategyTotalDebt = strategies[_strategy].totalDebt;
+        uint256 _thisWithdrawValue = (_nowStrategyTotalDebt * _amount) / _strategyAssetValue;
+        strategies[_strategy].totalDebt = _nowStrategyTotalDebt - _thisWithdrawValue;
+        totalDebt -= _thisWithdrawValue;
 
         // console.log('[vault.redeem] %s redeem _amount %d totalDebt %d ', _strategy, _amount, strategyAssetValue);
         emit Redeem(_strategy, _amount, _assets, _amounts);
@@ -347,7 +348,6 @@ contract Vault is VaultStorage {
     function report(address[] memory _rewardTokens, uint256[] memory _claimAmounts)
         external
         isActiveStrategy(msg.sender)
-        nonReentrant
     {
         _report(msg.sender, _rewardTokens, _claimAmounts, 0);
     }
@@ -459,9 +459,9 @@ contract Vault is VaultStorage {
             if (_vaultValueOfNow + _transferValue < _vaultValueOfBefore) {
                 _old2LendAssets = _vaultValueOfBefore - _vaultValueOfNow - _transferValue;
             }
-            if(_vaultValueOfBefore <= _transferValue){
+            if (_vaultValueOfBefore <= _transferValue) {
                 _redeemValue = 0;
-                console.log("_redeemValue=",_redeemValue);
+                console.log("_redeemValue=", _redeemValue);
             }
             if (_totalValueOfNow > _totalValueOfBefore) {
                 uint256 _gain = _totalValueOfNow - _totalValueOfBefore;
@@ -649,7 +649,7 @@ contract Vault is VaultStorage {
                 _needWithdrawValue -= _strategyWithdrawValue;
             } else {
                 //If there is less than 1u left, then all redemption
-                if(_needWithdrawValue + 1e18 >= _strategyTotalValue){
+                if (_needWithdrawValue + 1e18 >= _strategyTotalValue) {
                     _strategyWithdrawValue = _strategyTotalValue;
                 } else {
                     _strategyWithdrawValue = _needWithdrawValue;
@@ -669,9 +669,11 @@ contract Vault is VaultStorage {
                 _assets,
                 _amounts
             );
-
-            strategies[_strategy].totalDebt -= _strategyWithdrawValue;
-            _totalWithdrawValue += _strategyWithdrawValue;
+            uint256 _nowStrategyTotalDebt = strategies[_strategy].totalDebt;
+            uint256 _thisWithdrawValue = (_nowStrategyTotalDebt * _strategyWithdrawValue) /
+                _strategyTotalValue;
+            strategies[_strategy].totalDebt = _nowStrategyTotalDebt - _thisWithdrawValue;
+            _totalWithdrawValue += _thisWithdrawValue;
 
             if (_needWithdrawValue <= 0) {
                 break;
