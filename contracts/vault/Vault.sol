@@ -256,11 +256,9 @@ contract Vault is VaultStorage {
             }
         }
         uint256 _nowStrategyTotalDebt = strategies[_strategy].totalDebt;
-        strategies[_strategy].totalDebt =
-            _nowStrategyTotalDebt -
-            (_nowStrategyTotalDebt * _amount) /
-            _strategyAssetValue;
-        totalDebt -= (_nowStrategyTotalDebt * _amount) / _strategyAssetValue;
+        uint256 _thisWithdrawValue = (_nowStrategyTotalDebt * _amount) / _strategyAssetValue;
+        strategies[_strategy].totalDebt = _nowStrategyTotalDebt - _thisWithdrawValue;
+        totalDebt -= _thisWithdrawValue;
 
         // console.log('[vault.redeem] %s redeem _amount %d totalDebt %d ', _strategy, _amount, strategyAssetValue);
         emit Redeem(_strategy, _amount, _assets, _amounts);
@@ -672,12 +670,10 @@ contract Vault is VaultStorage {
                 _amounts
             );
             uint256 _nowStrategyTotalDebt = strategies[_strategy].totalDebt;
-
-            strategies[_strategy].totalDebt =
-                _nowStrategyTotalDebt -
-                (_nowStrategyTotalDebt * _strategyWithdrawValue) /
+            uint256 _thisWithdrawValue = (_nowStrategyTotalDebt * _strategyWithdrawValue) /
                 _strategyTotalValue;
-            _totalWithdrawValue += (_nowStrategyTotalDebt * _strategyWithdrawValue) / _strategyTotalValue;
+            strategies[_strategy].totalDebt = _nowStrategyTotalDebt - _thisWithdrawValue;
+            _totalWithdrawValue += _thisWithdrawValue;
 
             if (_needWithdrawValue <= 0) {
                 break;
