@@ -19,9 +19,9 @@ import "hardhat/console.sol";
 /// functions only serves as a placeholder for infrastructural components and plugins (e.g., policies)
 /// to explicitly define the types of values that they should (and will) be using in a future release.
 contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
-    event UpdatePrimitivePriceFeed(address primitivePriceFeed);
+    event UpdatePrimitivePriceFeed(address _primitivePriceFeed);
     event UpdateAggregatedDerivativePriceFeed(
-        address aggregatedDerivativePriceFeed
+        address _aggregatedDerivativePriceFeed
     );
 
     address private AGGREGATED_DERIVATIVE_PRICE_FEED;
@@ -43,7 +43,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     /// @param _baseAssets The assets to convert
     /// @param _amounts The amounts of the _baseAssets to convert
     /// @param _quoteAsset The asset to which to convert
-    /// @return value_ The sum value of _baseAssets, denominated in the _quoteAsset
+    /// @return _value The sum value of _baseAssets, denominated in the _quoteAsset
     /// @dev Does not alter protocol state,
     /// but not a view because calls to price feeds can potentially update third party state.
     /// Does not handle a derivative quote asset.
@@ -51,7 +51,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         address[] memory _baseAssets,
         uint256[] memory _amounts,
         address _quoteAsset
-    ) external view override returns (uint256 value_) {
+    ) external view override returns (uint256 _value) {
         require(
             _baseAssets.length == _amounts.length,
             "calcCanonicalAssetsTotalValue: Arrays unequal lengths"
@@ -68,34 +68,34 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             )
         );
 
-        bool isValid_ = true;
+        bool _isValid = true;
         for (uint256 i = 0; i < _baseAssets.length; i++) {
-            (uint256 assetValue, bool assetValueIsValid) = __calcAssetValue(
+            (uint256 _assetValue, bool _assetValueIsValid) = __calcAssetValue(
                 _baseAssets[i],
                 _amounts[i],
                 _quoteAsset
             );
-            value_ = value_ + assetValue;
-            if (!assetValueIsValid) {
-                isValid_ = false;
+            _value = _value + _assetValue;
+            if (!_assetValueIsValid) {
+                _isValid = false;
             }
         }
-        require(isValid_, "Invalid rate");
-        return value_;
+        require(_isValid, "Invalid rate");
+        return _value;
     }
 
     /// @notice Calculates the value of a given amount of one asset in terms of another asset
     /// @param _baseAsset The asset from which to convert
     /// @param _amount The amount of the _baseAsset to convert
     /// @param _quoteAsset The asset to which to convert
-    /// @return value_ The equivalent quantity in the _quoteAsset
+    /// @return _value The equivalent quantity in the _quoteAsset
     /// @dev Does not alter protocol state,
     /// but not a view because calls to price feeds can potentially update third party state
     function calcCanonicalAssetValue(
         address _baseAsset,
         uint256 _amount,
         address _quoteAsset
-    ) external view override returns (uint256 value_) {
+    ) external view override returns (uint256 _value) {
         if (_baseAsset == _quoteAsset || _amount == 0) {
             return _amount;
         }
@@ -104,10 +104,10 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         //            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(_quoteAsset),
         //            'calcCanonicalAssetValue: Unsupported _quoteAsset'
         //        );
-        bool isValid_;
-        (value_, isValid_) = __calcAssetValue(_baseAsset, _amount, _quoteAsset);
-        require(isValid_, "Invalid rate");
-        return value_;
+        bool _isValid;
+        (_value, _isValid) = __calcAssetValue(_baseAsset, _amount, _quoteAsset);
+        require(_isValid, "Invalid rate");
+        return _value;
     }
 
     /*
@@ -120,15 +120,15 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         external
         view
         override
-        returns (uint256 value_)
+        returns (uint256 _value)
     {
         if (_amount == 0) {
             return _amount;
         }
-        bool isValid_;
-        (value_, isValid_) = __calcAssetValueInUsd(_baseAsset, _amount);
-        require(isValid_, "Invalid rate");
-        return value_;
+        bool _isValid;
+        (_value, _isValid) = __calcAssetValueInUsd(_baseAsset, _amount);
+        require(_isValid, "Invalid rate");
+        return _value;
     }
 
     /*
@@ -140,7 +140,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         external
         view
         override
-        returns (uint256 value_)
+        returns (uint256 _value)
     {
         // Handle case that asset is a primitive
         if (
@@ -148,16 +148,16 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
                 _baseAsset
             )
         ) {
-            bool isValid_;
-            (value_, isValid_) = IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED)
+            bool _isValid;
+            (_value, _isValid) = IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED)
                 .calcValueInUsd(
                     _baseAsset,
                     IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).getAssetUnit(
                         _baseAsset
                     )
                 );
-            require(isValid_, "Invalid rate");
-            return value_;
+            require(_isValid, "Invalid rate");
+            return _value;
         }
         revert(
             string(
@@ -175,7 +175,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     function __calcAssetValueInUsd(address _baseAsset, uint256 _amount)
         private
         view
-        returns (uint256 value_, bool isValid_)
+        returns (uint256 _value, bool _isValid)
     {
         if (_amount == 0) {
             return (_amount, true);
@@ -223,7 +223,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         address _baseAsset,
         uint256 _amount,
         address _quoteAsset
-    ) private view returns (uint256 value_, bool isValid_) {
+    ) private view returns (uint256 _value, bool _isValid) {
         if (_baseAsset == _quoteAsset || _amount == 0) {
             return (_amount, true);
         }
@@ -246,13 +246,13 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         }
 
         // Handle case that asset is a derivative
-        address derivativePriceFeed = IAggregatedDerivativePriceFeed(
+        address _derivativePriceFeed = IAggregatedDerivativePriceFeed(
             AGGREGATED_DERIVATIVE_PRICE_FEED
         ).getPriceFeedForDerivative(_baseAsset);
-        if (derivativePriceFeed != address(0)) {
+        if (_derivativePriceFeed != address(0)) {
             return
                 __calcDerivativeValue(
-                    derivativePriceFeed,
+                    _derivativePriceFeed,
                     _baseAsset,
                     _amount,
                     _quoteAsset
@@ -276,7 +276,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         address _derivativePriceFeed,
         address _derivative,
         uint256 _amount
-    ) private view returns (uint256 value_, bool isValid_) {
+    ) private view returns (uint256 _value, bool _isValid) {
         (
             address[] memory underlyings,
             uint256[] memory underlyingAmounts
@@ -295,7 +295,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         );
 
         // Let validity be negated if any of the underlying value calculations are invalid
-        isValid_ = true;
+        _isValid = true;
         for (uint256 i = 0; i < underlyings.length; i++) {
             (
                 uint256 underlyingValue,
@@ -303,9 +303,9 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             ) = __calcAssetValueInUsd(underlyings[i], underlyingAmounts[i]);
 
             if (!underlyingValueIsValid) {
-                isValid_ = false;
+                _isValid = false;
             }
-            value_ = value_ + underlyingValue;
+            _value = _value + underlyingValue;
         }
     }
 
@@ -317,40 +317,40 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         address _derivative,
         uint256 _amount,
         address _quoteAsset
-    ) private view returns (uint256 value_, bool isValid_) {
+    ) private view returns (uint256 _value, bool _isValid) {
         (
-            address[] memory underlyings,
-            uint256[] memory underlyingAmounts
+            address[] memory _underlyings,
+            uint256[] memory _underlyingAmounts
         ) = IDerivativePriceFeed(_derivativePriceFeed).calcUnderlyingValues(
                 _derivative,
                 _amount
             );
 
         require(
-            underlyings.length > 0,
+            _underlyings.length > 0,
             "__calcDerivativeValue: No underlyings"
         );
         require(
-            underlyings.length == underlyingAmounts.length,
+            _underlyings.length ==_underlyingAmounts.length,
             "__calcDerivativeValue: Arrays unequal lengths"
         );
 
         // Let validity be negated if any of the underlying value calculations are invalid
-        isValid_ = true;
-        for (uint256 i = 0; i < underlyings.length; i++) {
+        _isValid = true;
+        for (uint256 i = 0; i < _underlyings.length; i++) {
             (
-                uint256 underlyingValue,
-                bool underlyingValueIsValid
+                uint256 _underlyingValue,
+                bool _underlyingValueIsValid
             ) = __calcAssetValue(
-                    underlyings[i],
-                    underlyingAmounts[i],
+                    _underlyings[i],
+                    _underlyingAmounts[i],
                     _quoteAsset
                 );
 
-            if (!underlyingValueIsValid) {
-                isValid_ = false;
+            if (!_underlyingValueIsValid) {
+                _isValid = false;
             }
-            value_ = value_ + underlyingValue;
+            _value = _value + _underlyingValue;
         }
     }
 
@@ -359,21 +359,21 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     ///////////////////
 
     /// @notice Gets the `AGGREGATED_DERIVATIVE_PRICE_FEED` variable
-    /// @return aggregatedDerivativePriceFeed_ The `AGGREGATED_DERIVATIVE_PRICE_FEED` variable value
+    /// @return _aggregatedDerivativePriceFeed The `AGGREGATED_DERIVATIVE_PRICE_FEED` variable value
     function getAggregatedDerivativePriceFeed()
         external
         view
-        returns (address aggregatedDerivativePriceFeed_)
+        returns (address)
     {
         return AGGREGATED_DERIVATIVE_PRICE_FEED;
     }
 
     /// @notice Gets the `PRIMITIVE_PRICE_FEED` variable
-    /// @return primitivePriceFeed_ The `PRIMITIVE_PRICE_FEED` variable value
+    /// @return _primitivePriceFeed The `PRIMITIVE_PRICE_FEED` variable value
     function getPrimitivePriceFeed()
         external
         view
-        returns (address primitivePriceFeed_)
+        returns (address)
     {
         return PRIMITIVE_PRICE_FEED;
     }

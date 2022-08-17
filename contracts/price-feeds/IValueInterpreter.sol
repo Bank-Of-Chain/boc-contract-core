@@ -11,9 +11,9 @@ interface IValueInterpreter {
     * destToken: Target token address
     */
     function calcCanonicalAssetValue(
-        address srcToken,
-        uint256 srcNum,
-        address destToken
+        address _srcToken,
+        uint256 _srcNum,
+        address _destToken
     ) external view returns (uint256);
 
     /*

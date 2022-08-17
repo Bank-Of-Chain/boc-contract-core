@@ -9,6 +9,7 @@ import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
 import "./../strategy/IStrategy.sol";
 import "./../vault/IVault.sol";
+
 /**
  * @title USDI Dripper
  *
@@ -52,7 +53,7 @@ contract Dripper is AccessControlMixin, Initializable {
 
     event DripDurationChanged(uint256 _durationSeconds);
     event TokenChanged(address _token);
-    event Collection(address token, uint256 amount);
+    event Collection(address _token, uint256 _amount);
 
     struct Drip {
         uint64 lastCollect; // overflows 262 billion years after the sun dies
@@ -111,16 +112,13 @@ contract Dripper is AccessControlMixin, Initializable {
     function setToken(address _token) external isVaultManager {
         require(_token != address(0), "Must be a non-zero address");
         token = _token;
-        emit TokenChanged(token);
+        emit TokenChanged(_token);
     }
 
     // @dev Transfer out ERC20 tokens held by the contract. Governor only.
     // @param _asset ERC20 token address
     // @param _amount amount to transfer
-    function transferToken(address _asset, uint256 _amount)
-        external
-        onlyRole(BocRoles.GOV_ROLE)
-    {
+    function transferToken(address _asset, uint256 _amount) external onlyRole(BocRoles.GOV_ROLE) {
         IERC20Upgradeable(_asset).safeTransfer(IVault(vault).treasury(), _amount);
     }
 
@@ -129,11 +127,7 @@ contract Dripper is AccessControlMixin, Initializable {
     ///  Uses passed in parameters to calculate with for gas savings.
     /// @param _balance current balance in contract
     /// @param _drip current drip parameters
-    function _availableFunds(uint256 _balance, Drip memory _drip)
-        internal
-        view
-        returns (uint256)
-    {
+    function _availableFunds(uint256 _balance, Drip memory _drip) internal view returns (uint256) {
         uint256 elapsed = block.timestamp - _drip.lastCollect;
         uint256 allowed = (elapsed * _drip.perBlock);
         return (allowed > _balance) ? _balance : allowed;
@@ -148,10 +142,7 @@ contract Dripper is AccessControlMixin, Initializable {
         uint256 remaining = balance - amountToSend;
         // Calculate new drip perBlock
         //   Gas savings by setting entire struct at one time
-        drip = Drip({
-            perBlock: uint192(remaining / dripDuration),
-            lastCollect: uint64(block.timestamp)
-        });
+        drip = Drip({perBlock: uint192(remaining / dripDuration), lastCollect: uint64(block.timestamp)});
         // Send funds
         IERC20Upgradeable(token).safeTransfer(vault, amountToSend);
         emit Collection(token, amountToSend);

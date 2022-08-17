@@ -6,7 +6,6 @@ import "hardhat/console.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/IterableIntMap.sol";
 import "../library/StableMath.sol";
-import "../token/USDi.sol";
 import "../token/IPegToken.sol";
 import "./IVaultBuffer.sol";
 import "../library/BocRoles.sol";
@@ -114,9 +113,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     //max percentage 100%
     uint256 internal constant MAX_BPS = 10000;
 
-    // usdi
-    USDi internal usdi;
-
     // all strategy
     EnumerableSet.AddressSet internal strategySet;
     // Assets supported by the Vault, i.e. Stablecoins
@@ -181,13 +177,13 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
 
     /**
      * @dev set the implementation for the admin, this needs to be in a base class else we cannot set it
-     * @param newImpl address of the implementation
+     * @param _newImpl address of the implementation
      */
-    function setAdminImpl(address newImpl) external onlyGovOrDelegate {
-        require(AddressUpgradeable.isContract(newImpl), "new implementation is not a contract");
+    function setAdminImpl(address _newImpl) external onlyGovOrDelegate {
+        require(AddressUpgradeable.isContract(_newImpl), "new implementation is not a contract");
         bytes32 position = adminImplPosition;
         assembly {
-            sstore(position, newImpl)
+            sstore(position, _newImpl)
         }
     }
 }

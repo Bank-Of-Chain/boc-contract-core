@@ -6,8 +6,9 @@ pragma solidity ^0.8.0;
 /// @notice Simple interface for derivative price source oracle implementations
 interface IDerivativePriceFeed {
     function calcUnderlyingValues(address, uint256)
-    external view
-    returns (address[] memory, uint256[] memory);
+        external
+        view
+        returns (address[] memory, uint256[] memory);
 
     function isSupportedAsset(address) external view returns (bool);
 }

@@ -47,8 +47,8 @@ interface IStrategy {
         returns (
             address[] memory _tokens,
             uint256[] memory _amounts,
-            bool isUsd,
-            uint256 usdValue
+            bool _isUsd,
+            uint256 _usdValue
         );
 
     /// @notice Total assets of strategy in USD.
@@ -59,9 +59,6 @@ interface IStrategy {
 
     /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
     function harvest() external returns (address[] memory _rewardsTokens, uint256[] memory _claimAmounts);
-
-    /// @notice asset in usd (1e18)
-    function checkBalance() external view returns (uint256 assetsInUSD);
 
     /// @notice Strategy borrow funds from vault
     /// @param _assets borrow token address

@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/BocRoles.sol";
-import "../token/USDi.sol";
 
 contract Treasury is
     Initializable,

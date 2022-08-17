@@ -25,7 +25,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
     event Repay(uint256 _withdrawShares, uint256 _totalShares, address[] _assets, uint256[] _amounts);
 
-    event SetIsWantRatioIgnorable(bool oldValue, bool newValue);
+    event SetIsWantRatioIgnorable(bool _oldValue, bool _newValue);
 
     IVault public vault;
     IValueInterpreter public valueInterpreter;
@@ -67,9 +67,9 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
     /// @notice True means that can ignore ratios given by wants info
     function setIsWantRatioIgnorable(bool _isWantRatioIgnorable) external isVaultManager {
-        bool oldValue = isWantRatioIgnorable;
+        bool _oldValue = isWantRatioIgnorable;
         isWantRatioIgnorable = _isWantRatioIgnorable;
-        emit SetIsWantRatioIgnorable(oldValue, _isWantRatioIgnorable);
+        emit SetIsWantRatioIgnorable(_oldValue, _isWantRatioIgnorable);
     }
 
     /// @notice Provide the strategy need underlying token and ratio
@@ -85,7 +85,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     }
 
     // @notice Provide the strategy output path when withdraw.
-    function getOutputsInfo() external view virtual returns (OutputInfo[] memory outputsInfo);
+    function getOutputsInfo() external view virtual returns (OutputInfo[] memory _outputsInfo);
 
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
@@ -95,45 +95,26 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         returns (
             address[] memory _tokens,
             uint256[] memory _amounts,
-            bool isUsd,
-            uint256 usdValue
+            bool _isUsd,
+            uint256 _usdValue
         );
 
     /// @notice Total assets of strategy in USD.
     function estimatedTotalAssets() external view virtual returns (uint256) {
         (
-            address[] memory tokens,
-            uint256[] memory amounts,
-            bool isUsd,
-            uint256 usdValue
-        ) = getPositionDetail();
-        if (isUsd) {
-            return usdValue;
-        } else {
-            uint256 totalUsdValue = 0;
-            for (uint256 i = 0; i < tokens.length; i++) {
-                totalUsdValue = totalUsdValue + queryTokenValue(tokens[i], amounts[i]);
-            }
-            return totalUsdValue;
-        }
-    }
-
-    function checkBalance() external view returns (uint256 assetsInUSD) {
-        (
             address[] memory _tokens,
             uint256[] memory _amounts,
-            bool isUsd,
-            uint256 usdValue
+            bool _isUsd,
+            uint256 _usdValue
         ) = getPositionDetail();
-        if (isUsd) {
-            assetsInUSD = usdValue;
+        if (_isUsd) {
+            return _usdValue;
         } else {
+            uint256 _totalUsdValue = 0;
             for (uint256 i = 0; i < _tokens.length; i++) {
-                uint256 amount = _amounts[i];
-                if (amount > 0) {
-                    assetsInUSD += amount.scaleBy(18, IERC20MetadataUpgradeable(_tokens[i]).decimals());
-                }
+                _totalUsdValue += queryTokenValue(_tokens[i], _amounts[i]);
             }
+            return _totalUsdValue;
         }
     }
 
@@ -167,19 +148,19 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     ) public virtual onlyVault returns (address[] memory _assets, uint256[] memory _amounts) {
         require(_repayShares > 0 && _totalShares >= _repayShares, "cannot repay 0 shares");
         _assets = wants;
-        uint256[] memory balancesBefore = new uint256[](_assets.length);
+        uint256[] memory _balancesBefore = new uint256[](_assets.length);
         for (uint256 i = 0; i < _assets.length; i++) {
-            balancesBefore[i] = balanceOfToken(_assets[i]);
+            _balancesBefore[i] = balanceOfToken(_assets[i]);
         }
 
         withdrawFrom3rdPool(_repayShares, _totalShares, _outputCode);
         _amounts = new uint256[](_assets.length);
         for (uint256 i = 0; i < _assets.length; i++) {
-            uint256 balanceAfter = balanceOfToken(_assets[i]);
+            uint256 _balanceAfter = balanceOfToken(_assets[i]);
             _amounts[i] =
-                balanceAfter -
-                balancesBefore[i] +
-                (balancesBefore[i] * _repayShares) /
+                _balanceAfter -
+                _balancesBefore[i] +
+                (_balancesBefore[i] * _repayShares) /
                 _totalShares;
         }
 
@@ -202,8 +183,8 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         uint256 _outputCode
     ) internal virtual;
 
-    function balanceOfToken(address tokenAddress) internal view returns (uint256) {
-        return IERC20Upgradeable(tokenAddress).balanceOf(address(this));
+    function balanceOfToken(address _tokenAddress) internal view returns (uint256) {
+        return IERC20Upgradeable(_tokenAddress).balanceOf(address(this));
     }
 
     /// @notice Investable amount of strategy in USD
@@ -212,8 +193,12 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     }
 
     /// @notice Query the value of Token.
-    function queryTokenValue(address _token, uint256 _amount) internal view returns (uint256 valueInUSD) {
-        valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(_token, _amount);
+    function queryTokenValue(address _token, uint256 _amount)
+        internal
+        view
+        returns (uint256 _valueInUSD)
+    {
+        _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(_token, _amount);
     }
 
     function decimalUnitOfToken(address _token) internal view returns (uint256) {
@@ -226,9 +211,9 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         uint256[] memory _amounts
     ) internal {
         for (uint256 i = 0; i < _assets.length; i++) {
-            uint256 amount = _amounts[i];
-            if (amount > 0) {
-                IERC20Upgradeable(_assets[i]).safeTransfer(address(_target), amount);
+            uint256 _amount = _amounts[i];
+            if (_amount > 0) {
+                IERC20Upgradeable(_assets[i]).safeTransfer(address(_target), _amount);
             }
         }
     }
