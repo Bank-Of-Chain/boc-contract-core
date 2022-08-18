@@ -12,8 +12,8 @@ library Helpers {
      * @return string Symbol of the ERC20 token
      */
     function getSymbol(address _token) internal view returns (string memory) {
-        string memory symbol = IBasicToken(_token).symbol();
-        return symbol;
+        string memory _symbol = IBasicToken(_token).symbol();
+        return _symbol;
     }
 
     /**
@@ -24,9 +24,9 @@ library Helpers {
      * @return uint256 Decimals of the ERC20 token
      */
     function getDecimals(address _token) internal view returns (uint256) {
-        uint256 decimals = IBasicToken(_token).decimals();
-        require(decimals > 0, "Token must have sufficient decimal places");
+        uint256 _decimals = IBasicToken(_token).decimals();
+        require(_decimals > 0, "Token must have sufficient decimal places");
 
-        return decimals;
+        return _decimals;
     }
 }

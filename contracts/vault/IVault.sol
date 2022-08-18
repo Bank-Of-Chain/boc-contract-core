@@ -6,16 +6,23 @@ pragma experimental ABIEncoderV2;
 import "../exchanges/IExchangeAggregator.sol";
 
 interface IVault {
+
+    /// @param lastReport The last report timestamp
+    /// @param totalDebt The total asset of this strategy
+    /// @param profitLimitRatio The limited ratio of profit
+    /// @param lossLimitRatio The limited ratio for loss
+    /// @param enforceChangeLimit The switch of enforce change Limit
     struct StrategyParams {
-        //last report timestamp
         uint256 lastReport;
-        //total asset
         uint256 totalDebt;
         uint256 profitLimitRatio;
         uint256 lossLimitRatio;
         bool enforceChangeLimit;
     }
 
+    /// @param strategy The new strategy to add
+    /// @param profitLimitRatio The limited ratio of profit
+    /// @param lossLimitRatio The limited ratio for loss
     struct StrategyAdd {
         address strategy;
         uint256 profitLimitRatio;
@@ -45,7 +52,7 @@ interface IVault {
         uint256 _distAmount
     );
     event Redeem(address _strategy, uint256 _debtChangeAmount, address[] _assets, uint256[] _amounts);
-    event LendToStrategy(address indexed strategy, address[] wants, uint256[] amounts, uint256 lendValue);
+    event LendToStrategy(address indexed _strategy, address[] _wants, uint256[] _amounts, uint256 _lendValue);
     event RemoveStrategyFromQueue(address[] _strategies);
     event SetEmergencyShutdown(bool _shutdown);
     event RebasePaused();
@@ -58,7 +65,7 @@ interface IVault {
     event ExchangeManagerAddressChanged(address _address);
     event SetAdjustPositionPeriod(bool _adjustPositionPeriod);
     event RedeemFeeUpdated(uint256 _redeemFeeBps);
-    event SetWithdrawalQueue(address[] queues);
+    event SetWithdrawalQueue(address[] _queues);
     event Rebase(uint256 _totalShares, uint256 _totalValue, uint256 _newUnderlyingUnitsPerShare);
     event StrategyReported(
         address indexed _strategy,
@@ -111,12 +118,13 @@ interface IVault {
     /// @notice Vault total value(by chainlink price) in USD(1e18)
     function totalValue() external view returns (uint256);
 
-    /// @notice start  Adjust  Position
+    /// @notice Start adjust position
     function startAdjustPosition() external;
 
-    /// @notice end  Adjust Position
+    /// @notice End adjust position
     function endAdjustPosition() external;
 
+    /// @notice Return underlying token per share token
     function underlyingUnitsPerShare() external view returns (uint256);
 
     /**
@@ -131,9 +139,10 @@ interface IVault {
      */
     function totalValueInStrategies() external view returns (uint256 _value);
 
-    /// @notice All strategies
+    /// @notice Return all strategy addresses
     function getStrategies() external view returns (address[] memory _strategies);
 
+    /// @notice Check '_strategy' is active or not
     function checkActiveStrategy(address _strategy) external view;
 
     /// @notice estimate Minting share with stablecoins
@@ -179,6 +188,15 @@ interface IVault {
     /// @notice Withdraw the funds from specified strategy.
     function redeem(address _strategy, uint256 _amount, uint256 _outputCode) external;
 
+    /**
+     * @dev Exchange from '_fromToken' to '_toToken'
+     * @param _fromToken The token swap from
+     * @param _toToken The token swap to
+     * @param _amount The amount to swap
+     * @param _exchangeParam The struct of ExchangeParam, see {ExchangeParam} struct
+     * @return _exchangeAmount The real amount to exchange
+     * Emits a {Exchange} event.
+     */
     function exchange(
         address _fromToken,
         address _toToken,
@@ -186,6 +204,12 @@ interface IVault {
         IExchangeAggregator.ExchangeParam memory _exchangeParam
     ) external returns (uint256);
 
+    /**
+     * @dev Report the current asset of strategy caller
+     * @param _rewardTokens The reward token list
+     * @param _claimAmounts The claim amount list
+     * Emits a {StrategyReported} event.
+     */
     function report(address[] memory _rewardTokens, uint256[] memory _claimAmounts) external;
 
     /// @notice Shutdown the vault when an emergency occurs, cannot mint/burn.
@@ -218,18 +242,13 @@ interface IVault {
      */
     function setExchangeManagerAddress(address _exchangeManagerAddress) external;
 
-    //    /**
-    //     * @dev Set the USDi address after initialization(only once)
-    //     */
-    //    function setUSDiAddress(address _address) external;
-
     /**
      * @dev Sets the TrusteeFeeBps to the percentage of yield that should be
      *      received in basis points.
      */
     function setTrusteeFeeBps(uint256 _basis) external;
 
-    //advance queue
+    /// @notice set '_queues' as advance withdrawal queue
     function setWithdrawalQueue(address[] memory _queues) external;
 
     function setStrategyEnforceChangeLimit(address _strategy, bool _enabled) external;
@@ -275,67 +294,74 @@ interface IVault {
 
     function removeStrategyFromQueue(address[] memory _strategies) external;
 
-    //adjust Position Period
+    /// @notice Return the period of adjust position
     function adjustPositionPeriod() external view returns (bool);
 
-    // emergency shutdown
+    /// @notice Return the status of emergency shutdown switch
     function emergencyShutdown() external view returns (bool);
 
-    // Pausing bools
+    /// @notice Return the status of rebase paused switch
     function rebasePaused() external view returns (bool);
 
-    // over this difference ratio automatically rebase. rebaseThreshold is the numerator and the denominator is 10000000 x/10000000.
+    /// @notice Return the rebaseThreshold value,
+    /// over this difference ratio automatically rebase. 
+    /// rebaseThreshold is the numerator and the denominator is 10000000 x/10000000.
     function rebaseThreshold() external view returns (uint256);
 
-    // Amount of yield collected in basis points
+    /// @notice Return the Amount of yield collected in basis points
     function trusteeFeeBps() external view returns (uint256);
 
-    // Redemption fee in basis points
+    /// @notice Return the redemption fee in basis points
     function redeemFeeBps() external view returns (uint256);
 
-    //all strategy asset
+    /// @notice Return the total assetof all strategy 
     function totalDebt() external view returns (uint256);
 
-    //exchangeManager
+    /// @notice Return the exchange manager address
     function exchangeManager() external view returns (address);
 
-    // strategy info
+    /// @notice Return all info of '_strategy' 
     function strategies(address _strategy) external view returns (StrategyParams memory);
 
-    //withdraw strategy set
+    /// @notice Return withdraw strategy address list
     function withdrawQueue() external view returns (address[] memory);
 
-    /// @notice Address of treasury
+    /// @notice Return the address of treasury
     function treasury() external view returns (address);
 
-    /// @notice Address of price oracle
+    /// @notice Return the address of price oracle
     function valueInterpreter() external view returns (address);
 
+    /// @notice Return the address of access control proxy contract
     function accessControlProxy() external view returns (address);
 
-    /**
-     * @dev Sets the Maximum timestamp between two reported
-     */
+    /// @notice Set the maximum timestamp between two reported
     function setMaxTimestampBetweenTwoReported(uint256 _maxTimestampBetweenTwoReported) external;
 
-    // Maximum timestamp between two reported
+    /// @notice The maximum timestamp between two reported
     function maxTimestampBetweenTwoReported() external view returns (uint256);
 
-    // Minimum investment amount
+    /// @notice Set the minimum investment amount
     function setMinimumInvestmentAmount(uint256 _minimumInvestmentAmount) external;
 
-    // Minimum investment amount
+    /// @notice Return the minimum investment amount
     function minimumInvestmentAmount() external view returns (uint256);
 
+    /// @notice Set the address of vault buffer contract
     function setVaultBufferAddress(address _address) external;
 
+    /// @notice Set the new value of '_underlyingUnitsPerShare'
     function setUnderlyingUnitsPerShare(uint256 _underlyingUnitsPerShare) external;
 
+    /// @notice Return the address of vault buffer contract
     function vaultBufferAddress() external view returns (address);
 
+    /// @notice Set the address of PegToken contract
     function setPegTokenAddress(address _address) external;
 
+    /// @notice Return the address of PegToken contract
     function pegTokenAddress() external view returns (address);
 
+    /// @notice Set the new implement contract address
     function setAdminImpl(address _newImpl) external;
 }

@@ -16,9 +16,11 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using StableMath for uint256;
 
+    /// @param outputCode The output code. 0:default path, GT 0:specify output path
+    /// @param outputTokens output token list
     struct OutputInfo {
-        uint256 outputCode; //0：default path，Greater than 0：specify output path
-        address[] outputTokens; //output tokens
+        uint256 outputCode;
+        address[] outputTokens;
     }
 
     event Borrow(address[] _assets, uint256[] _amounts);
@@ -36,7 +38,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     bool public isWantRatioIgnorable;
 
     modifier onlyVault() {
-        require(msg.sender == address(vault));
+        require(msg.sender == address(vault),"BS: Not vault call");
         _;
     }
 
@@ -183,6 +185,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         uint256 _outputCode
     ) internal virtual;
 
+    /// @notice Return the token's balance Of this contract
     function balanceOfToken(address _tokenAddress) internal view returns (uint256) {
         return IERC20Upgradeable(_tokenAddress).balanceOf(address(this));
     }
@@ -201,10 +204,15 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(_token, _amount);
     }
 
+    /// @notice Return the uint with decimal of one token
     function decimalUnitOfToken(address _token) internal view returns (uint256) {
         return 10**IERC20MetadataUpgradeable(_token).decimals();
     }
 
+    /// @notice Transfer `_assets` token from this contract to target address.
+    /// @param _target The target address to receive token
+    /// @param _assets deposit token address list
+    /// @param _amounts deposit token amount list
     function transferTokensToTarget(
         address _target,
         address[] memory _assets,

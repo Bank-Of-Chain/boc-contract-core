@@ -21,11 +21,11 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
      */
     event Transfer(address indexed _from, address indexed _to, uint256 _amount, uint256 _sharesAmount);
 
-    string mName;
+    string private mName;
 
-    string mSymbol;
+    string private mSymbol;
 
-    uint8 mDecimals;
+    uint8 private mDecimals;
 
     bool public isPaused;
 

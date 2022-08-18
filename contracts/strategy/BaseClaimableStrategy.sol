@@ -5,7 +5,10 @@ pragma solidity ^0.8.0;
 import "./BaseStrategy.sol";
 
 abstract contract BaseClaimableStrategy is BaseStrategy {
+
     /// @notice Collect the rewards from 3rd protocol
+    /// @return  _rewardsTokens The reward tokens list
+    /// @return _claimAmounts The claim amounts list
     function claimRewards()
         internal
         virtual
@@ -14,7 +17,10 @@ abstract contract BaseClaimableStrategy is BaseStrategy {
             uint256[] memory _claimAmounts
         );
 
-    /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
+    /// @notice Harvests the Strategy, 
+    /// recognizing any profits or losses and adjusting the Strategy's position.
+    /// @return  _rewardsTokens The reward tokens list
+    /// @return _claimAmounts The claim amounts list
     function harvest()
         external
         virtual

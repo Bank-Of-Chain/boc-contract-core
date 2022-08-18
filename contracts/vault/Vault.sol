@@ -131,6 +131,7 @@ contract Vault is VaultStorage {
         return strategySet.values();
     }
 
+    /// @notice Check '_strategy' is active or not
     function checkActiveStrategy(address _strategy) public view {
         require(strategySet.contains(_strategy), "strategy not exist");
     }
