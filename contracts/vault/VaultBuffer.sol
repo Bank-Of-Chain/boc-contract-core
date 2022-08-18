@@ -11,6 +11,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 
 import "../library/IterableUintMap.sol";
 import "../library/StableMath.sol";
+import "../library/NativeToken.sol";
 import "./../access-control/AccessControlMixin.sol";
 import "./IVault.sol";
 
@@ -28,23 +29,22 @@ contract VaultBuffer is
     event OpenDistribute();
     event CloseDistribute();
 
-    address constant NATIVE_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
-    IterableUintMap.AddressToUintMap private _balances;
+    IterableUintMap.AddressToUintMap private mBalances;
 
-    mapping(address => mapping(address => uint256)) private _allowances;
+    mapping(address => mapping(address => uint256)) private mAllowances;
 
-    uint256 private _totalSupply;
+    uint256 private mTotalSupply;
 
-    string private _name;
-    string private _symbol;
+    string private mName;
+    string private mSymbol;
 
     address public vault;
     address public pegTokenAddr;
 
     bool public isDistributing;
 
-    uint256 private _distributeLimit;
+    uint256 private mDistributeLimit;
 
     modifier onlyVault() {
         require(msg.sender == vault);
@@ -52,28 +52,28 @@ contract VaultBuffer is
     }
 
     function getDistributeLimit() external view returns (uint256) {
-        return _distributeLimit;
+        return mDistributeLimit;
     }
 
     function setDistributeLimit(uint256 _limit) external isVaultManager {
         assert(_limit > 0);
-        _distributeLimit = _limit;
+        mDistributeLimit = _limit;
     }
 
     function initialize(
-        string memory name_,
-        string memory symbol_,
+        string memory _name,
+        string memory _symbol,
         address _vault,
         address _pegTokenAddr,
         address _accessControlProxy
     ) external initializer {
-        _name = name_;
-        _symbol = symbol_;
+        mName = _name;
+        mSymbol = _symbol;
         vault = _vault;
         pegTokenAddr = _pegTokenAddr;
         _initAccessControl(_accessControlProxy);
 
-        _distributeLimit = 50;
+        mDistributeLimit = 50;
     }
 
     fallback() external payable {}
@@ -85,12 +85,12 @@ contract VaultBuffer is
     }
 
     function transferCashToVault(address[] memory _assets, uint256[] memory _amounts) external onlyVault {
-        uint256 len = _assets.length;
-        for (uint256 i = 0; i < len; i++) {
+        uint256 _len = _assets.length;
+        for (uint256 i = 0; i < _len; i++) {
             uint256 amount = _amounts[i];
             if (amount > 0) {
                 address asset = _assets[i];
-                if (asset == NATIVE_TOKEN) {
+                if (asset == NativeToken.NATIVE_TOKEN) {
                     payable(vault).transfer(amount);
                 } else {
                     IERC20Upgradeable(asset).safeTransfer(vault, amount);
@@ -101,8 +101,8 @@ contract VaultBuffer is
 
     function openDistribute() external onlyVault {
         assert(!isDistributing);
-        uint256 pegTokenBalance = IERC20Upgradeable(pegTokenAddr).balanceOf(address(this));
-        if (pegTokenBalance > 0) {
+        uint256 _pegTokenBalance = IERC20Upgradeable(pegTokenAddr).balanceOf(address(this));
+        if (_pegTokenBalance > 0) {
             isDistributing = true;
 
             emit OpenDistribute();
@@ -111,23 +111,23 @@ contract VaultBuffer is
 
     function distributeWhenDistributing() external isKeeper returns (bool) {
         assert(!IVault(vault).adjustPositionPeriod());
-        bool result = _distribute();
-        if (!result) {
+        bool _result = _distribute();
+        if (!_result) {
             isDistributing = false;
             emit CloseDistribute();
         }
-        return result;
+        return _result;
     }
 
     function distributeOnce() external isKeeper returns (bool) {
         assert(!IVault(vault).adjustPositionPeriod());
-        address[] memory assets = IVault(vault).getTrackedAssets();
-        for (uint256 i = 0; i < assets.length; i++) {
-            address asset = assets[i];
-            if (asset == NATIVE_TOKEN) {
+        address[] memory _assets = IVault(vault).getTrackedAssets();
+        for (uint256 i = 0; i < _assets.length; i++) {
+            address _asset = _assets[i];
+            if (_asset == NativeToken.NATIVE_TOKEN) {
                 require(address(this).balance == 0, "cash remain.");
             } else {
-                require(IERC20Upgradeable(asset).balanceOf(address(this)) == 0, "cash remain.");
+                require(IERC20Upgradeable(_asset).balanceOf(address(this)) == 0, "cash remain.");
             }
         }
 
@@ -136,44 +136,40 @@ contract VaultBuffer is
     }
 
     function _distribute() internal returns (bool) {
-        uint256 pendingToDistributeShares = _totalSupply;
-        if (pendingToDistributeShares > 0) {
+        uint256 _pendingToDistributeShares = mTotalSupply;
+        if (_pendingToDistributeShares > 0) {
             IERC20Upgradeable _pegToken = IERC20Upgradeable(pegTokenAddr);
-            uint256 pendingToDistributePegTokens = _pegToken.balanceOf(address(this));
-            uint256 len = _balances.length();
-            bool lastDistribute = false;
-            uint256 loopCount;
-            if (len <= _distributeLimit) {
-                lastDistribute = true;
-                loopCount = len;
+            uint256 _pendingToDistributePegTokens = _pegToken.balanceOf(address(this));
+            uint256 _len = mBalances.length();
+            bool _lastDistribute = false;
+            uint256 _loopCount;
+            if (_len <= mDistributeLimit) {
+                _lastDistribute = true;
+                _loopCount = _len;
             } else {
-                loopCount = _distributeLimit;
+                _loopCount = mDistributeLimit;
             }
 
-            for (uint256 i = loopCount; i > 0; i--) {
-                (address account, uint256 share) = _balances.at(i - 1);
+            for (uint256 i = _loopCount; i > 0; i--) {
+                (address _account, uint256 _share) = mBalances.at(i - 1);
                 //Prevents inexhaustible division with minimum precision
-                uint256 transferAmount = (i - 1 == 0 && lastDistribute)
+                uint256 _transferAmount = (i - 1 == 0 && _lastDistribute)
                     ? _pegToken.balanceOf(address(this))
-                    : (share * pendingToDistributePegTokens) / pendingToDistributeShares;
-                _pegToken.safeTransfer(account, transferAmount);
-                _burn(account, share);
+                    : (_share * _pendingToDistributePegTokens) / _pendingToDistributeShares;
+                _pegToken.safeTransfer(_account, _transferAmount);
+                _burn(_account, _share);
             }
 
         }
 
-        if (_balances.length() == 0) {
-            return false;
-        } else {
-            return true;
-        }
+        return mBalances.length() != 0;
     }
 
     /**
      * @dev Returns the name of the token.
      */
     function name() public view virtual override returns (string memory) {
-        return _name;
+        return mName;
     }
 
     /**
@@ -181,7 +177,7 @@ contract VaultBuffer is
      * name.
      */
     function symbol() public view virtual override returns (string memory) {
-        return _symbol;
+        return mSymbol;
     }
 
     /**
@@ -205,14 +201,14 @@ contract VaultBuffer is
      * @dev See {IERC20-totalSupply}.
      */
     function totalSupply() public view virtual override returns (uint256) {
-        return _totalSupply;
+        return mTotalSupply;
     }
 
     /**
      * @dev See {IERC20-balanceOf}.
      */
-    function balanceOf(address account) public view virtual override returns (uint256) {
-        return _balances.get(account);
+    function balanceOf(address _account) public view virtual override returns (uint256) {
+        return mBalances.get(_account);
     }
 
     /**
@@ -223,17 +219,17 @@ contract VaultBuffer is
      * - `to` cannot be the zero address.
      * - the caller must have a balance of at least `amount`.
      */
-    function transfer(address to, uint256 amount) public virtual override returns (bool) {
-        address owner = _msgSender();
-        _transfer(owner, to, amount);
+    function transfer(address _to, uint256 _amount) public virtual override returns (bool) {
+        address _owner = _msgSender();
+        _transfer(_owner, _to, _amount);
         return true;
     }
 
     /**
      * @dev See {IERC20-allowance}.
      */
-    function allowance(address owner, address spender) public view virtual override returns (uint256) {
-        return _allowances[owner][spender];
+    function allowance(address _owner, address _spender) public view virtual override returns (uint256) {
+        return mAllowances[_owner][_spender];
     }
 
     /**
@@ -246,9 +242,9 @@ contract VaultBuffer is
      *
      * - `spender` cannot be the zero address.
      */
-    function approve(address spender, uint256 amount) public virtual override returns (bool) {
-        address owner = _msgSender();
-        _approve(owner, spender, amount);
+    function approve(address _spender, uint256 _amount) public virtual override returns (bool) {
+        address _owner = _msgSender();
+        _approve(_owner, _spender, _amount);
         return true;
     }
 
@@ -269,13 +265,13 @@ contract VaultBuffer is
      * `amount`.
      */
     function transferFrom(
-        address from,
-        address to,
-        uint256 amount
+        address _from,
+        address _to,
+        uint256 _amount
     ) public virtual override returns (bool) {
-        address spender = _msgSender();
-        _spendAllowance(from, spender, amount);
-        _transfer(from, to, amount);
+        address _spender = _msgSender();
+        _spendAllowance(_from, _spender, _amount);
+        _transfer(_from, _to, _amount);
         return true;
     }
 
@@ -291,9 +287,9 @@ contract VaultBuffer is
      *
      * - `spender` cannot be the zero address.
      */
-    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        address owner = _msgSender();
-        _approve(owner, spender, allowance(owner, spender) + addedValue);
+    function increaseAllowance(address _spender, uint256 _addedValue) public virtual returns (bool) {
+        address _owner = _msgSender();
+        _approve(_owner, _spender, allowance(_owner, _spender) + _addedValue);
         return true;
     }
 
@@ -311,12 +307,12 @@ contract VaultBuffer is
      * - `spender` must have allowance for the caller of at least
      * `subtractedValue`.
      */
-    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        address owner = _msgSender();
-        uint256 currentAllowance = allowance(owner, spender);
-        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
+    function decreaseAllowance(address _spender, uint256 _subtractedValue) public virtual returns (bool) {
+        address _owner = _msgSender();
+        uint256 _currentAllowance = allowance(_owner, _spender);
+        require(_currentAllowance >= _subtractedValue, "ERC20: decreased allowance below zero");
         unchecked {
-            _approve(owner, spender, currentAllowance - subtractedValue);
+            _approve(_owner, _spender, _currentAllowance - _subtractedValue);
         }
 
         return true;
@@ -337,30 +333,30 @@ contract VaultBuffer is
      * - `from` must have a balance of at least `amount`.
      */
     function _transfer(
-        address from,
-        address to,
-        uint256 amount
+        address _from,
+        address _to,
+        uint256 _amount
     ) internal virtual {
-        require(from != address(0), "ERC20: transfer from the zero address");
-        require(to != address(0), "ERC20: transfer to the zero address");
+        require(_from != address(0), "ERC20: transfer from the zero address");
+        require(_to != address(0), "ERC20: transfer to the zero address");
 
-        _beforeTokenTransfer(from, to, amount);
+        _beforeTokenTransfer(_from,_to,_amount);
 
-        uint256 fromBalance = _balances.get(from);
-        require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
+        uint256 _fromBalance = mBalances.get(_from);
+        require(_fromBalance >= _amount, "ERC20: transfer amount exceeds balance");
         unchecked {
-            uint256 newBalance = fromBalance - amount;
-            if (newBalance == 0) {
-                _balances.remove(from);
+            uint256 _newBalance = _fromBalance - _amount;
+            if (_newBalance == 0) {
+                mBalances.remove(_from);
             } else {
-                _balances.set(from, newBalance);
+                mBalances.set(_from,_newBalance);
             }
         }
-        _balances.plus(to, amount);
+        mBalances.plus(_to,_amount);
 
-        emit Transfer(from, to, amount);
+        emit Transfer(_from,_to,_amount);
 
-        _afterTokenTransfer(from, to, amount);
+        _afterTokenTransfer(_from,_to,_amount);
     }
 
     /** @dev Creates `amount` tokens and assigns them to `account`, increasing
@@ -372,16 +368,16 @@ contract VaultBuffer is
      *
      * - `account` cannot be the zero address.
      */
-    function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), "ERC20: mint to the zero address");
+    function _mint(address _account, uint256 _amount) internal virtual {
+        require(_account != address(0), "ERC20: mint to the zero address");
 
-        _beforeTokenTransfer(address(0), account, amount);
+        _beforeTokenTransfer(address(0), _account, _amount);
 
-        _totalSupply += amount;
-        _balances.plus(account, amount);
-        emit Transfer(address(0), account, amount);
+        mTotalSupply += _amount;
+        mBalances.plus(_account, _amount);
+        emit Transfer(address(0), _account, _amount);
 
-        _afterTokenTransfer(address(0), account, amount);
+        _afterTokenTransfer(address(0), _account, _amount);
     }
 
     /**
@@ -395,26 +391,26 @@ contract VaultBuffer is
      * - `account` cannot be the zero address.
      * - `account` must have at least `amount` tokens.
      */
-    function _burn(address account, uint256 amount) internal virtual {
-        require(account != address(0), "ERC20: burn from the zero address");
+    function _burn(address _account, uint256 _amount) internal virtual {
+        require(_account != address(0), "ERC20: burn from the zero address");
 
-        _beforeTokenTransfer(account, address(0), amount);
+        _beforeTokenTransfer(_account, address(0), _amount);
 
-        uint256 accountBalance = _balances.get(account);
-        require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
+        uint256 accountBalance = mBalances.get(_account);
+        require(accountBalance >= _amount, "ERC20: burn amount exceeds balance");
         unchecked {
-            uint256 newBalance = accountBalance - amount;
+            uint256 newBalance = accountBalance - _amount;
             if (newBalance == 0) {
-                _balances.remove(account);
+                mBalances.remove(_account);
             } else {
-                _balances.set(account, newBalance);
+                mBalances.set(_account, newBalance);
             }
         }
-        _totalSupply -= amount;
+        mTotalSupply -= _amount;
 
-        emit Transfer(account, address(0), amount);
+        emit Transfer(_account, address(0), _amount);
 
-        _afterTokenTransfer(account, address(0), amount);
+        _afterTokenTransfer(_account, address(0), _amount);
     }
 
     /**
@@ -431,15 +427,15 @@ contract VaultBuffer is
      * - `spender` cannot be the zero address.
      */
     function _approve(
-        address owner,
-        address spender,
-        uint256 amount
+        address _owner,
+        address _spender,
+        uint256 _amount
     ) internal virtual {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
+        require(_owner != address(0), "ERC20: approve from the zero address");
+        require(_spender != address(0), "ERC20: approve to the zero address");
 
-        _allowances[owner][spender] = amount;
-        emit Approval(owner, spender, amount);
+        mAllowances[_owner][_spender] = _amount;
+        emit Approval(_owner,_spender, _amount);
     }
 
     /**
@@ -451,20 +447,20 @@ contract VaultBuffer is
      * Might emit an {Approval} event.
      */
     function _spendAllowance(
-        address owner,
-        address spender,
-        uint256 amount
+        address _owner,
+        address _spender,
+        uint256 _amount
     ) internal virtual {
-        uint256 currentAllowance = allowance(owner, spender);
-        if (currentAllowance != type(uint256).max) {
-            require(currentAllowance >= amount, "ERC20: insufficient allowance");
+        uint256 _currentAllowance = allowance(_owner, _spender);
+        if (_currentAllowance != type(uint256).max) {
+            require(_currentAllowance >= _amount, "ERC20: insufficient allowance");
             unchecked {
-                _approve(owner, spender, currentAllowance - amount);
+                _approve(_owner, _spender, _currentAllowance - _amount);
             }
         }
     }
 
-    /**
+        /**
      * @dev Hook that is called before any transfer of tokens. This includes
      * minting and burning.
      *
@@ -479,9 +475,9 @@ contract VaultBuffer is
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
     function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
+        address _from,
+        address _to,
+        uint256 _amount
     ) internal virtual {}
 
     /**
@@ -499,8 +495,10 @@ contract VaultBuffer is
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
     function _afterTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
+        address _from,
+        address _to,
+        uint256 _amount
     ) internal virtual {}
+
+
 }

@@ -9,31 +9,30 @@ import "../vault/IVault.sol";
 import "../library/BocRoles.sol";
 
 contract PegToken is IPegToken, Initializable, AccessControlMixin {
-    event MintShares(address account,uint256 shareAmount);
-    event BurnShares(address account,uint256 shareAmount);
-    event PauseStateChanged(bool isPaused);
-    event Migrate(address[] accounts);
+    event MintShares(address _account,uint256 _shareAmount);
+    event BurnShares(address _account,uint256 _shareAmount);
+    event PauseStateChanged(bool _isPaused);
+    event Migrate(address[] _accounts);
     /**
      * @dev Emitted when `value` tokens are moved from one account (`from`) to
      * another (`to`).
      *
      * Note that `value` may be zero.
      */
-    event Transfer(address indexed _from, address indexed _to, uint256 _amount, uint256 sharesAmount);
+    event Transfer(address indexed _from, address indexed _to, uint256 _amount, uint256 _sharesAmount);
 
-    string _name;
+    string mName;
 
-    string _symbol;
+    string mSymbol;
 
-    uint8 _decimals;
+    uint8 mDecimals;
 
     bool public isPaused;
 
     address public vaultAddr;
 
-    uint256 public _totalShares;
+    uint256 public mTotalShares;
 
-    bool _migrated;
 
     /**
      * @dev Logic data，decimals：1e27
@@ -65,24 +64,24 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     }
 
     function initialize(
-        string calldata nameArg,
-        string calldata symbolArg,
-        uint8 decimalsArg,
-        address vault,
-        address accessControlProxy
+        string calldata _nameArg,
+        string calldata _symbolArg,
+        uint8 _decimalsArg,
+        address _vault,
+        address _accessControlProxy
     ) external initializer {
-        _name = nameArg;
-        _symbol = symbolArg;
-        _decimals = decimalsArg;
-        vaultAddr = vault;
-        _initAccessControl(accessControlProxy);
+        mName = _nameArg;
+        mSymbol = _symbolArg;
+        mDecimals = _decimalsArg;
+        vaultAddr = _vault;
+        _initAccessControl(_accessControlProxy);
     }
 
     /**
      * @return the name of the token.
      */
     function name() public view returns (string memory) {
-        return _name;
+        return mName;
     }
 
     /**
@@ -90,21 +89,21 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
      * name.
      */
     function symbol() public view returns (string memory) {
-        return _symbol;
+        return mSymbol;
     }
 
     /**
      * @return the number of decimals for getting user representation of a token amount.
      */
     function decimals() public view returns (uint8) {
-        return _decimals;
+        return mDecimals;
     }
 
     /**
      * @dev Returns the amount of tokens in existence.
      */
     function totalSupply() public view override returns (uint256) {
-        return (_totalShares * IVault(vaultAddr).underlyingUnitsPerShare()) / 1e27;
+        return (mTotalShares * IVault(vaultAddr).underlyingUnitsPerShare()) / 1e27;
     }
 
     /**
@@ -115,7 +114,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     }
 
     function totalShares() external view override returns (uint256) {
-        return _totalShares;
+        return mTotalShares;
     }
 
     /**
@@ -248,12 +247,12 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         public
         returns (bool)
     {
-        uint256 currentAllowance = allowances[msg.sender][_spender];
+        uint256 _currentAllowance = allowances[msg.sender][_spender];
         require(
-            currentAllowance >= _subtractedValue,
+            _currentAllowance >= _subtractedValue,
             "DECREASED_ALLOWANCE_BELOW_ZERO"
         );
-        _approve(msg.sender, _spender, currentAllowance - _subtractedValue);
+        _approve(msg.sender, _spender, _currentAllowance - _subtractedValue);
         return true;
     }
 
@@ -376,7 +375,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     {
         require(_recipient != address(0), "MINT_TO_THE_ZERO_ADDRESS");
 
-        _totalShares = _totalShares + _sharesAmount;
+        mTotalShares = mTotalShares + _sharesAmount;
         shares[_recipient] = shares[_recipient] + _sharesAmount;
 
         emit MintShares(_recipient,_sharesAmount);
@@ -400,26 +399,13 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     {
         require(_account != address(0), "BURN_FROM_THE_ZERO_ADDRESS");
 
-        uint256 accountShares = shares[_account];
-        require(_sharesAmount <= accountShares, "BURN_AMOUNT_EXCEEDS_BALANCE");
+        uint256 _accountShares = shares[_account];
+        require(_sharesAmount <= _accountShares, "BURN_AMOUNT_EXCEEDS_BALANCE");
 
-        _totalShares = _totalShares - _sharesAmount;
-        shares[_account] = accountShares - _sharesAmount;
+        mTotalShares = mTotalShares - _sharesAmount;
+        shares[_account] = _accountShares - _sharesAmount;
 
         emit BurnShares(_account,_sharesAmount);
     }
 
-    function migrate(address[] calldata _accounts,uint256[] calldata _shares) external onlyGovOrDelegate {
-        assert(!_migrated);
-        assert(_accounts.length == _shares.length);
-        _migrated = true;
-        for (uint i = 0;i < _accounts.length;i++){
-            address _recipient = _accounts[i];
-            uint256 _sharesAmount = _shares[i];
-            _totalShares = _totalShares + _sharesAmount;
-            shares[_recipient] = shares[_recipient] + _sharesAmount;
-        }
-        emit Migrate(_accounts);
-    }
-    
 }

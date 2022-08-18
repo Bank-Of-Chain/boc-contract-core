@@ -165,8 +165,7 @@ contract Vault is VaultStorage {
 
         for (uint256 i = 0; i < _assets.length; i++) {
             // Transfer the deposited coins to the vault
-            IERC20Upgradeable asset = IERC20Upgradeable(_assets[i]);
-            asset.safeTransferFrom(msg.sender, vaultBufferAddress, _amounts[i]);
+            IERC20Upgradeable(_assets[i]).safeTransferFrom(msg.sender, vaultBufferAddress, _amounts[i]);
         }
         IVaultBuffer(vaultBufferAddress).mint(msg.sender, _shareAmount);
 
@@ -265,21 +264,21 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Allocate funds in Vault to strategies.
-    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens)
+    function lend(address _strategyAddr, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens)
         external
         isKeeper
         whenNotEmergency
-        isActiveStrategy(_strategy)
+        isActiveStrategy(_strategyAddr)
         nonReentrant
     {
         (
             address[] memory _wants,
             uint256[] memory _ratios,
             uint256[] memory _toAmounts
-        ) = _checkAndExchange(_strategy, _exchangeTokens);
+        ) = _checkAndExchange(_strategyAddr, _exchangeTokens);
         //Definition rule 0 means unconstrained, currencies that do not participate are not in the returned wants
         uint256 _minProductIndex = 0;
-        bool _isWantRatioIgnorable = IStrategy(_strategy).isWantRatioIgnorable();
+        bool _isWantRatioIgnorable = IStrategy(_strategyAddr).isWantRatioIgnorable();
         if (!_isWantRatioIgnorable && _ratios.length > 1) {
             for (uint256 i = 1; i < _ratios.length; i++) {
                 // console.log('token %s amount %d aspect %d', _wants[i], toAmounts[i], _ratios[i]);
@@ -305,8 +304,6 @@ contract Vault is VaultStorage {
             uint256 _actualAmount = _toAmounts[i];
             if (_actualAmount > 0) {
                 address _want = _wants[i];
-                // console.log('token %s amount %d', _wants[i], toAmounts[i]);
-                // console.log(' minProductIndex %d minMount %d minAspect %d', minProductIndex, minMount, minAspect);
 
                 if (!_isWantRatioIgnorable && _ratios[i] > 0) {
                     _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
@@ -318,25 +315,24 @@ contract Vault is VaultStorage {
                         _want,
                         _actualAmount
                     );
-                // console.log('token %s actual amount %d', _wants[i], actualAmount);
-                IERC20Upgradeable(_want).safeTransfer(_strategy, _actualAmount);
+                IERC20Upgradeable(_want).safeTransfer(_strategyAddr, _actualAmount);
             }
         }
-        IStrategy strategy = IStrategy(_strategy);
-        strategy.borrow(_wants, _toAmounts);
+        IStrategy _strategy = IStrategy(_strategyAddr);
+        _strategy.borrow(_wants, _toAmounts);
         address[] memory _rewardTokens;
         uint256[] memory _claimAmounts;
-        _report(_strategy, _rewardTokens, _claimAmounts, _lendValue);
-        emit LendToStrategy(_strategy, _wants, _toAmounts, _lendValue);
+        _report(_strategyAddr, _rewardTokens, _claimAmounts, _lendValue);
+        emit LendToStrategy(_strategyAddr, _wants, _toAmounts, _lendValue);
     }
 
     function exchange(
         address _fromToken,
         address _toToken,
         uint256 _amount,
-        IExchangeAggregator.ExchangeParam memory exchangeParam
+        IExchangeAggregator.ExchangeParam memory _exchangeParam
     ) external isKeeper nonReentrant returns (uint256) {
-        return _exchange(_fromToken, _toToken, _amount, exchangeParam);
+        return _exchange(_fromToken, _toToken, _amount, _exchangeParam);
     }
 
     /// @notice Change USDi supply with Vault total assets.
@@ -442,16 +438,11 @@ contract Vault is VaultStorage {
                 );
         }
 
-        console.log("(_transferValue,_redeemValue,_vaultValueOfNow,_vaultValueOfBefore)=");
-        console.log(_transferValue, _redeemValue, _vaultValueOfNow, _vaultValueOfBefore);
-
         uint256 _totalDebtOfBefore = totalDebtOfBeforeAdjustPosition;
         uint256 _totalDebtOfNow = totalDebt;
 
         uint256 _totalValueOfNow = _totalDebtOfNow + _vaultValueOfNow;
         uint256 _totalValueOfBefore = _totalDebtOfBefore + _vaultValueOfBefore;
-        console.log("(_totalDebtOfNow,_totalDebtOfBefore,_totalValueOfNow,_totalValueOfBefore)=");
-        console.log(_totalDebtOfNow, _totalDebtOfBefore, _totalValueOfNow, _totalValueOfBefore);
 
         {
             uint256 _transferAssets = 0;
@@ -461,7 +452,6 @@ contract Vault is VaultStorage {
             }
             if (_vaultValueOfBefore <= _transferValue) {
                 _redeemValue = 0;
-                console.log("_redeemValue=", _redeemValue);
             }
             if (_totalValueOfNow > _totalValueOfBefore) {
                 uint256 _gain = _totalValueOfNow - _totalValueOfBefore;
@@ -480,7 +470,6 @@ contract Vault is VaultStorage {
                         (_transferValue + _redeemValue + _old2LendAssets);
                 }
             }
-            console.log("_transferAssets:", _transferAssets);
             uint256 _totalShares = IPegToken(pegTokenAddress).totalShares();
             if (!rebasePaused) {
                 _totalShares = _rebase(_totalValueOfNow - _transferAssets, _totalShares);
@@ -491,7 +480,6 @@ contract Vault is VaultStorage {
                     _totalValueOfNow - _transferAssets,
                     _totalShares
                 );
-                console.log("_sharesAmount:", _sharesAmount);
                 if (_sharesAmount > 0) {
                     IPegToken(pegTokenAddress).mintShares(vaultBufferAddress, _sharesAmount);
                 }
@@ -742,8 +730,6 @@ contract Vault is VaultStorage {
         uint256 _totalAssets,
         uint256 _totalShares
     ) internal view returns (uint256) {
-        console.log("_amount, _totalAssets, _totalShares");
-        console.log(_amount, _totalAssets, _totalShares);
         uint256 _shareAmount = 0;
         if (_totalAssets > 0 && _totalShares > 0) {
             _shareAmount = (_amount * _totalShares) / _totalAssets;
@@ -848,7 +834,6 @@ contract Vault is VaultStorage {
                                 withdrawAmount,
                                 exchangeToken.exchangeParam
                             );
-                            // console.log('withdraw exchange token %s amount %d toAmount %d', withdrawAmount, withdrawAmount, toAmount);
                             _toTokenAmount = _toTokenAmount + toAmount;
                             break;
                         }
@@ -918,8 +903,6 @@ contract Vault is VaultStorage {
         uint256 _totalAssetInVault = _totalValueInVault(_trackedAssets, _assetPrices, _assetDecimals);
         uint256 _actualAmount = _amount;
         uint256 _currentTotalAssets = _totalAssetInVault + totalDebt;
-        console.log("_actualAmount,_totalAssetInVault,_currentTotalAssets");
-        console.log(_actualAmount, _totalAssetInVault, _currentTotalAssets);
         uint256 _currentTotalShares = IPegToken(pegTokenAddress).totalShares();
         {
             uint256 _underlyingUnitsPerShare = underlyingUnitsPerShare;
@@ -932,16 +915,11 @@ contract Vault is VaultStorage {
             if (redeemFeeBps > 0) {
                 _actualAmount = _actualAmount - (_actualAmount * redeemFeeBps) / MAX_BPS;
             }
-            console.log("(_accountBalance, _amount, _actualAmount, _sharesAmount) = ");
-            console.log(_accountBalance, _amount, _actualAmount, _sharesAmount);
             uint256 _currentTotalSupply = _currentTotalShares.mulTruncateScale(
                 _underlyingUnitsPerShare,
                 1e27
             );
             _actualAsset = (_actualAmount * _currentTotalAssets) / _currentTotalSupply;
-
-            console.log("_currentTotalAssets,_currentTotalSupply,_actualAsset");
-            console.log(_currentTotalAssets, _currentTotalSupply, _actualAsset);
         }
 
         // vault not enough,withdraw from vault buffer
@@ -1042,15 +1020,12 @@ contract Vault is VaultStorage {
     }
 
     function _rebase(uint256 _totalAssets, uint256 _totalShares) internal returns (uint256) {
-        console.log("(_totalShares,_totalValue):", _totalShares, _totalAssets);
         if (_totalShares == 0) {
             return _totalShares;
         }
 
         uint256 _underlyingUnitsPerShare = underlyingUnitsPerShare;
         uint256 _totalSupply = _totalShares.mulTruncateScale(_underlyingUnitsPerShare, 1e27);
-        console.log("(_underlyingUnitsPerShare,_totalSupply,_totalAssets) = ");
-        console.log(_underlyingUnitsPerShare, _totalSupply, _totalAssets);
 
         // Final check should use latest value
         if (
@@ -1074,10 +1049,7 @@ contract Vault is VaultStorage {
                     }
                 }
             }
-            console.log("(_totalShares,_totalValue)=", _totalShares, _totalAssets);
             uint256 _newUnderlyingUnitsPerShare = _totalAssets.divPreciselyScale(_totalShares, 1e27);
-            console.log("(_newUnderlyingUnitsPerShare,_underlyingUnitsPerShare)=");
-            console.log(_newUnderlyingUnitsPerShare, _underlyingUnitsPerShare);
             if (_newUnderlyingUnitsPerShare != _underlyingUnitsPerShare) {
                 underlyingUnitsPerShare = _newUnderlyingUnitsPerShare;
                 emit Rebase(_totalShares, _totalAssets, _newUnderlyingUnitsPerShare);

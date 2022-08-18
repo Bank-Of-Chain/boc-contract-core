@@ -2,23 +2,19 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/access/Ownable.sol';
-import './IAggregatedDerivativePriceFeed.sol';
-import './../../access-control/AccessControlMixin.sol';
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./IAggregatedDerivativePriceFeed.sol";
+import "./../../access-control/AccessControlMixin.sol";
 
 /// @title AggregatedDerivativePriceFeed Contract
 /// @notice Aggregates multiple derivative price feeds (e.g., Compound, Chai) and dispatches
 /// rate requests to the appropriate feed
 contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, AccessControlMixin {
-    event DerivativeAdded(address indexed derivative, address priceFeed);
+    event DerivativeAdded(address indexed _derivative, address _priceFeed);
 
-    event DerivativeRemoved(address indexed derivative);
+    event DerivativeRemoved(address indexed _derivative);
 
-    event DerivativeUpdated(
-        address indexed derivative,
-        address prevPriceFeed,
-        address nextPriceFeed
-    );
+    event DerivativeUpdated(address indexed _derivative, address _prevPriceFeed, address _nextPriceFeed);
 
     mapping(address => address) private derivativeToPriceFeed;
 
@@ -36,32 +32,29 @@ contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, Access
 
     /// @notice Gets the rates for 1 unit of the derivative to its underlying assets
     /// @param _derivative The derivative for which to get the rates
-    /// @return underlyings_ The underlying assets for the _derivative
-    /// @return underlyingAmounts_ The rates for the _derivative to the underlyings_
+    /// @return _underlyings The underlying assets for the _derivative
+    /// @return _underlyingAmounts The rates for the _derivative to the underlyings_
     function calcUnderlyingValues(address _derivative, uint256 _derivativeAmount)
-    external
-    view
-    override
-    returns (address[] memory underlyings_, uint256[] memory underlyingAmounts_)
+        external
+        view
+        override
+        returns (address[] memory _underlyings, uint256[] memory _underlyingAmounts)
     {
-        address derivativePriceFeed = derivativeToPriceFeed[_derivative];
-        require(
-            derivativePriceFeed != address(0),
-            'calcUnderlyingValues: _derivative is not supported'
-        );
+        address _derivativePriceFeed = derivativeToPriceFeed[_derivative];
+        require(_derivativePriceFeed != address(0), "calcUnderlyingValues: _derivative is not supported");
 
         return
-        IDerivativePriceFeed(derivativePriceFeed).calcUnderlyingValues(
-            _derivative,
-            _derivativeAmount
-        );
+            IDerivativePriceFeed(_derivativePriceFeed).calcUnderlyingValues(
+                _derivative,
+                _derivativeAmount
+            );
     }
 
     /// @notice Checks whether an asset is a supported derivative
     /// @param _asset The asset to check
     /// @return isSupported_ True if the asset is a supported derivative
     /// @dev This should be as low-cost and simple as possible
-    function isSupportedAsset(address _asset) external view override returns (bool isSupported_) {
+    function isSupportedAsset(address _asset) external view override returns (bool) {
         return derivativeToPriceFeed[_asset] != address(0);
     }
 
@@ -73,10 +66,10 @@ contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, Access
     /// @param _derivatives The derivatives to add
     /// @param _priceFeeds The ordered price feeds corresponding to the list of _derivatives
     function addDerivatives(address[] calldata _derivatives, address[] calldata _priceFeeds)
-    external
-    onlyGovOrDelegate
+        external
+        onlyGovOrDelegate
     {
-        require(_derivatives.length > 0, 'addDerivatives: _derivatives cannot be empty');
+        require(_derivatives.length > 0, "addDerivatives: _derivatives cannot be empty");
 
         __addDerivatives(_derivatives, _priceFeeds);
     }
@@ -84,12 +77,12 @@ contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, Access
     /// @notice Removes a list of derivatives
     /// @param _derivatives The derivatives to remove
     function removeDerivatives(address[] calldata _derivatives) external onlyGovOrDelegate {
-        require(_derivatives.length > 0, 'removeDerivatives: _derivatives cannot be empty');
+        require(_derivatives.length > 0, "removeDerivatives: _derivatives cannot be empty");
 
         for (uint256 i = 0; i < _derivatives.length; i++) {
             require(
                 derivativeToPriceFeed[_derivatives[i]] != address(0),
-                'removeDerivatives: Derivative not yet added'
+                "removeDerivatives: Derivative not yet added"
             );
 
             delete derivativeToPriceFeed[_derivatives[i]];
@@ -102,42 +95,40 @@ contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, Access
     /// @param _derivatives The derivatives to update
     /// @param _priceFeeds The ordered price feeds corresponding to the list of _derivatives
     function updateDerivatives(address[] calldata _derivatives, address[] calldata _priceFeeds)
-    external
-    onlyGovOrDelegate
+        external
+        onlyGovOrDelegate
     {
-        require(_derivatives.length > 0, 'updateDerivatives: _derivatives cannot be empty');
+        require(_derivatives.length > 0, "updateDerivatives: _derivatives cannot be empty");
         require(
             _derivatives.length == _priceFeeds.length,
-            'updateDerivatives: Unequal _derivatives and _priceFeeds array lengths'
+            "updateDerivatives: Unequal _derivatives and _priceFeeds array lengths"
         );
 
         for (uint256 i = 0; i < _derivatives.length; i++) {
-            address prevPriceFeed = derivativeToPriceFeed[_derivatives[i]];
+            address _prevPriceFeed = derivativeToPriceFeed[_derivatives[i]];
 
-            require(prevPriceFeed != address(0), 'updateDerivatives: Derivative not yet added');
-            require(_priceFeeds[i] != prevPriceFeed, 'updateDerivatives: Value already set');
+            require(_prevPriceFeed != address(0), "updateDerivatives: Derivative not yet added");
+            require(_priceFeeds[i] != _prevPriceFeed, "updateDerivatives: Value already set");
 
             __validateDerivativePriceFeed(_derivatives[i], _priceFeeds[i]);
 
             derivativeToPriceFeed[_derivatives[i]] = _priceFeeds[i];
 
-            emit DerivativeUpdated(_derivatives[i], prevPriceFeed, _priceFeeds[i]);
+            emit DerivativeUpdated(_derivatives[i], _prevPriceFeed, _priceFeeds[i]);
         }
     }
 
     /// @dev Helper to add derivative-feed pairs
-    function __addDerivatives(address[] memory _derivatives, address[] memory _priceFeeds)
-    private
-    {
+    function __addDerivatives(address[] memory _derivatives, address[] memory _priceFeeds) private {
         require(
             _derivatives.length == _priceFeeds.length,
-            '__addDerivatives: Unequal _derivatives and _priceFeeds array lengths'
+            "__addDerivatives: Unequal _derivatives and _priceFeeds array lengths"
         );
 
         for (uint256 i = 0; i < _derivatives.length; i++) {
             require(
                 derivativeToPriceFeed[_derivatives[i]] == address(0),
-                '__addDerivatives: Already added'
+                "__addDerivatives: Already added"
             );
 
             __validateDerivativePriceFeed(_derivatives[i], _priceFeeds[i]);
@@ -150,11 +141,11 @@ contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, Access
 
     /// @dev Helper to validate a derivative price feed
     function __validateDerivativePriceFeed(address _derivative, address _priceFeed) private view {
-        require(_derivative != address(0), '__validateDerivativePriceFeed: Empty _derivative');
-        require(_priceFeed != address(0), '__validateDerivativePriceFeed: Empty _priceFeed');
+        require(_derivative != address(0), "__validateDerivativePriceFeed: Empty _derivative");
+        require(_priceFeed != address(0), "__validateDerivativePriceFeed: Empty _priceFeed");
         require(
             IDerivativePriceFeed(_priceFeed).isSupportedAsset(_derivative),
-            '__validateDerivativePriceFeed: Unsupported derivative'
+            "__validateDerivativePriceFeed: Unsupported derivative"
         );
     }
 
@@ -164,12 +155,7 @@ contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, Access
 
     /// @notice Gets the registered price feed for a given derivative
     /// @return priceFeed_ The price feed contract address
-    function getPriceFeedForDerivative(address _derivative)
-    external
-    view
-    override
-    returns (address priceFeed_)
-    {
+    function getPriceFeedForDerivative(address _derivative) external view override returns (address) {
         return derivativeToPriceFeed[_derivative];
     }
 }

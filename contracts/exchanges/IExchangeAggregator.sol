@@ -21,14 +21,11 @@ interface IExchangeAggregator {
     }
 
     function swap(
-        address platform,
+        address _platform,
         uint8 _method,
         bytes calldata _data,
         IExchangeAdapter.SwapDescription calldata _sd
     ) external payable returns (uint256);
 
-    function getExchangeAdapters()
-        external
-        view
-        returns (address[] memory exchangeAdapters_);
+    function getExchangeAdapters() external view returns (address[] memory _exchangeAdapters);
 }

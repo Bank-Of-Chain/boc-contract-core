@@ -61,11 +61,11 @@ interface IVault {
     event SetWithdrawalQueue(address[] queues);
     event Rebase(uint256 _totalShares, uint256 _totalValue, uint256 _newUnderlyingUnitsPerShare);
     event StrategyReported(
-        address indexed strategy,
-        uint256 gain,
-        uint256 loss,
-        uint256 lastStrategyTotalDebt,
-        uint256 nowStrategyTotalDebt,
+        address indexed _strategy,
+        uint256 _gain,
+        uint256 _loss,
+        uint256 _lastStrategyTotalDebt,
+        uint256 _nowStrategyTotalDebt,
         address[] _rewardTokens,
         uint256[] _claimAmounts,
         uint256 _type
@@ -89,12 +89,12 @@ interface IVault {
     function getVersion() external pure returns (string memory);
 
     /// @notice Minting USDi supported assets
-    function getSupportAssets() external view returns (address[] memory assets);
+    function getSupportAssets() external view returns (address[] memory _assets);
 
-    function checkIsSupportAsset(address asset) external view;
+    function checkIsSupportAsset(address _asset) external view;
 
     /// @notice Assets held by Vault
-    function getTrackedAssets() external view returns (address[] memory assets);
+    function getTrackedAssets() external view returns (address[] memory _assets);
 
     /// @notice Vault holds asset value directly in USD
     function valueOfTrackedTokens() external view returns (uint256 _totalValue);
@@ -134,28 +134,28 @@ interface IVault {
     /// @notice All strategies
     function getStrategies() external view returns (address[] memory _strategies);
 
-    function checkActiveStrategy(address strategy) external view;
+    function checkActiveStrategy(address _strategy) external view;
 
     /// @notice estimate Minting share with stablecoins
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
     /// @dev Support single asset or multi-assets
-    /// @return shareAmount
+    /// @return _shareAmount
     function estimateMint(address[] memory _assets, uint256[] memory _amounts)
         external
         view
-        returns (uint256 shareAmount);
+        returns (uint256 _shareAmount);
 
     /// @notice Minting share with stablecoins
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
     /// @dev Support single asset or multi-assets
-    /// @return shareAmount
+    /// @return _shareAmount
     function mint(
         address[] memory _assets,
         uint256[] memory _amounts,
         uint256 _minimumAmount
-    ) external returns (uint256 shareAmount);
+    ) external returns (uint256 _shareAmount);
 
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
@@ -183,13 +183,13 @@ interface IVault {
         address _fromToken,
         address _toToken,
         uint256 _amount,
-        IExchangeAggregator.ExchangeParam memory exchangeParam
+        IExchangeAggregator.ExchangeParam memory _exchangeParam
     ) external returns (uint256);
 
     function report(address[] memory _rewardTokens, uint256[] memory _claimAmounts) external;
 
     /// @notice Shutdown the vault when an emergency occurs, cannot mint/burn.
-    function setEmergencyShutdown(bool active) external;
+    function setEmergencyShutdown(bool _active) external;
 
     /// @notice set adjustPositionPeriod true when adjust position occurs, cannot remove add asset/strategy and cannot mint/burn.
     function setAdjustPositionPeriod(bool _adjustPositionPeriod) external;
@@ -230,7 +230,7 @@ interface IVault {
     function setTrusteeFeeBps(uint256 _basis) external;
 
     //advance queue
-    function setWithdrawalQueue(address[] memory queues) external;
+    function setWithdrawalQueue(address[] memory _queues) external;
 
     function setStrategyEnforceChangeLimit(address _strategy, bool _enabled) external;
 
@@ -260,7 +260,7 @@ interface IVault {
     /// @dev The strategy added to the strategy list,
     ///      Vault may invest funds into the strategy,
     ///      and the strategy will invest the funds in the 3rd protocol
-    function addStrategy(StrategyAdd[] memory strategyAdds) external;
+    function addStrategy(StrategyAdd[] memory _strategyAdds) external;
 
     /// @notice Remove strategy from strategy list
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
@@ -337,5 +337,5 @@ interface IVault {
 
     function pegTokenAddress() external view returns (address);
 
-    function setAdminImpl(address newImpl) external;
+    function setAdminImpl(address _newImpl) external;
 }

@@ -6,7 +6,7 @@ pragma solidity ^0.8.0;
  * @notice The VaultAdmin contract makes configuration and admin calls on the vault.
  * @author Bank OF CHAIN Protocol Inc
  */
-
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "./VaultStorage.sol";
 import "../util/Helpers.sol";
 
@@ -16,9 +16,9 @@ contract VaultAdmin is VaultStorage {
     using IterableIntMap for IterableIntMap.AddressToIntMap;
 
     /// @notice Shutdown the vault when an emergency occurs, cannot mint/burn.
-    function setEmergencyShutdown(bool active) external isVaultManager {
-        emergencyShutdown = active;
-        emit SetEmergencyShutdown(active);
+    function setEmergencyShutdown(bool _active) external isVaultManager {
+        emergencyShutdown = _active;
+        emit SetEmergencyShutdown(_active);
     }
 
     /// @notice set adjustPositionPeriod true when adjust position occurs, cannot remove add asset/strategy and cannot mint/burn.
@@ -188,20 +188,20 @@ contract VaultAdmin is VaultStorage {
     /// @dev The strategy added to the strategy list,
     ///      Vault may invest funds into the strategy,
     ///      and the strategy will invest the funds in the 3rd protocol
-    function addStrategy(StrategyAdd[] memory strategyAdds) external isVaultManager {
-        address[] memory _strategies = new address[](strategyAdds.length);
-        for (uint256 i = 0; i < strategyAdds.length; i++) {
-            StrategyAdd memory strategyAdd = strategyAdds[i];
-            address _strategy = strategyAdd.strategy;
+    function addStrategy(StrategyAdd[] memory _strategyAdds) external isVaultManager {
+        address[] memory _strategies = new address[](_strategyAdds.length);
+        for (uint256 i = 0; i < _strategyAdds.length; i++) {
+            StrategyAdd memory strategyAdd = _strategyAdds[i];
+            address _strategyAddr = strategyAdd.strategy;
             require(
-                (_strategy != ZERO_ADDRESS) &&
-                    (!strategySet.contains(_strategy)) &&
-                    (IStrategy(_strategy).vault() == address(this)),
+                (_strategyAddr != ZERO_ADDRESS) &&
+                    (!strategySet.contains(_strategyAddr)) &&
+                    (IStrategy(_strategyAddr).vault() == address(this)),
                 "Strategy is invalid"
             );
-            _strategies[i] = _strategy;
-            _addStrategy(_strategy, strategyAdd.profitLimitRatio, strategyAdd.lossLimitRatio);
-            address[] memory _wants = IStrategy(_strategy).getWants();
+            _strategies[i] = _strategyAddr;
+            _addStrategy(_strategyAddr, strategyAdd.profitLimitRatio, strategyAdd.lossLimitRatio);
+            address[] memory _wants = IStrategy(_strategyAddr).getWants();
             for (uint256 j = 0; j < _wants.length; j++) {
                 trackedAssetsMap.plus(_wants[j], 1);
                 if (trackedAssetDecimalsMap[_wants[j]] == 0) {
@@ -217,19 +217,19 @@ contract VaultAdmin is VaultStorage {
      * add strategy
      **/
     function _addStrategy(
-        address strategy,
+        address _strategy,
         uint256 _profitLimitRatio,
         uint256 _lossLimitRatio
     ) internal {
         //Add strategy to approved strategies
-        strategies[strategy] = StrategyParams({
+        strategies[_strategy] = StrategyParams({
             lastReport: block.timestamp,
             totalDebt: 0,
             profitLimitRatio: _profitLimitRatio,
             lossLimitRatio: _lossLimitRatio,
             enforceChangeLimit: true
         });
-        strategySet.add(strategy);
+        strategySet.add(_strategy);
     }
 
     /// @notice Remove strategy from strategy list
@@ -263,13 +263,13 @@ contract VaultAdmin is VaultStorage {
 
         address[] memory _wants = IStrategy(_addr).getWants();
         for (uint256 i = 0; i < _wants.length; i++) {
-            address wantToken = _wants[i];
-            trackedAssetsMap.minus(wantToken, 1);
+            address _wantToken = _wants[i];
+            trackedAssetsMap.minus(_wantToken, 1);
             if (
-                trackedAssetsMap.get(wantToken) <= 0 &&
-                IERC20Upgradeable(wantToken).balanceOf(address(this)) == 0
+                trackedAssetsMap.get(_wantToken) <= 0 &&
+                IERC20Upgradeable(_wantToken).balanceOf(address(this)) == 0
             ) {
-                trackedAssetsMap.remove(wantToken);
+                trackedAssetsMap.remove(_wantToken);
             }
         }
         if(strategies[_addr].totalDebt > 0){
@@ -288,9 +288,9 @@ contract VaultAdmin is VaultStorage {
     }
 
     //advance queue
-    function setWithdrawalQueue(address[] memory queues) external isKeeper {
-        for (uint256 i = 0; i < queues.length; i++) {
-            address strategy = queues[i];
+    function setWithdrawalQueue(address[] memory _queues) external isKeeper {
+        for (uint256 i = 0; i < _queues.length; i++) {
+            address strategy = _queues[i];
             require(strategySet.contains(strategy), "strategy not exist");
             if (i < withdrawQueue.length) {
                 withdrawQueue[i] = strategy;
@@ -298,11 +298,11 @@ contract VaultAdmin is VaultStorage {
                 withdrawQueue.push(strategy);
             }
         }
-        for (uint256 i = queues.length; i < withdrawQueue.length; i++) {
+        for (uint256 i = _queues.length; i < withdrawQueue.length; i++) {
             if (withdrawQueue[i] == ZERO_ADDRESS) break;
             withdrawQueue[i] = ZERO_ADDRESS;
         }
-        emit SetWithdrawalQueue(queues);
+        emit SetWithdrawalQueue(_queues);
     }
 
     function removeStrategyFromQueue(address[] memory _strategies) external isKeeper {
@@ -314,9 +314,9 @@ contract VaultAdmin is VaultStorage {
 
     function _removeStrategyFromQueue(address _strategy) internal {
         for (uint256 i = 0; i < withdrawQueue.length; i++) {
-            address curStrategy = withdrawQueue[i];
-            if (curStrategy == ZERO_ADDRESS) break;
-            if (curStrategy == _strategy) {
+            address _curStrategy = withdrawQueue[i];
+            if (_curStrategy == ZERO_ADDRESS) break;
+            if (_curStrategy == _strategy) {
                 withdrawQueue[i] = ZERO_ADDRESS;
                 _organizeWithdrawalQueue();
                 //                emit RemoveStrategyFromQueue(_strategy);
@@ -326,13 +326,13 @@ contract VaultAdmin is VaultStorage {
     }
 
     function _organizeWithdrawalQueue() internal {
-        uint256 offset = 0;
+        uint256 _offset = 0;
         for (uint256 i = 0; i < withdrawQueue.length; i++) {
             address strategy = withdrawQueue[i];
             if (strategy == ZERO_ADDRESS) {
-                offset += 1;
-            } else if (offset > 0) {
-                withdrawQueue[i - offset] = strategy;
+                _offset += 1;
+            } else if (_offset > 0) {
+                withdrawQueue[i - _offset] = strategy;
                 withdrawQueue[i] = ZERO_ADDRESS;
             }
         }

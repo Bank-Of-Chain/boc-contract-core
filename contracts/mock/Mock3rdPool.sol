@@ -10,8 +10,7 @@ interface Mock3rdPool is IERC20Upgradeable, IERC20MetadataUpgradeable {
 
     function rewardsToken() external view returns (address);
 
-    function deposit(address[] memory _assets, uint256[] memory _amounts)
-        external;
+    function deposit(address[] memory _assets, uint256[] memory _amounts) external;
 
     function withdraw(uint256 _shares)
         external
@@ -22,10 +21,7 @@ interface Mock3rdPool is IERC20Upgradeable, IERC20MetadataUpgradeable {
     function getPendingRewards()
         external
         view
-        returns (
-            address[] memory _rewardsTokens,
-            uint256[] memory _pendingAmounts
-        );
+        returns (address[] memory _rewardsTokens, uint256[] memory _pendingAmounts);
 
     function claim() external returns (uint256[] memory _claimAmounts);
 }

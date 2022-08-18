@@ -20,16 +20,12 @@ contract MockS3CoinStrategy is BaseStrategy {
         _wants[1] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
         // DAI
         _wants[2] = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-        super._initialize(_vault, _harvester,'MockS3CoinStrategy', 23, _wants);
+        super._initialize(_vault, _harvester, "MockS3CoinStrategy", 23, _wants);
     }
 
     function getVersion() external pure virtual override returns (string memory) {
         return "0.0.1";
     }
-
-    // function name() external pure virtual override returns (string memory) {
-    //     return "MockS3CoinStrategy";
-    // }
 
     function getWantsInfo()
         external
@@ -46,14 +42,14 @@ contract MockS3CoinStrategy is BaseStrategy {
         _ratios[2] = 10**IERC20MetadataUpgradeable(wants[2]).decimals() * 4;
     }
 
-    function getOutputsInfo() external view virtual override returns (OutputInfo[] memory outputsInfo) {
-        outputsInfo = new OutputInfo[](1);
-        OutputInfo memory info = outputsInfo[0];
-        info.outputCode = 0;
-        info.outputTokens = new address[](3);
-        info.outputTokens[0] = wants[0];
-        info.outputTokens[1] = wants[1];
-        info.outputTokens[2] = wants[2];
+    function getOutputsInfo() external view virtual override returns (OutputInfo[] memory _outputsInfo) {
+        _outputsInfo = new OutputInfo[](1);
+        OutputInfo memory _info = _outputsInfo[0];
+        _info.outputCode = 0;
+        _info.outputTokens = new address[](3);
+        _info.outputTokens[0] = wants[0];
+        _info.outputTokens[1] = wants[1];
+        _info.outputTokens[2] = wants[2];
     }
 
     /// @notice Returns the position details of the strategy.
@@ -117,15 +113,5 @@ contract MockS3CoinStrategy is BaseStrategy {
         uint256 _withdrawShares,
         uint256 _totalShares,
         uint256 _outputCode
-    ) internal virtual override {
-        // _assets = new address[](wants.length);
-        // _amounts = new uint256[](_assets.length);
-        // for (uint256 i = 0; i < _assets.length; i++) {
-        //     _assets[i] = wants[i];
-        //     _amounts[i] =
-        //         (IERC20Upgradeable(_assets[i]).balanceOf(address(this)) *
-        //             _withdrawShares) /
-        //         _totalShares;
-        // }
-    }
+    ) internal virtual override {}
 }
