@@ -130,8 +130,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     bool public rebasePaused;
     // over this difference ratio automatically rebase. rebaseThreshold is the numerator and the denominator is 10000000 x/10000000.
     uint256 public rebaseThreshold;
-    // Deprecated
-    uint256 public maxSupplyDiff;
     // Amount of yield collected in basis points
     uint256 public trusteeFeeBps;
     // Redemption fee in basis points

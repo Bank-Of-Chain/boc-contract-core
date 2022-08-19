@@ -34,7 +34,6 @@ const AggregatedDerivativePriceFeed = hre.artifacts.require('AggregatedDerivativ
 const ValueInterpreter = hre.artifacts.require("ValueInterpreter");
 const TestAdapter = hre.artifacts.require("TestAdapter");
 const ExchangeAggregator = hre.artifacts.require("ExchangeAggregator");
-const USDi = hre.artifacts.require("USDi");
 const Vault = hre.artifacts.require('Vault');
 const VaultBuffer = hre.artifacts.require('VaultBuffer');
 const IVault = hre.artifacts.require('IVault');
@@ -170,13 +169,13 @@ describe("Vault", function () {
         exchangeAggregator = await ExchangeAggregator.new([testAdapter.address], accessControlProxy.address);
         const adapters = await exchangeAggregator.getExchangeAdapters();
         exchangePlatformAdapters = {};
-        for (let i = 0; i < adapters.identifiers_.length; i++) {
-            exchangePlatformAdapters[adapters.identifiers_[i]] = adapters.exchangeAdapters_[i];
+        for (let i = 0; i < adapters._identifiers.length; i++) {
+            exchangePlatformAdapters[adapters._identifiers[i]] = adapters._exchangeAdapters[i];
         }
 
-        console.log('deploy USDi');
-        usdi = await USDi.new();
-        await usdi.initialize('USDi', 'USDi', 18, vault.address, accessControlProxy.address);
+        // console.log('deploy USDi');
+        // usdi = await USDi.new();
+        // await usdi.initialize('USDi', 'USDi', 18, vault.address, accessControlProxy.address);
 
         console.log('deploy PegToken');
         pegToken = await PegToken.new();
@@ -217,9 +216,9 @@ describe("Vault", function () {
         // await iVault.setUSDiAddress(usdi.address);
         await iVault.setVaultBufferAddress(vaultBuffer.address);
         await iVault.setPegTokenAddress(pegToken.address);
-        await iVault.setRebaseThreshold(1);
-        await iVault.setUnderlyingUnitsPerShare(new BigNumber(10).pow(18).toFixed());
-        await iVault.setMaxTimestampBetweenTwoReported(604800, {from: governance});
+        // await iVault.setRebaseThreshold(1);
+        // await iVault.setUnderlyingUnitsPerShare(new BigNumber(10).pow(18).toFixed());
+        // await iVault.setMaxTimestampBetweenTwoReported(604800, {from: governance});
         console.log("maxTimestampBetweenTwoReported:",new BigNumber(await iVault.maxTimestampBetweenTwoReported()).toFixed());
     });
 
