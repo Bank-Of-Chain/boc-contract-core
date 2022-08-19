@@ -9,7 +9,6 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import "./IPrimitivePriceFeed.sol";
 import "./../../access-control/AccessControlMixin.sol";
-import "hardhat/console.sol";
 
 contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     event EthUsdAggregatorSet(

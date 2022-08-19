@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./IExchangeAggregator.sol";
-import "hardhat/console.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/NativeToken.sol";
 
@@ -80,8 +79,6 @@ contract ExchangeAggregator is AccessControlMixin {
         if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
             payable(_platform).transfer(_sd.amount);
         } else {
-            console.log("_platform, _sd.amount");
-            console.log(_platform, _sd.amount);
             IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
         }
         return IExchangeAdapter(_platform).swap(_method, _data, _sd);

@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
-
-import "hardhat/console.sol";
 import "../IExchangeAdapter.sol";
 import "../../library/NativeToken.sol";
 import "../../price-feeds/IValueInterpreter.sol";

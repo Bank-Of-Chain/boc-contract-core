@@ -6,6 +6,7 @@ require('@nomiclabs/hardhat-truffle5');
 require("hardhat-gas-reporter");
 require("solidity-coverage");
 require('hardhat-contract-sizer');
+require('hardhat-log-remover');
 // require('hardhat-spdx-license-identifier');
 const {
   removeConsoleLog

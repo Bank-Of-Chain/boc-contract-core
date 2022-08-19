@@ -259,8 +259,6 @@ contract Vault is VaultStorage {
         uint256 _thisWithdrawValue = (_nowStrategyTotalDebt * _amount) / _strategyAssetValue;
         strategies[_strategy].totalDebt = _nowStrategyTotalDebt - _thisWithdrawValue;
         totalDebt -= _thisWithdrawValue;
-
-        // console.log('[vault.redeem] %s redeem _amount %d totalDebt %d ', _strategy, _amount, strategyAssetValue);
         emit Redeem(_strategy, _amount, _assets, _amounts);
     }
 
@@ -282,8 +280,6 @@ contract Vault is VaultStorage {
         bool _isWantRatioIgnorable = IStrategy(_strategyAddr).isWantRatioIgnorable();
         if (!_isWantRatioIgnorable && _ratios.length > 1) {
             for (uint256 i = 1; i < _ratios.length; i++) {
-                // console.log('token %s amount %d aspect %d', _wants[i], toAmounts[i], _ratios[i]);
-                // console.log('token i+1  %s amount %d aspect %d', tokenDetails[i + 1].token, tokenDetails[i + 1].amount, tokenAspects[i + 1].aspect);
                 if (_ratios[i] == 0) {
                     //0 is free
                     continue;
@@ -1041,8 +1037,6 @@ contract Vault is VaultStorage {
                 require(_yield > _fee, "Fee must not be greater than yield");
                 if (_fee > 0) {
                     uint256 _sharesAmount = (_fee * _totalShares) / (_totalAssets - _fee);
-                    console.log("(_yield, _fee, _sharesAmount) = ");
-                    console.log(_yield, _fee, _sharesAmount);
                     if (_sharesAmount > 0) {
                         IPegToken(pegTokenAddress).mintShares(_treasuryAddress, _sharesAmount);
                         _totalShares = _totalShares + _sharesAmount;

@@ -9,8 +9,6 @@ import "./primitives/IPrimitivePriceFeed.sol";
 import "./../access-control/AccessControlMixin.sol";
 import "./IValueInterpreter.sol";
 
-import "hardhat/console.sol";
-
 /// @title ValueInterpreter Contract
 /// @notice Interprets price feeds to provide covert value between asset pairs
 /// @dev This contract contains several 'live' value calculations, which for this release are simply

@@ -7,8 +7,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import "../strategy/BaseStrategy.sol";
 
-import "hardhat/console.sol";
-
 contract MockS3CoinStrategy is BaseStrategy {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
