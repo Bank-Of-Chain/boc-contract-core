@@ -50,10 +50,10 @@ contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, Access
             );
     }
 
+    /// @dev This should be as low-cost and simple as possible
     /// @notice Checks whether an asset is a supported derivative
     /// @param _asset The asset to check
     /// @return isSupported_ True if the asset is a supported derivative
-    /// @dev This should be as low-cost and simple as possible
     function isSupportedAsset(address _asset) external view override returns (bool) {
         return derivativeToPriceFeed[_asset] != address(0);
     }
@@ -65,6 +65,8 @@ contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, Access
     /// @notice Adds a list of derivatives with the given price feed values
     /// @param _derivatives The derivatives to add
     /// @param _priceFeeds The ordered price feeds corresponding to the list of _derivatives
+    /// Requirements: only governance or delegate role can call
+    /// emit {DerivativeAdded} event
     function addDerivatives(address[] calldata _derivatives, address[] calldata _priceFeeds)
         external
         onlyGovOrDelegate
@@ -76,6 +78,8 @@ contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, Access
 
     /// @notice Removes a list of derivatives
     /// @param _derivatives The derivatives to remove
+    /// Requirements: only governance or delegate role can call
+    /// emit {DerivativeRemoved} event
     function removeDerivatives(address[] calldata _derivatives) external onlyGovOrDelegate {
         require(_derivatives.length > 0, "removeDerivatives: _derivatives cannot be empty");
 
@@ -94,6 +98,8 @@ contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, Access
     /// @notice Updates a list of derivatives with the given price feed values
     /// @param _derivatives The derivatives to update
     /// @param _priceFeeds The ordered price feeds corresponding to the list of _derivatives
+    /// Requirements: only governance or delegate role can call
+    /// emit {DerivativeUpdated} event
     function updateDerivatives(address[] calldata _derivatives, address[] calldata _priceFeeds)
         external
         onlyGovOrDelegate

@@ -9,8 +9,6 @@ import "./primitives/IPrimitivePriceFeed.sol";
 import "./../access-control/AccessControlMixin.sol";
 import "./IValueInterpreter.sol";
 
-import "hardhat/console.sol";
-
 /// @title ValueInterpreter Contract
 /// @notice Interprets price feeds to provide covert value between asset pairs
 /// @dev This contract contains several 'live' value calculations, which for this release are simply
@@ -24,29 +22,22 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         address _aggregatedDerivativePriceFeed
     );
 
-    address private AGGREGATED_DERIVATIVE_PRICE_FEED;
-    address private PRIMITIVE_PRICE_FEED;
+    address private aggregatedDerivativePriceFeed;
+    address private primitivePriceFeed;
 
     constructor(
         address _primitivePriceFeed,
         address _aggregatedDerivativePriceFeed,
         address _accessControlProxy
     ) {
-        AGGREGATED_DERIVATIVE_PRICE_FEED = _aggregatedDerivativePriceFeed;
-        PRIMITIVE_PRICE_FEED = _primitivePriceFeed;
+        aggregatedDerivativePriceFeed = _aggregatedDerivativePriceFeed;
+        primitivePriceFeed = _primitivePriceFeed;
         _initAccessControl(_accessControlProxy);
     }
 
     // EXTERNAL FUNCTIONS
 
-    /// @notice Calculates the total value of given amounts of assets in a single quote asset
-    /// @param _baseAssets The assets to convert
-    /// @param _amounts The amounts of the _baseAssets to convert
-    /// @param _quoteAsset The asset to which to convert
-    /// @return _value The sum value of _baseAssets, denominated in the _quoteAsset
-    /// @dev Does not alter protocol state,
-    /// but not a view because calls to price feeds can potentially update third party state.
-    /// Does not handle a derivative quote asset.
+    /// @inheritdoc IValueInterpreter
     function calcCanonicalAssetsTotalValue(
         address[] memory _baseAssets,
         uint256[] memory _amounts,
@@ -57,7 +48,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             "calcCanonicalAssetsTotalValue: Arrays unequal lengths"
         );
         require(
-            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(
+            IPrimitivePriceFeed(primitivePriceFeed).isSupportedAsset(
                 _quoteAsset
             ),
             string(
@@ -84,13 +75,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         return _value;
     }
 
-    /// @notice Calculates the value of a given amount of one asset in terms of another asset
-    /// @param _baseAsset The asset from which to convert
-    /// @param _amount The amount of the _baseAsset to convert
-    /// @param _quoteAsset The asset to which to convert
-    /// @return _value The equivalent quantity in the _quoteAsset
-    /// @dev Does not alter protocol state,
-    /// but not a view because calls to price feeds can potentially update third party state
+    /// @inheritdoc IValueInterpreter
     function calcCanonicalAssetValue(
         address _baseAsset,
         uint256 _amount,
@@ -99,23 +84,13 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         if (_baseAsset == _quoteAsset || _amount == 0) {
             return _amount;
         }
-
-        //        require(
-        //            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(_quoteAsset),
-        //            'calcCanonicalAssetValue: Unsupported _quoteAsset'
-        //        );
         bool _isValid;
         (_value, _isValid) = __calcAssetValue(_baseAsset, _amount, _quoteAsset);
         require(_isValid, "Invalid rate");
         return _value;
     }
 
-    /*
-    * Calculate the usd value of a specified number of assets
-    * _baseAsset: Source token address
-    * _amount: Number of source token
-    * @return usd(1e18)
-    */
+    /// @inheritdoc IValueInterpreter
     function calcCanonicalAssetValueInUsd(address _baseAsset, uint256 _amount)
         external
         view
@@ -131,11 +106,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         return _value;
     }
 
-    /*
-   * Calculate the usd value of baseUnit volume assets
-   * _baseAsset: asset token address
-   * @return usd(1e18)
-    */
+    /// @inheritdoc IValueInterpreter
     function price(address _baseAsset)
         external
         view
@@ -144,15 +115,15 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     {
         // Handle case that asset is a primitive
         if (
-            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(
+            IPrimitivePriceFeed(primitivePriceFeed).isSupportedAsset(
                 _baseAsset
             )
         ) {
             bool _isValid;
-            (_value, _isValid) = IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED)
+            (_value, _isValid) = IPrimitivePriceFeed(primitivePriceFeed)
                 .calcValueInUsd(
                     _baseAsset,
-                    IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).getAssetUnit(
+                    IPrimitivePriceFeed(primitivePriceFeed).getAssetUnit(
                         _baseAsset
                     )
                 );
@@ -169,7 +140,8 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         );
     }
 
-    // PRIVATE FUNCTIONS
+    ////// PRIVATE FUNCTIONS //////
+
     /// @dev Helper to differentially calculate an asset value
     /// based on if it is a primitive or derivative asset.
     function __calcAssetValueInUsd(address _baseAsset, uint256 _amount)
@@ -183,25 +155,25 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
 
         // Handle case that asset is a primitive
         if (
-            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(
+            IPrimitivePriceFeed(primitivePriceFeed).isSupportedAsset(
                 _baseAsset
             )
         ) {
             return
-                IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).calcValueInUsd(
+                IPrimitivePriceFeed(primitivePriceFeed).calcValueInUsd(
                     _baseAsset,
                     _amount
                 );
         }
 
         // Handle case that asset is a derivative
-        address derivativePriceFeed = IAggregatedDerivativePriceFeed(
-            AGGREGATED_DERIVATIVE_PRICE_FEED
+        address _derivativePriceFeed = IAggregatedDerivativePriceFeed(
+            aggregatedDerivativePriceFeed
         ).getPriceFeedForDerivative(_baseAsset);
-        if (derivativePriceFeed != address(0)) {
+        if (_derivativePriceFeed != address(0)) {
             return
                 __calcDerivativeValueInUsd(
-                    derivativePriceFeed,
+                    _derivativePriceFeed,
                     _baseAsset,
                     _amount
                 );
@@ -230,15 +202,15 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
 
         // Handle case that asset is a primitive
         if (
-            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(
+            IPrimitivePriceFeed(primitivePriceFeed).isSupportedAsset(
                 _baseAsset
             ) &&
-            IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).isSupportedAsset(
+            IPrimitivePriceFeed(primitivePriceFeed).isSupportedAsset(
                 _quoteAsset
             )
         ) {
             return
-                IPrimitivePriceFeed(PRIMITIVE_PRICE_FEED).calcCanonicalValue(
+                IPrimitivePriceFeed(primitivePriceFeed).calcCanonicalValue(
                     _baseAsset,
                     _amount,
                     _quoteAsset
@@ -247,7 +219,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
 
         // Handle case that asset is a derivative
         address _derivativePriceFeed = IAggregatedDerivativePriceFeed(
-            AGGREGATED_DERIVATIVE_PRICE_FEED
+            aggregatedDerivativePriceFeed
         ).getPriceFeedForDerivative(_baseAsset);
         if (_derivativePriceFeed != address(0)) {
             return
@@ -358,41 +330,44 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     // STATE GETTERS //
     ///////////////////
 
-    /// @notice Gets the `AGGREGATED_DERIVATIVE_PRICE_FEED` variable
-    /// @return _aggregatedDerivativePriceFeed The `AGGREGATED_DERIVATIVE_PRICE_FEED` variable value
+    /// @notice Gets the `aggregatedDerivativePriceFeed` variable
+    /// @return _aggregatedDerivativePriceFeed The `aggregatedDerivativePriceFeed` variable value
     function getAggregatedDerivativePriceFeed()
         external
         view
         returns (address)
     {
-        return AGGREGATED_DERIVATIVE_PRICE_FEED;
+        return aggregatedDerivativePriceFeed;
     }
 
-    /// @notice Gets the `PRIMITIVE_PRICE_FEED` variable
-    /// @return _primitivePriceFeed The `PRIMITIVE_PRICE_FEED` variable value
+    /// @notice Gets the `primitivePriceFeed` variable
+    /// @return _primitivePriceFeed The `primitivePriceFeed` variable value
     function getPrimitivePriceFeed()
         external
         view
         returns (address)
     {
-        return PRIMITIVE_PRICE_FEED;
+        return primitivePriceFeed;
     }
 
     ///////////////////
     // STATE SETTERS //
     ///////////////////
+
+    /// @notice Set the primitive price feed. Only governance or delegate role can call.
     function setPrimitivePriceFeed(address _primitivePriceFeed)
         external
         onlyGovOrDelegate
     {
-        PRIMITIVE_PRICE_FEED = _primitivePriceFeed;
+        primitivePriceFeed = _primitivePriceFeed;
         emit UpdatePrimitivePriceFeed(_primitivePriceFeed);
     }
 
+    /// @notice Set the aggregated derivative price feed. Only governance or delegate role can call.
     function setAggregatedDerivativePriceFeed(
         address _aggregatedDerivativePriceFeed
     ) external onlyGovOrDelegate {
-        AGGREGATED_DERIVATIVE_PRICE_FEED = _aggregatedDerivativePriceFeed;
+        aggregatedDerivativePriceFeed = _aggregatedDerivativePriceFeed;
         emit UpdateAggregatedDerivativePriceFeed(
             _aggregatedDerivativePriceFeed
         );
