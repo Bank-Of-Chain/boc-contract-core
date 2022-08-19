@@ -5,18 +5,10 @@ pragma solidity ^0.8.0;
 import "./BaseStrategy.sol";
 
 abstract contract BaseClaimableStrategy is BaseStrategy {
-    /// @notice Collect the rewards from 3rd protocol
-    function claimRewards()
-        internal
-        virtual
-        returns (
-            address[] memory _rewardsTokens,
-            uint256[] memory _claimAmounts
-        );
-
+    
     /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
     function harvest()
-        external
+        public
         virtual
         override
         returns (
@@ -30,6 +22,16 @@ abstract contract BaseClaimableStrategy is BaseStrategy {
         vault.report(_rewardsTokens, _claimAmounts);
     }
 
+    /// @notice Collect the rewards from 3rd protocol
+    function claimRewards()
+        internal
+        virtual
+        returns (
+            address[] memory _rewardsTokens,
+            uint256[] memory _claimAmounts
+        );
+
+
     /// @notice Strategy repay the funds to vault
     /// @param _repayShares Numerator
     /// @param _totalShares Denominator
@@ -42,12 +44,7 @@ abstract contract BaseClaimableStrategy is BaseStrategy {
     {
         // if withdraw all need claim rewards
         if (_repayShares == _totalShares) {
-            (
-                address[] memory _rewardsTokens,
-                uint256[] memory _claimAmounts
-            ) = claimRewards();
-            // transfer reward token to harvester
-            transferTokensToTarget(harvester, _rewardsTokens, _claimAmounts);
+            harvest();
         }
         return super.repay(_repayShares, _totalShares,_outputCode);
     }
