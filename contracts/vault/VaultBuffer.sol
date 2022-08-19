@@ -47,7 +47,7 @@ contract VaultBuffer is
     uint256 private mDistributeLimit;
 
     modifier onlyVault() {
-        require(msg.sender == vault);
+        require(msg.sender == vault,"VB:only vault can call");
         _;
     }
 
@@ -131,8 +131,8 @@ contract VaultBuffer is
             }
         }
 
-        bool result = _distribute();
-        return result;
+        bool _result = _distribute();
+        return _result;
     }
 
     function _distribute() internal returns (bool) {

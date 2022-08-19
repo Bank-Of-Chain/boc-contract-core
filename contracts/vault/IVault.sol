@@ -98,6 +98,7 @@ interface IVault {
     /// @notice Minting USDi supported assets
     function getSupportAssets() external view returns (address[] memory _assets);
 
+    /// @notice Check '_asset' is supported or not
     function checkIsSupportAsset(address _asset) external view;
 
     /// @notice Assets held by Vault

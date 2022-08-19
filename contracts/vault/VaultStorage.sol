@@ -22,16 +22,22 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
 
+    /// @param lastReport The last report timestamp
+    /// @param totalDebt The total asset of this strategy
+    /// @param profitLimitRatio The limited ratio of profit
+    /// @param lossLimitRatio The limited ratio for loss
+    /// @param enforceChangeLimit The switch of enforce change Limit
     struct StrategyParams {
-        //last report timestamp
         uint256 lastReport;
-        //total asset
         uint256 totalDebt;
         uint256 profitLimitRatio;
         uint256 lossLimitRatio;
         bool enforceChangeLimit;
     }
 
+    /// @param strategy The new strategy to add
+    /// @param profitLimitRatio The limited ratio of profit
+    /// @param lossLimitRatio The limited ratio for loss
     struct StrategyAdd {
         address strategy;
         uint256 profitLimitRatio;
@@ -150,7 +156,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     //withdraw strategy set
     address[] public withdrawQueue;
     //keccak256("USDi.vault.governor.admin.impl");
-    bytes32 constant adminImplPosition =
+    bytes32 internal constant ADMIN_IMPL_POSITION =
         0x3d78d3961e16fde088e2e26c1cfa163f5f8bb870709088dd68c87eb4091137e2;
 
     //vault Buffer Address
@@ -181,9 +187,9 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
      */
     function setAdminImpl(address _newImpl) external onlyGovOrDelegate {
         require(AddressUpgradeable.isContract(_newImpl), "new implementation is not a contract");
-        bytes32 position = adminImplPosition;
+        bytes32 _position = ADMIN_IMPL_POSITION;
         assembly {
-            sstore(position, _newImpl)
+            sstore(_position, _newImpl)
         }
     }
 }

@@ -99,12 +99,6 @@ contract VaultAdmin is VaultStorage {
         emit ExchangeManagerAddressChanged(_exchangeManagerAddress);
     }
 
-    //    function setUSDiAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
-    //        require(address(usdi) == address(0), "USDi has been set");
-    //        require(_address != address(0), "USDi ad is 0");
-    //        usdi = USDi(_address);
-    //    }
-
     function setVaultBufferAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
         require(_address != address(0), "vaultBuffer ad is 0");
         vaultBufferAddress = _address;
@@ -191,8 +185,8 @@ contract VaultAdmin is VaultStorage {
     function addStrategy(StrategyAdd[] memory _strategyAdds) external isVaultManager {
         address[] memory _strategies = new address[](_strategyAdds.length);
         for (uint256 i = 0; i < _strategyAdds.length; i++) {
-            StrategyAdd memory strategyAdd = _strategyAdds[i];
-            address _strategyAddr = strategyAdd.strategy;
+            StrategyAdd memory _strategyAdd = _strategyAdds[i];
+            address _strategyAddr = _strategyAdd.strategy;
             require(
                 (_strategyAddr != ZERO_ADDRESS) &&
                     (!strategySet.contains(_strategyAddr)) &&
@@ -200,7 +194,7 @@ contract VaultAdmin is VaultStorage {
                 "Strategy is invalid"
             );
             _strategies[i] = _strategyAddr;
-            _addStrategy(_strategyAddr, strategyAdd.profitLimitRatio, strategyAdd.lossLimitRatio);
+            _addStrategy(_strategyAddr, _strategyAdd.profitLimitRatio, _strategyAdd.lossLimitRatio);
             address[] memory _wants = IStrategy(_strategyAddr).getWants();
             for (uint256 j = 0; j < _wants.length; j++) {
                 trackedAssetsMap.plus(_wants[j], 1);
@@ -290,12 +284,12 @@ contract VaultAdmin is VaultStorage {
     //advance queue
     function setWithdrawalQueue(address[] memory _queues) external isKeeper {
         for (uint256 i = 0; i < _queues.length; i++) {
-            address strategy = _queues[i];
-            require(strategySet.contains(strategy), "strategy not exist");
+            address _strategy = _queues[i];
+            require(strategySet.contains(_strategy), "strategy not exist");
             if (i < withdrawQueue.length) {
-                withdrawQueue[i] = strategy;
+                withdrawQueue[i] = _strategy;
             } else {
-                withdrawQueue.push(strategy);
+                withdrawQueue.push(_strategy);
             }
         }
         for (uint256 i = _queues.length; i < withdrawQueue.length; i++) {
@@ -319,7 +313,7 @@ contract VaultAdmin is VaultStorage {
             if (_curStrategy == _strategy) {
                 withdrawQueue[i] = ZERO_ADDRESS;
                 _organizeWithdrawalQueue();
-                //                emit RemoveStrategyFromQueue(_strategy);
+        
                 return;
             }
         }
@@ -328,11 +322,11 @@ contract VaultAdmin is VaultStorage {
     function _organizeWithdrawalQueue() internal {
         uint256 _offset = 0;
         for (uint256 i = 0; i < withdrawQueue.length; i++) {
-            address strategy = withdrawQueue[i];
-            if (strategy == ZERO_ADDRESS) {
+            address _strategy = withdrawQueue[i];
+            if (_strategy == ZERO_ADDRESS) {
                 _offset += 1;
             } else if (_offset > 0) {
-                withdrawQueue[i - _offset] = strategy;
+                withdrawQueue[i - _offset] = _strategy;
                 withdrawQueue[i] = ZERO_ADDRESS;
             }
         }
