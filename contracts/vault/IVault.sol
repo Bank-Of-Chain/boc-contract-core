@@ -329,8 +329,6 @@ interface IVault {
 
     function setVaultBufferAddress(address _address) external;
 
-    function setUnderlyingUnitsPerShare(uint256 _underlyingUnitsPerShare) external;
-
     function vaultBufferAddress() external view returns (address);
 
     function setPegTokenAddress(address _address) external;

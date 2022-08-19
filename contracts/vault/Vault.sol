@@ -33,8 +33,11 @@ contract Vault is VaultStorage {
         rebasePaused = false;
         // Initial redeem fee of 0 basis points
         redeemFeeBps = 0;
-        // Threshold for rebasing
-        rebaseThreshold = 1000e18;
+        // 1 / 1000e4
+        rebaseThreshold = 1;
+        // one week
+        maxTimestampBetweenTwoReported = 604800;
+        underlyingUnitsPerShare =  1e18;
     }
 
     modifier whenNotEmergency() {
