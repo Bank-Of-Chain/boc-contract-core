@@ -14,8 +14,10 @@ import "../library/StableMath.sol";
 import "../library/NativeToken.sol";
 import "./../access-control/AccessControlMixin.sol";
 import "./IVault.sol";
+import "./IVaultBuffer.sol";
 
 contract VaultBuffer is
+    IVaultBuffer,
     Initializable,
     ContextUpgradeable,
     AccessControlMixin,
@@ -25,10 +27,6 @@ contract VaultBuffer is
     using StableMath for uint256;
     using IterableUintMap for IterableUintMap.AddressToUintMap;
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    event OpenDistribute();
-    event CloseDistribute();
-
 
     IterableUintMap.AddressToUintMap private mBalances;
 
@@ -42,7 +40,7 @@ contract VaultBuffer is
     address public vault;
     address public pegTokenAddr;
 
-    bool public isDistributing;
+    bool public override isDistributing;
 
     uint256 private mDistributeLimit;
 
@@ -51,14 +49,9 @@ contract VaultBuffer is
         _;
     }
 
-    function getDistributeLimit() external view returns (uint256) {
-        return mDistributeLimit;
-    }
+    receive() external payable {}
 
-    function setDistributeLimit(uint256 _limit) external isVaultManager {
-        assert(_limit > 0);
-        mDistributeLimit = _limit;
-    }
+    fallback() external payable {}
 
     function initialize(
         string memory _name,
@@ -76,15 +69,24 @@ contract VaultBuffer is
         mDistributeLimit = 50;
     }
 
-    fallback() external payable {}
+    function getDistributeLimit() external view override returns (uint256) {
+        return mDistributeLimit;
+    }
 
-    receive() external payable {}
+    function setDistributeLimit(uint256 _limit) external override isVaultManager {
+        assert(_limit > 0);
+        mDistributeLimit = _limit;
+    }
 
-    function mint(address _sender, uint256 _amount) external payable onlyVault {
+    function mint(address _sender, uint256 _amount) external payable override onlyVault {
         _mint(_sender, _amount);
     }
 
-    function transferCashToVault(address[] memory _assets, uint256[] memory _amounts) external onlyVault {
+    function transferCashToVault(address[] memory _assets, uint256[] memory _amounts)
+        external
+        override
+        onlyVault
+    {
         uint256 _len = _assets.length;
         for (uint256 i = 0; i < _len; i++) {
             uint256 amount = _amounts[i];
@@ -99,7 +101,7 @@ contract VaultBuffer is
         }
     }
 
-    function openDistribute() external onlyVault {
+    function openDistribute() external override onlyVault {
         assert(!isDistributing);
         uint256 _pegTokenBalance = IERC20Upgradeable(pegTokenAddr).balanceOf(address(this));
         if (_pegTokenBalance > 0) {
@@ -109,7 +111,7 @@ contract VaultBuffer is
         }
     }
 
-    function distributeWhenDistributing() external isKeeper returns (bool) {
+    function distributeWhenDistributing() external override isKeeper returns (bool) {
         assert(!IVault(vault).adjustPositionPeriod());
         bool _result = _distribute();
         if (!_result) {
@@ -119,7 +121,7 @@ contract VaultBuffer is
         return _result;
     }
 
-    function distributeOnce() external isKeeper returns (bool) {
+    function distributeOnce() external override isKeeper returns (bool) {
         assert(!IVault(vault).adjustPositionPeriod());
         address[] memory _assets = IVault(vault).getTrackedAssets();
         for (uint256 i = 0; i < _assets.length; i++) {
@@ -159,7 +161,6 @@ contract VaultBuffer is
                 _pegToken.safeTransfer(_account, _transferAmount);
                 _burn(_account, _share);
             }
-
         }
 
         return mBalances.length() != 0;
@@ -340,7 +341,7 @@ contract VaultBuffer is
         require(_from != address(0), "ERC20: transfer from the zero address");
         require(_to != address(0), "ERC20: transfer to the zero address");
 
-        _beforeTokenTransfer(_from,_to,_amount);
+        _beforeTokenTransfer(_from, _to, _amount);
 
         uint256 _fromBalance = mBalances.get(_from);
         require(_fromBalance >= _amount, "ERC20: transfer amount exceeds balance");
@@ -349,14 +350,14 @@ contract VaultBuffer is
             if (_newBalance == 0) {
                 mBalances.remove(_from);
             } else {
-                mBalances.set(_from,_newBalance);
+                mBalances.set(_from, _newBalance);
             }
         }
-        mBalances.plus(_to,_amount);
+        mBalances.plus(_to, _amount);
 
-        emit Transfer(_from,_to,_amount);
+        emit Transfer(_from, _to, _amount);
 
-        _afterTokenTransfer(_from,_to,_amount);
+        _afterTokenTransfer(_from, _to, _amount);
     }
 
     /** @dev Creates `amount` tokens and assigns them to `account`, increasing
@@ -435,7 +436,7 @@ contract VaultBuffer is
         require(_spender != address(0), "ERC20: approve to the zero address");
 
         mAllowances[_owner][_spender] = _amount;
-        emit Approval(_owner,_spender, _amount);
+        emit Approval(_owner, _spender, _amount);
     }
 
     /**
@@ -460,7 +461,7 @@ contract VaultBuffer is
         }
     }
 
-        /**
+    /**
      * @dev Hook that is called before any transfer of tokens. This includes
      * minting and burning.
      *
@@ -499,6 +500,4 @@ contract VaultBuffer is
         address _to,
         uint256 _amount
     ) internal virtual {}
-
-
 }

@@ -10,30 +10,19 @@ import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
 import "../library/StableMath.sol";
 import "../price-feeds/IValueInterpreter.sol";
-import "../vault/IVault.sol";
+import "./IStrategy.sol";
 
-abstract contract BaseStrategy is Initializable, AccessControlMixin {
+abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using StableMath for uint256;
 
-    struct OutputInfo {
-        uint256 outputCode; //0：default path，Greater than 0：specify output path
-        address[] outputTokens; //output tokens
-    }
-
-    event Borrow(address[] _assets, uint256[] _amounts);
-
-    event Repay(uint256 _withdrawShares, uint256 _totalShares, address[] _assets, uint256[] _amounts);
-
-    event SetIsWantRatioIgnorable(bool _oldValue, bool _newValue);
-
-    IVault public vault;
+    IVault public override vault;
     IValueInterpreter public valueInterpreter;
-    address public harvester;
-    uint16 public protocol;
-    string public name;
+    address public override harvester;
+    uint16 public override protocol;
+    string public override name;
     address[] public wants;
-    bool public isWantRatioIgnorable;
+    bool public override isWantRatioIgnorable;
 
     modifier onlyVault() {
         require(msg.sender == address(vault));
@@ -63,10 +52,10 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     }
 
     /// @notice Version of strategy
-    function getVersion() external pure virtual returns (string memory);
+    function getVersion() external pure virtual override returns (string memory);
 
     /// @notice True means that can ignore ratios given by wants info
-    function setIsWantRatioIgnorable(bool _isWantRatioIgnorable) external isVaultManager {
+    function setIsWantRatioIgnorable(bool _isWantRatioIgnorable) external override isVaultManager {
         bool _oldValue = isWantRatioIgnorable;
         isWantRatioIgnorable = _isWantRatioIgnorable;
         emit SetIsWantRatioIgnorable(_oldValue, _isWantRatioIgnorable);
@@ -77,21 +66,23 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         external
         view
         virtual
+        override
         returns (address[] memory _assets, uint256[] memory _ratios);
 
     /// @notice Provide the strategy need underlying tokens
-    function getWants() external view returns (address[] memory) {
+    function getWants() external view override returns (address[] memory) {
         return wants;
     }
 
     // @notice Provide the strategy output path when withdraw.
-    function getOutputsInfo() external view virtual returns (OutputInfo[] memory _outputsInfo);
+    function getOutputsInfo() external view virtual override returns (OutputInfo[] memory _outputsInfo);
 
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
         public
         view
         virtual
+        override
         returns (
             address[] memory _tokens,
             uint256[] memory _amounts,
@@ -100,7 +91,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         );
 
     /// @notice Total assets of strategy in USD.
-    function estimatedTotalAssets() external view virtual returns (uint256) {
+    function estimatedTotalAssets() external view virtual override returns (uint256) {
         (
             address[] memory _tokens,
             uint256[] memory _amounts,
@@ -119,12 +110,13 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     }
 
     /// @notice 3rd prototcol's pool total assets in USD.
-    function get3rdPoolAssets() external view virtual returns (uint256);
+    function get3rdPoolAssets() external view virtual override returns (uint256);
 
     /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
     function harvest()
         external
         virtual
+        override
         returns (address[] memory _rewardsTokens, uint256[] memory _claimAmounts)
     {
         vault.report(_rewardsTokens, _claimAmounts);
@@ -133,7 +125,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
     /// @notice Strategy borrow funds from vault
     /// @param _assets borrow token address
     /// @param _amounts borrow token amount
-    function borrow(address[] memory _assets, uint256[] memory _amounts) external onlyVault {
+    function borrow(address[] memory _assets, uint256[] memory _amounts) external override onlyVault {
         depositTo3rdPool(_assets, _amounts);
         emit Borrow(_assets, _amounts);
     }
@@ -145,7 +137,7 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         uint256 _repayShares,
         uint256 _totalShares,
         uint256 _outputCode
-    ) public virtual onlyVault returns (address[] memory _assets, uint256[] memory _amounts) {
+    ) public virtual override onlyVault returns (address[] memory _assets, uint256[] memory _amounts) {
         require(_repayShares > 0 && _totalShares >= _repayShares, "cannot repay 0 shares");
         _assets = wants;
         uint256[] memory _balancesBefore = new uint256[](_assets.length);
@@ -169,6 +161,11 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
         emit Repay(_repayShares, _totalShares, _assets, _amounts);
     }
 
+    /// @notice Investable amount of strategy in USD
+    function poolQuota() public view virtual override returns (uint256) {
+        return type(uint256).max;
+    }
+
     /// @notice Strategy deposit funds to 3rd pool.
     /// @param _assets deposit token address
     /// @param _amounts deposit token amount
@@ -185,11 +182,6 @@ abstract contract BaseStrategy is Initializable, AccessControlMixin {
 
     function balanceOfToken(address _tokenAddress) internal view returns (uint256) {
         return IERC20Upgradeable(_tokenAddress).balanceOf(address(this));
-    }
-
-    /// @notice Investable amount of strategy in USD
-    function poolQuota() public view virtual returns (uint256) {
-        return type(uint256).max;
     }
 
     /// @notice Query the value of Token.

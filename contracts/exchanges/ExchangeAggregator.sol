@@ -10,13 +10,9 @@ import "hardhat/console.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/NativeToken.sol";
 
-contract ExchangeAggregator is AccessControlMixin {
+contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-
-    event ExchangeAdapterAdded(address[] _exchangeAdapters);
-
-    event ExchangeAdapterRemoved(address[] _exchangeAdapters);
 
     EnumerableSet.AddressSet private exchangeAdapters;
 
@@ -25,24 +21,27 @@ contract ExchangeAggregator is AccessControlMixin {
         __addExchangeAdapters(_exchangeAdapters);
     }
 
-    function addExchangeAdapters(address[] calldata _exchangeAdapters) external onlyGovOrDelegate {
+    receive() external payable {}
+
+    function addExchangeAdapters(address[] calldata _exchangeAdapters)
+        external
+        override
+        onlyGovOrDelegate
+    {
         __addExchangeAdapters(_exchangeAdapters);
     }
 
-    function removeExchangeAdapters(address[] calldata _exchangeAdapters) external onlyGovOrDelegate {
+    function removeExchangeAdapters(address[] calldata _exchangeAdapters)
+        external
+        override
+        onlyGovOrDelegate
+    {
         require(_exchangeAdapters.length > 0, "_exchangeAdapters cannot be empty");
 
         for (uint256 i = 0; i < _exchangeAdapters.length; i++) {
             exchangeAdapters.remove(_exchangeAdapters[i]);
         }
         emit ExchangeAdapterRemoved(_exchangeAdapters);
-    }
-
-    function __addExchangeAdapters(address[] memory _exchangeAdapters) private {
-        for (uint256 i = 0; i < _exchangeAdapters.length; i++) {
-            exchangeAdapters.add(_exchangeAdapters[i]);
-        }
-        emit ExchangeAdapterAdded(_exchangeAdapters);
     }
 
     // address _platform：Called exchange platforms
@@ -54,10 +53,10 @@ contract ExchangeAggregator is AccessControlMixin {
         uint8 _method,
         bytes calldata _data,
         IExchangeAdapter.SwapDescription calldata _sd
-    ) external payable returns (uint256) {
+    ) external payable override returns (uint256) {
         require(exchangeAdapters.contains(_platform), "error swap platform");
         if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
-            payable(_platform).transfer(_sd.amount);
+            payable(_platform).transfer(msg.value);
         } else {
             console.log("_platform, _sd.amount");
             console.log(_platform, _sd.amount);
@@ -69,6 +68,7 @@ contract ExchangeAggregator is AccessControlMixin {
     function getExchangeAdapters()
         external
         view
+        override
         returns (address[] memory _exchangeAdapters, string[] memory _identifiers)
     {
         _exchangeAdapters = new address[](exchangeAdapters.length());
@@ -80,5 +80,10 @@ contract ExchangeAggregator is AccessControlMixin {
         return (_exchangeAdapters, _identifiers);
     }
 
-    receive() external payable {}
+    function __addExchangeAdapters(address[] memory _exchangeAdapters) private {
+        for (uint256 i = 0; i < _exchangeAdapters.length; i++) {
+            exchangeAdapters.add(_exchangeAdapters[i]);
+        }
+        emit ExchangeAdapterAdded(_exchangeAdapters);
+    }
 }

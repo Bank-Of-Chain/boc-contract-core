@@ -806,8 +806,6 @@ contract Vault is VaultStorage {
         address _asset,
         uint256[] memory _outputs,
         address[] memory _trackedAssets,
-        uint256[] memory _assetPrices,
-        uint256[] memory _assetDecimals,
         IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
     ) internal returns (uint256[] memory) {
         uint256 _trackedAssetsLength = _trackedAssets.length;
@@ -973,8 +971,6 @@ contract Vault is VaultStorage {
                 _asset,
                 _outputs,
                 _trackedAssets,
-                _assetPrices,
-                _assetDecimals,
                 _exchangeTokens
             );
         }
