@@ -37,13 +37,14 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         _initAccessControl(_accessControlProxy);
     }
 
+    /// @notice Setting profit receive address. Only governance role can call.
     function setProfitReceiver(address _receiver) external override onlyRole(BocRoles.GOV_ROLE) {
         require(_receiver != address(0), "Must be a non-zero address");
         profitReceiver = _receiver;
 
         emit ReceiverChanged(profitReceiver);
     }
-
+    
     function setSellTo(address _sellTo) external override isVaultManager {
         require(_sellTo != address(0), "Must be a non-zero address");
         sellTo = _sellTo;
@@ -54,7 +55,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
     /**
      * @dev Transfer token to governor. Intended for recovering tokens stuck in
      *      contract, i.e. mistaken sends.
-     * @param _asset Address for the asset
+     * @param _asset Address of the asset
      * @param _amount Amount of the asset to transfer
      */
     function transferToken(address _asset, uint256 _amount)
@@ -65,51 +66,71 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         IERC20Upgradeable(_asset).safeTransfer(IVault(vaultAddress).treasury(), _amount);
     }
 
+    /**
+     * @dev Multi strategies harvest and collect all rewards to this contarct
+     * @param _strategies The strategy array in which each strategy will harvest
+     * Requirements: only Keeper can call
+     */
     function collect(address[] calldata _strategies) external override isKeeper {
         for (uint256 i = 0; i < _strategies.length; i++) {
-            address strategy = _strategies[i];
-            IVault(vaultAddress).checkActiveStrategy(strategy);
-            IStrategy(strategy).harvest();
+            address _strategy = _strategies[i];
+            IVault(vaultAddress).checkActiveStrategy(_strategy);
+            IStrategy(_strategy).harvest();
         }
     }
 
+    /**
+     * @dev After collect all rewards,exchange from all reward tokens to 'sellTo' token(one stablecoin),
+     * finally send stablecoin to receiver
+     * @param _exchangeTokens The all info of exchange will be used when exchange
+     * Requirements: only Keeper can call
+     */
     function exchangeAndSend(IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens)
         external
         override
         isKeeper
     {
-        address sellToCopy = sellTo;
+        address _sellToCopy = sellTo;
         for (uint256 i = 0; i < _exchangeTokens.length; i++) {
-            IExchangeAggregator.ExchangeToken memory exchangeToken = _exchangeTokens[i];
-            require(exchangeToken.toToken == sellToCopy, "Rewards can only be sold as sellTo");
+            IExchangeAggregator.ExchangeToken memory _exchangeToken = _exchangeTokens[i];
+            require(_exchangeToken.toToken == _sellToCopy, "Rewards can only be sold as sellTo");
             _exchange(
-                exchangeToken.fromToken,
-                exchangeToken.toToken,
-                exchangeToken.fromAmount,
-                exchangeToken.exchangeParam
+                _exchangeToken.fromToken,
+                _exchangeToken.toToken,
+                _exchangeToken.fromAmount,
+                _exchangeToken.exchangeParam
             );
         }
     }
 
+    /**
+     * @dev Exchange from all reward tokens to 'sellTo' token(one stablecoin)
+     * @param _fromToken The token swap from
+     * @param _toToken The token swap to
+     * @param _amount The amount to swap
+     * @param _exchangeParam The struct of ExchangeParam, see {ExchangeParam} struct
+     * @return _exchangeAmount The real amount to exchange
+     * Emits a {Exchange} event.
+     */
     function _exchange(
         address _fromToken,
         address _toToken,
         uint256 _amount,
-        IExchangeAggregator.ExchangeParam memory exchangeParam
-    ) internal returns (uint256 exchangeAmount) {
-        IExchangeAdapter.SwapDescription memory swapDescription = IExchangeAdapter.SwapDescription({
+        IExchangeAggregator.ExchangeParam memory _exchangeParam
+    ) internal returns (uint256 _exchangeAmount) {
+        IExchangeAdapter.SwapDescription memory _swapDescription = IExchangeAdapter.SwapDescription({
             amount: _amount,
             srcToken: _fromToken,
             dstToken: _toToken,
             receiver: profitReceiver
         });
         IERC20Upgradeable(_fromToken).safeApprove(exchangeManager, _amount);
-        exchangeAmount = IExchangeAggregator(exchangeManager).swap(
-            exchangeParam.platform,
-            exchangeParam.method,
-            exchangeParam.encodeExchangeArgs,
-            swapDescription
+        _exchangeAmount = IExchangeAggregator(exchangeManager).swap(
+            _exchangeParam.platform,
+            _exchangeParam.method,
+            _exchangeParam.encodeExchangeArgs,
+            _swapDescription
         );
-        emit Exchange(exchangeParam.platform, _fromToken, _amount, _toToken, exchangeAmount);
+        emit Exchange(_exchangeParam.platform, _fromToken, _amount, _toToken, _exchangeAmount);
     }
 }

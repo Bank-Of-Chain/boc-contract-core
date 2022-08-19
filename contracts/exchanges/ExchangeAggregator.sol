@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./IExchangeAggregator.sol";
-import "hardhat/console.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/NativeToken.sol";
 
@@ -23,6 +22,11 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
 
     receive() external payable {}
 
+    /**
+     * @notice Add multi exchange adapters
+     * Requirements: only governance or delegate role can call
+     * emit {ExchangeAdapterAdded} event
+     */
     function addExchangeAdapters(address[] calldata _exchangeAdapters)
         external
         override
@@ -31,6 +35,11 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         __addExchangeAdapters(_exchangeAdapters);
     }
 
+    /**
+     * @notice Remove multi exchange adapters
+     * Requirements: only governance or delegate role can call
+     * emit {ExchangeAdapterRemoved} event
+     */
     function removeExchangeAdapters(address[] calldata _exchangeAdapters)
         external
         override
@@ -44,10 +53,17 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         emit ExchangeAdapterRemoved(_exchangeAdapters);
     }
 
-    // address _platform：Called exchange platforms
-    // uint8 _method：method of the exchange platform
-    // bytes calldata _data ：binary parameters
-    // IExchangeAdapter.SwapDescription calldata _sd：
+    /**
+     * @notice Swap with `_sd` data by using `_method` and `_data` on `_platform`.
+     * @param _platform Called exchange platforms
+     * @param _method The method of the exchange platform
+     * @param _data The encoded parameters to call
+     * @param _sd The description info of this swap
+     * Requirements:
+     *
+     * - `_platform` be contained.
+     * - if using ETH to swap, `msg.value` need GT `_sd.amount`
+     */
     function swap(
         address _platform,
         uint8 _method,
@@ -58,13 +74,12 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
             payable(_platform).transfer(msg.value);
         } else {
-            console.log("_platform, _sd.amount");
-            console.log(_platform, _sd.amount);
             IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
         }
         return IExchangeAdapter(_platform).swap(_method, _data, _sd);
     }
 
+    /// @notice Get all exchange adapters and its identifiers
     function getExchangeAdapters()
         external
         view
@@ -80,6 +95,10 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         return (_exchangeAdapters, _identifiers);
     }
 
+    /**
+     * @notice Add multi exchange adapters
+     * emit {ExchangeAdapterAdded} event
+     */
     function __addExchangeAdapters(address[] memory _exchangeAdapters) private {
         for (uint256 i = 0; i < _exchangeAdapters.length; i++) {
             exchangeAdapters.add(_exchangeAdapters[i]);
