@@ -5,6 +5,10 @@ pragma solidity ^0.8.0;
 import "./IExchangeAdapter.sol";
 
 interface IExchangeAggregator {
+    event ExchangeAdapterAdded(address[] _exchangeAdapters);
+
+    event ExchangeAdapterRemoved(address[] _exchangeAdapters);
+
     struct ExchangeParam {
         address platform;
         uint8 method;
@@ -27,5 +31,12 @@ interface IExchangeAggregator {
         IExchangeAdapter.SwapDescription calldata _sd
     ) external payable returns (uint256);
 
-    function getExchangeAdapters() external view returns (address[] memory _exchangeAdapters);
+    function getExchangeAdapters()
+        external
+        view
+        returns (address[] memory _exchangeAdapters, string[] memory _identifiers);
+
+    function addExchangeAdapters(address[] calldata _exchangeAdapters) external;
+
+    function removeExchangeAdapters(address[] calldata _exchangeAdapters) external;
 }

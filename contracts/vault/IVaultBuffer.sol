@@ -3,6 +3,9 @@
 pragma solidity ^0.8.0;
 
 interface IVaultBuffer {
+    event OpenDistribute();
+    event CloseDistribute();
+
     /// @notice mint pending shares
     /// @param _sender user account address
     /// @param _amount mint amount

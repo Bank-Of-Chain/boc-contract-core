@@ -2,34 +2,31 @@
 
 pragma solidity ^0.8.0;
 
+import "../vault/IVault.sol";
+
 interface IStrategy {
-    event MigrateToNewVault(address _oldVault, address _newVault);
-    event Report(
-        uint256 _beforeAssets,
-        uint256 _afterAssets,
-        address[] _rewardTokens,
-        uint256[] _claimAmounts
-    );
+    struct OutputInfo {
+        uint256 outputCode; //0：default path，Greater than 0：specify output path
+        address[] outputTokens; //output tokens
+    }
+
     event Borrow(address[] _assets, uint256[] _amounts);
+
     event Repay(uint256 _withdrawShares, uint256 _totalShares, address[] _assets, uint256[] _amounts);
+
+    event SetIsWantRatioIgnorable(bool _oldValue, bool _newValue);
 
     /// @notice Version of strategy
     function getVersion() external pure returns (string memory);
 
     /// @notice Name of strategy
-    function name() external pure returns (string memory);
+    function name() external view returns (string memory);
 
     /// @notice ID of strategy
-    function protocol() external pure returns (uint16);
-
-    /// @notice Status of strategy
-    function isActive() external view returns (bool);
+    function protocol() external view returns (uint16);
 
     /// @notice Vault address
-    function vault() external view returns (address);
-
-    /// @notice Migrate to new vault
-    function setVault(address _vaultAddress) external;
+    function vault() external view returns (IVault);
 
     /// @notice Harvester address
     function harvester() external view returns (address);
@@ -39,6 +36,12 @@ interface IStrategy {
 
     /// @notice Provide the strategy need underlying token
     function getWants() external view returns (address[] memory _wants);
+
+    // @notice Provide the strategy output path when withdraw.
+    function getOutputsInfo() external view returns (OutputInfo[] memory _outputsInfo);
+
+    /// @notice True means that can ignore ratios given by wants info
+    function setIsWantRatioIgnorable(bool _isWantRatioIgnorable) external;
 
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
@@ -76,4 +79,7 @@ interface IStrategy {
 
     /// @notice getter isWantRatioIgnorable
     function isWantRatioIgnorable() external view returns (bool);
+
+    /// @notice Investable amount of strategy in USD
+    function poolQuota() external view virtual returns (uint256);
 }

@@ -181,7 +181,7 @@ contract VaultAdmin is VaultStorage {
             require(
                 (_strategyAddr != ZERO_ADDRESS) &&
                     (!strategySet.contains(_strategyAddr)) &&
-                    (IStrategy(_strategyAddr).vault() == address(this)),
+                    (address(IStrategy(_strategyAddr).vault()) == address(this)),
                 "Strategy is invalid"
             );
             _strategies[i] = _strategyAddr;
