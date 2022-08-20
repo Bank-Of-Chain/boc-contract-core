@@ -6,9 +6,16 @@ import "./IExchangeAdapter.sol";
 
 interface IExchangeAggregator {
     event ExchangeAdapterAdded(address[] _exchangeAdapters);
-
+    
     event ExchangeAdapterRemoved(address[] _exchangeAdapters);
-
+    
+    /**
+     * @param platform Called exchange platforms
+     * @param method The method of the exchange platform
+     * @param encodeExchangeArgs The encoded parameters to call
+     * @param slippage The slippage when exchange
+     * @param oracleAdditionalSlippage The additional slippage for oracle estimated
+     */
     struct ExchangeParam {
         address platform;
         uint8 method;
@@ -17,6 +24,12 @@ interface IExchangeAggregator {
         uint256 oracleAdditionalSlippage;
     }
 
+    /**
+     * @param srcToken The token swap from
+     * @param dstToken The token swap to
+     * @param amount The amount to swap
+     * @param exchangeParam The struct of ExchangeParam
+     */
     struct ExchangeToken {
         address fromToken;
         address toToken;

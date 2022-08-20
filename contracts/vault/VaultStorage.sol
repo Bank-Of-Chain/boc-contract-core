@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 pragma solidity ^0.8.0;
-
-import "hardhat/console.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/IterableIntMap.sol";
 import "../library/StableMath.sol";
@@ -22,16 +20,22 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
 
+    /// @param lastReport The last report timestamp
+    /// @param totalDebt The total asset of this strategy
+    /// @param profitLimitRatio The limited ratio of profit
+    /// @param lossLimitRatio The limited ratio for loss
+    /// @param enforceChangeLimit The switch of enforce change Limit
     struct StrategyParams {
-        //last report timestamp
         uint256 lastReport;
-        //total asset
         uint256 totalDebt;
         uint256 profitLimitRatio;
         uint256 lossLimitRatio;
         bool enforceChangeLimit;
     }
 
+    /// @param strategy The new strategy to add
+    /// @param profitLimitRatio The limited ratio of profit
+    /// @param lossLimitRatio The limited ratio for loss
     struct StrategyAdd {
         address strategy;
         uint256 profitLimitRatio;
@@ -130,6 +134,8 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     bool public rebasePaused;
     // over this difference ratio automatically rebase. rebaseThreshold is the numerator and the denominator is 10000000 x/10000000.
     uint256 public rebaseThreshold;
+    // Deprecated
+    uint256 public maxSupplyDiff;
     // Amount of yield collected in basis points
     uint256 public trusteeFeeBps;
     // Redemption fee in basis points
@@ -148,7 +154,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     //withdraw strategy set
     address[] public withdrawQueue;
     //keccak256("USDi.vault.governor.admin.impl");
-    bytes32 constant adminImplPosition =
+    bytes32 internal constant ADMIN_IMPL_POSITION =
         0x3d78d3961e16fde088e2e26c1cfa163f5f8bb870709088dd68c87eb4091137e2;
 
     //vault Buffer Address
@@ -179,9 +185,9 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
      */
     function setAdminImpl(address _newImpl) external onlyGovOrDelegate {
         require(AddressUpgradeable.isContract(_newImpl), "new implementation is not a contract");
-        bytes32 position = adminImplPosition;
+        bytes32 _position = ADMIN_IMPL_POSITION;
         assembly {
-            sstore(position, _newImpl)
+            sstore(_position, _newImpl)
         }
     }
 }

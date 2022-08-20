@@ -180,6 +180,7 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
         uint256 _outputCode
     ) internal virtual;
 
+    /// @notice Return the token's balance Of this contract
     function balanceOfToken(address _tokenAddress) internal view returns (uint256) {
         return IERC20Upgradeable(_tokenAddress).balanceOf(address(this));
     }
@@ -193,10 +194,15 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
         _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(_token, _amount);
     }
 
+    /// @notice Return the uint with decimal of one token
     function decimalUnitOfToken(address _token) internal view returns (uint256) {
         return 10**IERC20MetadataUpgradeable(_token).decimals();
     }
 
+    /// @notice Transfer `_assets` token from this contract to target address.
+    /// @param _target The target address to receive token
+    /// @param _assets deposit token address list
+    /// @param _amounts deposit token amount list
     function transferTokensToTarget(
         address _target,
         address[] memory _assets,

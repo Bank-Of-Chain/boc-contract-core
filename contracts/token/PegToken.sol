@@ -14,11 +14,11 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     event PauseStateChanged(bool _isPaused);
     event Migrate(address[] _accounts);
 
-    string mName;
+    string private mName;
 
-    string mSymbol;
+    string private mSymbol;
 
-    uint8 mDecimals;
+    uint8 private mDecimals;
 
     bool public isPaused;
 

@@ -133,8 +133,8 @@ contract VaultBuffer is
             }
         }
 
-        bool result = _distribute();
-        return result;
+        bool _result = _distribute();
+        return _result;
     }
 
     function _distribute() internal returns (bool) {
@@ -161,6 +161,7 @@ contract VaultBuffer is
                 _pegToken.safeTransfer(_account, _transferAmount);
                 _burn(_account, _share);
             }
+
         }
 
         return mBalances.length() != 0;
@@ -461,7 +462,7 @@ contract VaultBuffer is
         }
     }
 
-    /**
+        /**
      * @dev Hook that is called before any transfer of tokens. This includes
      * minting and burning.
      *
@@ -500,4 +501,6 @@ contract VaultBuffer is
         address _to,
         uint256 _amount
     ) internal virtual {}
+
+
 }
