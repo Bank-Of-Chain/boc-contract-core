@@ -39,8 +39,8 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
 
     /// @inheritdoc IValueInterpreter
     function calcCanonicalAssetsTotalValue(
-        address[] memory _baseAssets,
-        uint256[] memory _amounts,
+        address[] calldata _baseAssets,
+        uint256[] calldata _amounts,
         address _quoteAsset
     ) external view override returns (uint256 _value) {
         require(

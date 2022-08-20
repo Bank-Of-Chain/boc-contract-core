@@ -253,8 +253,9 @@ contract Vault is VaultStorage {
         if (adjustPositionPeriod) {
             uint256 _assetsLength = _assets.length;
             for (uint256 i = 0; i < _assetsLength; i++) {
-                if (_amounts[i] > 0) {
-                    redeemAssetsMap[_assets[i]] += _amounts[i];
+                uint256 _amount = _amounts[i];
+                if (_amount > 0) {
+                    redeemAssetsMap[_assets[i]] += _amount;
                 }
             }
         }

@@ -26,8 +26,8 @@ interface IValueInterpreter {
     /// but not a view because calls to price feeds can potentially update third party state.
     /// Does not handle a derivative quote asset.
     function calcCanonicalAssetsTotalValue(
-        address[] memory _baseAssets,
-        uint256[] memory _amounts,
+        address[] calldata _baseAssets,
+        uint256[] calldata _amounts,
         address _quoteAsset
     ) external view returns (uint256);
 
