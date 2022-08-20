@@ -351,9 +351,6 @@ interface IVault {
     /// @notice Set the address of vault buffer contract
     function setVaultBufferAddress(address _address) external;
 
-    /// @notice Set the new value of '_underlyingUnitsPerShare'
-    function setUnderlyingUnitsPerShare(uint256 _underlyingUnitsPerShare) external;
-
     /// @notice Return the address of vault buffer contract
     function vaultBufferAddress() external view returns (address);
 
