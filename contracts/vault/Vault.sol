@@ -451,8 +451,8 @@ contract Vault is VaultStorage {
             if (_vaultValueOfNow + _transferValue < _vaultValueOfBefore) {
                 _old2LendAssets = _vaultValueOfBefore - _vaultValueOfNow - _transferValue;
             }
-            if (_redeemValue > _totalValueOfBefore - _transferValue) {
-                _redeemValue = _totalValueOfBefore - _transferValue;
+            if (_redeemValue + _old2LendAssets > _totalValueOfBefore - _transferValue) {
+                _redeemValue = _totalValueOfBefore - _transferValue - _old2LendAssets;
             }
             if (_totalValueOfNow > _totalValueOfBefore) {
                 uint256 _gain = _totalValueOfNow - _totalValueOfBefore;
