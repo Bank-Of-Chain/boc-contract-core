@@ -53,6 +53,13 @@ interface IVault {
     );
     event Redeem(address _strategy, uint256 _debtChangeAmount, address[] _assets, uint256[] _amounts);
     event LendToStrategy(address indexed _strategy, address[] _wants, uint256[] _amounts, uint256 _lendValue);
+    event RepayFromStrategy(
+        address indexed _strategy,
+        uint256 _strategyWithdrawValue,
+        uint256 _strategyTotalValue,
+        address[] _assets,
+        uint256[] _amounts
+    );
     event RemoveStrategyFromQueue(address[] _strategies);
     event SetEmergencyShutdown(bool _shutdown);
     event RebasePaused();

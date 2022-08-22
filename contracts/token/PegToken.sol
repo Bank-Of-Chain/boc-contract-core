@@ -20,11 +20,11 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
 
     uint8 private mDecimals;
 
+    uint256 private mTotalShares;
+
     bool public isPaused;
 
     address public vaultAddr;
-
-    uint256 public mTotalShares;
 
 
     /**
