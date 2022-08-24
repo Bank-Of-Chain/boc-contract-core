@@ -37,7 +37,7 @@ contract Vault is VaultStorage {
         rebaseThreshold = 1;
         // one week
         maxTimestampBetweenTwoReported = 604800;
-        underlyingUnitsPerShare =  1e18;
+        underlyingUnitsPerShare = 1e18;
     }
 
     modifier whenNotEmergency() {
@@ -180,15 +180,8 @@ contract Vault is VaultStorage {
 
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
-    /// @param _asset one of StableCoin asset
     /// @param _minimumAmount Minimum usd to receive in return
-    function burn(
-        uint256 _amount,
-        address _asset,
-        uint256 _minimumAmount,
-        bool _needExchange,
-        IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
-    )
+    function burn(uint256 _amount, uint256 _minimumAmount)
         external
         whenNotEmergency
         whenNotAdjustPosition
@@ -196,7 +189,7 @@ contract Vault is VaultStorage {
         returns (address[] memory _assets, uint256[] memory _amounts)
     {
         uint256 _accountBalance = IPegToken(pegTokenAddress).balanceOf(msg.sender);
-        _checkAssetAndExchangeTokens(_accountBalance, _amount, _asset, _exchangeTokens);
+        require(_amount > 0 && _amount <= _accountBalance, "USDi not enough");
 
         address[] memory _trackedAssets = _getTrackedAssets();
         uint256[] memory _assetPrices = new uint256[](_trackedAssets.length);
@@ -211,9 +204,6 @@ contract Vault is VaultStorage {
 
         uint256 _actuallyReceivedAmount = 0;
         (_assets, _amounts, _actuallyReceivedAmount) = _calculateAndTransfer(
-            _asset,
-            _exchangeTokens,
-            _needExchange,
             _actualAsset,
             _trackedAssets,
             _assetPrices,
@@ -224,7 +214,6 @@ contract Vault is VaultStorage {
             require(_actuallyReceivedAmount >= _minimumAmount, "amount lower than minimum");
         }
         _burnRebaseAndEmit(
-            _asset,
             _amount,
             _actuallyReceivedAmount,
             _sharesAmount,
@@ -393,7 +382,7 @@ contract Vault is VaultStorage {
 
     /// @notice end  Adjust Position
     function endAdjustPosition() external isKeeper nonReentrant {
-        require(adjustPositionPeriod, "AD ING");
+        require(adjustPositionPeriod, "AD OVER");
         address[] memory _trackedAssets = _getTrackedAssets();
         uint256 _trackedAssetsLength = _trackedAssets.length;
         uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
@@ -799,50 +788,6 @@ contract Vault is VaultStorage {
         return _value;
     }
 
-    function _exchangeAndCalculateReceivedAmounts(
-        address _asset,
-        uint256[] memory _outputs,
-        address[] memory _trackedAssets,
-        IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
-    ) internal returns (uint256[] memory) {
-        uint256 _trackedAssetsLength = _trackedAssets.length;
-        uint256[] memory _amounts = new uint256[](_trackedAssetsLength);
-        uint256 _toTokenIndex = _trackedAssetsLength;
-        uint256 _toTokenAmount;
-        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
-            address _withdrawToken = _trackedAssets[i];
-            if (_toTokenIndex == _trackedAssetsLength && _withdrawToken == _asset) {
-                _toTokenIndex = i;
-            }
-            uint256 withdrawAmount = _outputs[i];
-            if (withdrawAmount > 0) {
-                if (_withdrawToken == _asset) {
-                    _toTokenAmount = _toTokenAmount + withdrawAmount;
-                } else {
-                    _amounts[i] = withdrawAmount;
-                    for (uint256 j = 0; j < _exchangeTokens.length; j++) {
-                        IExchangeAggregator.ExchangeToken memory _exchangeToken = _exchangeTokens[j];
-                        if (
-                            _exchangeToken.fromToken == _withdrawToken && _exchangeToken.toToken == _asset
-                        ) {
-                            _amounts[i] = 0;
-                            uint256 toAmount = _exchange(
-                                _exchangeToken.fromToken,
-                                _exchangeToken.toToken,
-                                withdrawAmount,
-                                _exchangeToken.exchangeParam
-                            );
-                            _toTokenAmount = _toTokenAmount + toAmount;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        _amounts[_toTokenIndex] = _toTokenAmount;
-        return _amounts;
-    }
-
     // @notice without exchange token and transfer form vault to user
     function _transfer(
         uint256[] memory _outputs,
@@ -868,27 +813,6 @@ contract Vault is VaultStorage {
             }
         }
         return _actualAmount;
-    }
-
-    function _checkAssetAndExchangeTokens(
-        uint256 _accountBalance,
-        uint256 _amount,
-        address _asset,
-        IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
-    ) internal view {
-        require(
-            _amount > 0 && _amount <= _accountBalance,
-            "Amount must be gt 0 and lt or eq the balance"
-        );
-        checkIsSupportAsset(_asset);
-
-        for (uint256 i = 0; i < _exchangeTokens.length; i++) {
-            require(
-                _exchangeTokens[i].toToken == _asset ||
-                    _exchangeTokens[i].toToken == _exchangeTokens[i].fromToken,
-                "toToken is invalid"
-            );
-        }
     }
 
     function _replayToVault(
@@ -941,9 +865,6 @@ contract Vault is VaultStorage {
     }
 
     function _calculateAndTransfer(
-        address _asset,
-        IExchangeAggregator.ExchangeToken[] memory _exchangeTokens,
-        bool _needExchange,
         uint256 _actualAsset,
         address[] memory _trackedAssets,
         uint256[] memory _assetPrices,
@@ -963,14 +884,6 @@ contract Vault is VaultStorage {
             _assetPrices,
             _assetDecimals
         );
-        if (_needExchange) {
-            _outputs = _exchangeAndCalculateReceivedAmounts(
-                _asset,
-                _outputs,
-                _trackedAssets,
-                _exchangeTokens
-            );
-        }
         uint256 _actuallyReceivedAmount = _transfer(
             _outputs,
             _trackedAssets,
@@ -982,7 +895,6 @@ contract Vault is VaultStorage {
 
     // @notice burn usdi and check rebase
     function _burnRebaseAndEmit(
-        address _asset,
         uint256 _amount,
         uint256 _actualAmount,
         uint256 _shareAmount,
@@ -1002,7 +914,7 @@ contract Vault is VaultStorage {
             uint256 _totalValueInVault = _totalValueInVault(_trackedAssets, _assetPrices, _assetDecimals);
             _rebase(_totalValueInVault + totalDebt);
         }
-        emit Burn(msg.sender, _asset, _amount, _actualAmount, _shareAmount, _assets, _amounts);
+        emit Burn(msg.sender, _amount, _actualAmount, _shareAmount, _assets, _amounts);
     }
 
     /**

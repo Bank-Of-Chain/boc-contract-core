@@ -6,9 +6,9 @@ import "./IExchangeAdapter.sol";
 
 interface IExchangeAggregator {
     event ExchangeAdapterAdded(address[] _exchangeAdapters);
-    
+
     event ExchangeAdapterRemoved(address[] _exchangeAdapters);
-    
+
     /**
      * @param platform Called exchange platforms
      * @param method The method of the exchange platform
@@ -22,6 +22,19 @@ interface IExchangeAggregator {
         bytes encodeExchangeArgs;
         uint256 slippage;
         uint256 oracleAdditionalSlippage;
+    }
+
+    /**
+     * @param platform Called exchange platforms
+     * @param method The method of the exchange platform
+     * @param data The encoded parameters to call
+     * @param swapDescription swap info
+     */
+    struct SwapParam {
+        address platform;
+        uint8 method;
+        bytes data;
+        IExchangeAdapter.SwapDescription swapDescription;
     }
 
     /**
@@ -43,6 +56,8 @@ interface IExchangeAggregator {
         bytes calldata _data,
         IExchangeAdapter.SwapDescription calldata _sd
     ) external payable returns (uint256);
+
+    function batchSwap(SwapParam[] calldata _swapParams) external payable returns (uint256[] memory);
 
     function getExchangeAdapters()
         external
