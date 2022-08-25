@@ -5,10 +5,6 @@ pragma solidity ^0.8.0;
 import "./IExchangeAdapter.sol";
 
 interface IExchangeAggregator {
-    event ExchangeAdapterAdded(address[] _exchangeAdapters);
-
-    event ExchangeAdapterRemoved(address[] _exchangeAdapters);
-
     /**
      * @param platform Called exchange platforms
      * @param method The method of the exchange platform
@@ -49,6 +45,20 @@ interface IExchangeAggregator {
         uint256 fromAmount;
         ExchangeParam exchangeParam;
     }
+
+    event ExchangeAdapterAdded(address[] _exchangeAdapters);
+
+    event ExchangeAdapterRemoved(address[] _exchangeAdapters);
+
+    event Swap(
+        address _platform,
+        uint256 _amount,
+        address _srcToken,
+        address _dstToken,
+        uint256 _exchangeAmount,
+        address indexed _receiver,
+        address _sender
+    );
 
     function swap(
         address _platform,

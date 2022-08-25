@@ -77,7 +77,18 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         } else {
             IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
         }
-        return IExchangeAdapter(_platform).swap(_method, _data, _sd);
+        uint256 _exchangeAmount = IExchangeAdapter(_platform).swap(_method, _data, _sd);
+
+        emit Swap(
+            _platform,
+            _sd.amount,
+            _sd.srcToken,
+            _sd.dstToken,
+            _exchangeAmount,
+            _sd.receiver,
+            msg.sender
+        );
+        return _exchangeAmount;
     }
 
     function batchSwap(SwapParam[] calldata _swapParams)
@@ -87,7 +98,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         returns (uint256[] memory)
     {
         uint256 _platformsLength = _swapParams.length;
-        uint256[] memory _Amounts = new uint256[](_platformsLength);
+        uint256[] memory _amounts = new uint256[](_platformsLength);
         uint256 _ethTokenCount = 0;
         for (uint256 i = 0; i < _platformsLength; i++) {
             SwapParam calldata _swapParam = _swapParams[i];
@@ -95,14 +106,14 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
                 _ethTokenCount++;
             }
             require(_ethTokenCount < 2, "ETH must be merge to one");
-            _Amounts[i] = swap(
+            _amounts[i] = swap(
                 _swapParam.platform,
                 _swapParam.method,
                 _swapParam.data,
                 _swapParam.swapDescription
             );
         }
-        return _Amounts;
+        return _amounts;
     }
 
     /// @notice Get all exchange adapters and its identifiers
