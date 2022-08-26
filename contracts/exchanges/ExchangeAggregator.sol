@@ -72,12 +72,13 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     ) public payable override returns (uint256) {
         require(exchangeAdapters.contains(_platform), "error swap platform");
         require(_sd.receiver != address(0), "error receiver");
+        uint256 _ethValue = 0;
         if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
-            payable(_platform).transfer(msg.value);
+            _ethValue = msg.value;
         } else {
             IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
         }
-        uint256 _exchangeAmount = IExchangeAdapter(_platform).swap(_method, _data, _sd);
+        uint256 _exchangeAmount = IExchangeAdapter(_platform).swap{value: _ethValue}(_method, _data, _sd);
 
         emit Swap(
             _platform,
