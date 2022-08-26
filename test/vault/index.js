@@ -417,37 +417,10 @@ describe("Vault", function () {
         const _toAsset = MFC.USDC_ADDRESS;
         console.log("withdraw asset:USDC");
         console.log("Number of usdi withdraw:%s", new BigNumber(_amount).toFixed());
-        const resp = await iVault.burn.call(_amount, _toAsset, 0, false, [], {
-            from: farmer1
-        });
 
-        tokens = resp[0];
-        amounts = resp[1];
-        exchangeArray = await Promise.all(
-            map(tokens, async (tokenItem, index) => {
-                const exchangeAmounts = amounts[index].toString();
-                if (tokenItem === _toAsset) {
-                    return;
-                }
-                return {
-                    fromToken: tokenItem,
-                    toToken: _toAsset,
-                    fromAmount: exchangeAmounts,
-                    exchangeParam: {
-                        platform: exchangePlatformAdapters.testAdapter,
-                        method: 0,
-                        encodeExchangeArgs: '0x',
-                        slippage: 0,
-                        oracleAdditionalSlippage: 0
-                    }
-                }
-            })
-        );
-
-        const exchangeArrayNext = filter(exchangeArray, i => !isEmpty(i));
         const beforeBalance = new BigNumber(await usdcToken.balanceOf(farmer1)).toFixed();
 
-        await iVault.burn(_amount, _toAsset, 0, true, exchangeArrayNext, {from: farmer1});
+        await iVault.burn(_amount, 0, {from: farmer1});
 
         const afterBalance = new BigNumber(await usdcToken.balanceOf(farmer1)).toFixed();
 
@@ -607,10 +580,10 @@ describe("Vault", function () {
         console.log("Balance of usdi of farmer1 before withdraw: %s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
         console.log("Balance of usdi of farmer2 before withdraw: %s", new BigNumber(await pegToken.balanceOf(farmer2)).toFixed());
         let _amount =  new BigNumber(await pegToken.balanceOf(farmer1)).toFixed();
-        await iVault.burn(_amount, MFC.USDT_ADDRESS, 0, false, [], {from: farmer1});
+        await iVault.burn(_amount, 0, {from: farmer1});
         console.log("totalValueInStrategies after farmer1 withdraw: %s",new BigNumber(await iVault.totalValueInStrategies()).toFixed());
         _amount =  new BigNumber(await pegToken.balanceOf(farmer2)).minus(new BigNumber(10).pow(18)).toFixed();
-        await iVault.burn(_amount, MFC.USDT_ADDRESS, 0, false, [], {from: farmer2});
+        await iVault.burn(_amount, 0, {from: farmer2});
         const totalValueInStrategies = new BigNumber(await iVault.totalValueInStrategies()).toFixed();
         console.log("totalValueInStrategies after withdraw: %s",totalValueInStrategies);
         console.log("totalAssets after withdraw: %s",new BigNumber(await iVault.totalAssets()).toFixed());

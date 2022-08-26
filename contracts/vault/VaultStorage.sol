@@ -50,7 +50,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event Mint(address _account, address[] _assets, uint256[] _amounts, uint256 _mintAmount);
     event Burn(
         address _account,
-        address _asset,
         uint256 _amount,
         uint256 _actualAmount,
         uint256 _shareAmount,
@@ -65,7 +64,12 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         uint256 _distAmount
     );
     event Redeem(address _strategy, uint256 _debtChangeAmount, address[] _assets, uint256[] _amounts);
-    event LendToStrategy(address indexed _strategy, address[] _wants, uint256[] _amounts, uint256 _lendValue);
+    event LendToStrategy(
+        address indexed _strategy,
+        address[] _wants,
+        uint256[] _amounts,
+        uint256 _lendValue
+    );
     event RepayFromStrategy(
         address indexed _strategy,
         uint256 _strategyWithdrawValue,

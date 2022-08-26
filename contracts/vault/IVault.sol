@@ -6,7 +6,6 @@ pragma experimental ABIEncoderV2;
 import "../exchanges/IExchangeAggregator.sol";
 
 interface IVault {
-
     /// @param lastReport The last report timestamp
     /// @param totalDebt The total asset of this strategy
     /// @param profitLimitRatio The limited ratio of profit
@@ -37,7 +36,6 @@ interface IVault {
     event Mint(address _account, address[] _assets, uint256[] _amounts, uint256 _mintAmount);
     event Burn(
         address _account,
-        address _asset,
         uint256 _amount,
         uint256 _actualAmount,
         uint256 _shareAmount,
@@ -52,7 +50,12 @@ interface IVault {
         uint256 _distAmount
     );
     event Redeem(address _strategy, uint256 _debtChangeAmount, address[] _assets, uint256[] _amounts);
-    event LendToStrategy(address indexed _strategy, address[] _wants, uint256[] _amounts, uint256 _lendValue);
+    event LendToStrategy(
+        address indexed _strategy,
+        address[] _wants,
+        uint256[] _amounts,
+        uint256 _lendValue
+    );
     event RepayFromStrategy(
         address indexed _strategy,
         uint256 _strategyWithdrawValue,
@@ -176,15 +179,10 @@ interface IVault {
 
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
-    /// @param _asset one of StableCoin asset
     /// @param _minimumAmount Minimum usd to receive in return
-    function burn(
-        uint256 _amount,
-        address _asset,
-        uint256 _minimumAmount,
-        bool _needExchange,
-        IExchangeAggregator.ExchangeToken[] memory _exchangeTokens
-    ) external returns (address[] memory _assets, uint256[] memory _amounts);
+    function burn(uint256 _amount, uint256 _minimumAmount)
+        external
+        returns (address[] memory _assets, uint256[] memory _amounts);
 
     /// @notice Change USDi supply with Vault total assets.
     function rebase() external;
@@ -194,7 +192,11 @@ interface IVault {
         external;
 
     /// @notice Withdraw the funds from specified strategy.
-    function redeem(address _strategy, uint256 _amount, uint256 _outputCode) external;
+    function redeem(
+        address _strategy,
+        uint256 _amount,
+        uint256 _outputCode
+    ) external;
 
     /**
      * @dev Exchange from '_fromToken' to '_toToken'
@@ -246,7 +248,7 @@ interface IVault {
     function setTreasuryAddress(address _address) external;
 
     /**
-    * @dev Sets the exchangeManagerAddress that can receive a portion of yield.
+     * @dev Sets the exchangeManagerAddress that can receive a portion of yield.
      */
     function setExchangeManagerAddress(address _exchangeManagerAddress) external;
 
@@ -312,7 +314,7 @@ interface IVault {
     function rebasePaused() external view returns (bool);
 
     /// @notice Return the rebaseThreshold value,
-    /// over this difference ratio automatically rebase. 
+    /// over this difference ratio automatically rebase.
     /// rebaseThreshold is the numerator and the denominator is 10000000 x/10000000.
     function rebaseThreshold() external view returns (uint256);
 
@@ -322,13 +324,13 @@ interface IVault {
     /// @notice Return the redemption fee in basis points
     function redeemFeeBps() external view returns (uint256);
 
-    /// @notice Return the total asset of all strategy 
+    /// @notice Return the total asset of all strategy
     function totalDebt() external view returns (uint256);
 
     /// @notice Return the exchange manager address
     function exchangeManager() external view returns (address);
 
-    /// @notice Return all info of '_strategy' 
+    /// @notice Return all info of '_strategy'
     function strategies(address _strategy) external view returns (StrategyParams memory);
 
     /// @notice Return withdraw strategy address list

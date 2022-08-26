@@ -69,14 +69,51 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         uint8 _method,
         bytes calldata _data,
         IExchangeAdapter.SwapDescription calldata _sd
-    ) external payable override returns (uint256) {
+    ) public payable override returns (uint256) {
         require(exchangeAdapters.contains(_platform), "error swap platform");
+        require(_sd.receiver != address(0), "error receiver");
         if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
             payable(_platform).transfer(msg.value);
         } else {
             IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
         }
-        return IExchangeAdapter(_platform).swap(_method, _data, _sd);
+        uint256 _exchangeAmount = IExchangeAdapter(_platform).swap(_method, _data, _sd);
+
+        emit Swap(
+            _platform,
+            _sd.amount,
+            _sd.srcToken,
+            _sd.dstToken,
+            _exchangeAmount,
+            _sd.receiver,
+            msg.sender
+        );
+        return _exchangeAmount;
+    }
+
+    function batchSwap(SwapParam[] calldata _swapParams)
+        external
+        payable
+        override
+        returns (uint256[] memory)
+    {
+        uint256 _platformsLength = _swapParams.length;
+        uint256[] memory _amounts = new uint256[](_platformsLength);
+        uint256 _ethTokenCount = 0;
+        for (uint256 i = 0; i < _platformsLength; i++) {
+            SwapParam calldata _swapParam = _swapParams[i];
+            if (_swapParam.swapDescription.srcToken == NativeToken.NATIVE_TOKEN) {
+                _ethTokenCount++;
+            }
+            require(_ethTokenCount < 2, "ETH must be merge to one");
+            _amounts[i] = swap(
+                _swapParam.platform,
+                _swapParam.method,
+                _swapParam.data,
+                _swapParam.swapDescription
+            );
+        }
+        return _amounts;
     }
 
     /// @notice Get all exchange adapters and its identifiers

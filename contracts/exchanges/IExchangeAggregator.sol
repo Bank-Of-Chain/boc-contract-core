@@ -5,10 +5,6 @@ pragma solidity ^0.8.0;
 import "./IExchangeAdapter.sol";
 
 interface IExchangeAggregator {
-    event ExchangeAdapterAdded(address[] _exchangeAdapters);
-    
-    event ExchangeAdapterRemoved(address[] _exchangeAdapters);
-    
     /**
      * @param platform Called exchange platforms
      * @param method The method of the exchange platform
@@ -25,6 +21,19 @@ interface IExchangeAggregator {
     }
 
     /**
+     * @param platform Called exchange platforms
+     * @param method The method of the exchange platform
+     * @param data The encoded parameters to call
+     * @param swapDescription swap info
+     */
+    struct SwapParam {
+        address platform;
+        uint8 method;
+        bytes data;
+        IExchangeAdapter.SwapDescription swapDescription;
+    }
+
+    /**
      * @param srcToken The token swap from
      * @param dstToken The token swap to
      * @param amount The amount to swap
@@ -37,12 +46,28 @@ interface IExchangeAggregator {
         ExchangeParam exchangeParam;
     }
 
+    event ExchangeAdapterAdded(address[] _exchangeAdapters);
+
+    event ExchangeAdapterRemoved(address[] _exchangeAdapters);
+
+    event Swap(
+        address _platform,
+        uint256 _amount,
+        address _srcToken,
+        address _dstToken,
+        uint256 _exchangeAmount,
+        address indexed _receiver,
+        address _sender
+    );
+
     function swap(
         address _platform,
         uint8 _method,
         bytes calldata _data,
         IExchangeAdapter.SwapDescription calldata _sd
     ) external payable returns (uint256);
+
+    function batchSwap(SwapParam[] calldata _swapParams) external payable returns (uint256[] memory);
 
     function getExchangeAdapters()
         external
