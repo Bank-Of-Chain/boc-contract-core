@@ -16,6 +16,9 @@ contract TestAdapter is IExchangeAdapter {
         valueInterpreter = _valueInterpreter;
     }
 
+    receive() external payable {}
+    fallback() external payable {}
+
     /// @inheritdoc IExchangeAdapter
     function identifier() external pure override returns (string memory) {
         return "testAdapter";
