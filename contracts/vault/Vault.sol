@@ -1073,17 +1073,20 @@ contract Vault is VaultStorage {
             _loss = _lastStrategyTotalDebt - _nowStrategyTotalDebt;
         }
 
-        if (_strategyParam.enforceChangeLimit && _lastStrategyTotalDebt > maxAllowGainOrLossValue) {
-            if (block.timestamp - strategies[_strategy].lastReport < maxTimestampBetweenTwoReported) {
+        if (_strategyParam.enforceChangeLimit) {
+            if (
+                block.timestamp - strategies[_strategy].lastReport < maxTimestampBetweenTwoReported ||
+                _lastStrategyTotalDebt > maxAllowGainOrLossValue ||
+                _nowStrategyTotalDebt > maxAllowGainOrLossValue
+            ) {
                 if (_gain > 0) {
                     require(
-                            _gain <=
-                            ((_lastStrategyTotalDebt * _strategyParam.profitLimitRatio) / MAX_BPS),
+                        _gain <= ((_lastStrategyTotalDebt * _strategyParam.profitLimitRatio) / MAX_BPS),
                         "GL"
                     );
                 } else if (_loss > 0) {
                     require(
-                            _loss <= ((_lastStrategyTotalDebt * _strategyParam.lossLimitRatio) / MAX_BPS),
+                        _loss <= ((_lastStrategyTotalDebt * _strategyParam.lossLimitRatio) / MAX_BPS),
                         "LL"
                     );
                 }
