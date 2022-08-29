@@ -59,7 +59,7 @@ contract VaultAdmin is VaultStorage {
     }
 
     /**
-     * @dev Sets the Maximum allow gain or loss when strategy report
+     * @dev Sets the maximum gain or loss value allowed when the strategy report
      */
     function setMaxAllowGainOrLossValue(uint256 _maxAllowGainOrLossValue)
     external

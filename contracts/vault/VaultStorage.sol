@@ -178,7 +178,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     uint256 public underlyingUnitsPerShare;
     //Maximum timestamp between two reported
     uint256 public maxTimestampBetweenTwoReported;
-    //Maximum allow gain or loss value when strategy report
+    //Maximum gain or loss value allowed when the strategy report
     uint256 public maxAllowGainOrLossValue;
     //Minimum investment amount
     uint256 public minimumInvestmentAmount;
