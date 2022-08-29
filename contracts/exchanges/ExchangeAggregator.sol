@@ -74,7 +74,8 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         require(_sd.receiver != address(0), "error receiver");
         uint256 _ethValue = 0;
         if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
-            _ethValue = msg.value;
+            _ethValue = _sd.amount;
+            require(_ethValue <= msg.value, "ETH not enough");
         } else {
             IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
         }
@@ -93,20 +94,20 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     }
 
     function batchSwap(SwapParam[] calldata _swapParams)
-        external
-        payable
-        override
-        returns (uint256[] memory)
+    external
+    payable
+    override
+    returns (uint256[] memory)
     {
         uint256 _platformsLength = _swapParams.length;
         uint256[] memory _amounts = new uint256[](_platformsLength);
-        uint256 _ethTokenCount = 0;
+        uint256 _ethValue = 0;
         for (uint256 i = 0; i < _platformsLength; i++) {
             SwapParam calldata _swapParam = _swapParams[i];
             if (_swapParam.swapDescription.srcToken == NativeToken.NATIVE_TOKEN) {
-                _ethTokenCount++;
+                _ethValue = _ethValue + _swapParam.swapDescription.amount;
             }
-            require(_ethTokenCount < 2, "ETH must be merge to one");
+            require(_ethValue <= msg.value, "ETH not enough");
             _amounts[i] = swap(
                 _swapParam.platform,
                 _swapParam.method,
