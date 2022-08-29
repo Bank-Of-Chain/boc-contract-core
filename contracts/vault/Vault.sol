@@ -1075,9 +1075,9 @@ contract Vault is VaultStorage {
 
         if (_strategyParam.enforceChangeLimit) {
             if (
-                block.timestamp - strategies[_strategy].lastReport < maxTimestampBetweenTwoReported ||
-                _lastStrategyTotalDebt > minCheckedStrategyTotalDebt ||
-                _nowStrategyTotalDebt > minCheckedStrategyTotalDebt
+                block.timestamp - strategies[_strategy].lastReport < maxTimestampBetweenTwoReported &&
+                (_lastStrategyTotalDebt > minCheckedStrategyTotalDebt ||
+                    _nowStrategyTotalDebt > minCheckedStrategyTotalDebt)
             ) {
                 if (_gain > 0) {
                     require(
