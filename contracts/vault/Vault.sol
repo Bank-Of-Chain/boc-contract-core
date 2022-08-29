@@ -38,7 +38,7 @@ contract Vault is VaultStorage {
         // one week
         maxTimestampBetweenTwoReported = 604800;
         underlyingUnitsPerShare = 1e18;
-        maxAllowGainOrLossValue = 1000e18;
+        minCheckedStrategyTotalDebt = 1000e18;
     }
 
     modifier whenNotEmergency() {
@@ -1076,8 +1076,8 @@ contract Vault is VaultStorage {
         if (_strategyParam.enforceChangeLimit) {
             if (
                 block.timestamp - strategies[_strategy].lastReport < maxTimestampBetweenTwoReported ||
-                _lastStrategyTotalDebt > maxAllowGainOrLossValue ||
-                _nowStrategyTotalDebt > maxAllowGainOrLossValue
+                _lastStrategyTotalDebt > minCheckedStrategyTotalDebt ||
+                _nowStrategyTotalDebt > minCheckedStrategyTotalDebt
             ) {
                 if (_gain > 0) {
                     require(
