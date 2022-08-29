@@ -94,6 +94,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     event RebaseThresholdUpdated(uint256 _threshold);
     event TrusteeFeeBpsChanged(uint256 _basis);
     event MaxTimestampBetweenTwoReportedChanged(uint256 _maxTimestampBetweenTwoReported);
+    event MinCheckedStrategyTotalDebtChanged(uint256 _minCheckedStrategyTotalDebt);
     event MinimumInvestmentAmountChanged(uint256 _minimumInvestmentAmount);
     event TreasuryAddressChanged(address _address);
     event ExchangeManagerAddressChanged(address _address);
@@ -177,6 +178,8 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     uint256 public underlyingUnitsPerShare;
     //Maximum timestamp between two reported
     uint256 public maxTimestampBetweenTwoReported;
+    //Minimum strategy total debt that will be checked for the strategy reporting
+    uint256 public minCheckedStrategyTotalDebt;
     //Minimum investment amount
     uint256 public minimumInvestmentAmount;
 

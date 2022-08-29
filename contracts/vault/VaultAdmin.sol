@@ -59,6 +59,17 @@ contract VaultAdmin is VaultStorage {
     }
 
     /**
+     * @dev Set the minimum strategy total debt that will be checked for the strategy reporting
+     */
+    function setMinCheckedStrategyTotalDebt(uint256 _minCheckedStrategyTotalDebt)
+    external
+    isVaultManager
+    {
+        minCheckedStrategyTotalDebt = _minCheckedStrategyTotalDebt;
+        emit MinCheckedStrategyTotalDebtChanged(_minCheckedStrategyTotalDebt);
+    }
+
+    /**
      * @dev Sets Minimum Investment Amount
      */
     function setMinimumInvestmentAmount(uint256 _minimumInvestmentAmount) external isVaultManager {
