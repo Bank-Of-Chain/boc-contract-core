@@ -59,6 +59,17 @@ contract VaultAdmin is VaultStorage {
     }
 
     /**
+     * @dev Sets the Maximum allow gain or loss when strategy report
+     */
+    function setMaxAllowGainOrLossValue(uint256 _maxAllowGainOrLossValue)
+    external
+    isVaultManager
+    {
+        maxAllowGainOrLossValue = _maxAllowGainOrLossValue;
+        emit MaxAllowGainOrLossValueChanged(_maxAllowGainOrLossValue);
+    }
+
+    /**
      * @dev Sets Minimum Investment Amount
      */
     function setMinimumInvestmentAmount(uint256 _minimumInvestmentAmount) external isVaultManager {

@@ -38,6 +38,7 @@ contract Vault is VaultStorage {
         // one week
         maxTimestampBetweenTwoReported = 604800;
         underlyingUnitsPerShare = 1e18;
+        maxAllowGainOrLossValue = 1000e18;
     }
 
     modifier whenNotEmergency() {
