@@ -131,6 +131,40 @@ contract Vault is VaultStorage {
         }
     }
 
+    /**
+     * @notice Get pegToken price in USD
+     * @return  price in USD (1e18)
+     */
+    function getPegTokenPrice() external view returns (uint256) {
+        uint256 _totalSupply = IPegToken(pegTokenAddress).totalSupply();
+        uint256 _pegTokenPrice = 1e18;
+        if (_totalSupply > 0) {
+            address[] memory _trackedAssets = _getTrackedAssets();
+            uint256 _trackedAssetsLength = _trackedAssets.length;
+            uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
+            uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
+            uint256 _totalValueInVault = 0;
+            uint256 _totalTransferValue = 0;
+            for (uint256 i = 0; i < _trackedAssetsLength; i++) {
+                address _trackedAsset = _trackedAssets[i];
+                uint256 _balance = _balanceOfToken(_trackedAsset, address(this));
+                if (_balance > 0) {
+                    _totalValueInVault =
+                    _totalValueInVault +
+                    _calculateAssetValue(_assetPrices, _assetDecimals, i, _trackedAsset, _balance);
+                }
+                _balance = transferFromVaultBufferAssetsMap[_trackedAsset];
+                if (_balance > 0) {
+                    _totalTransferValue =
+                    _totalTransferValue +
+                    _calculateAssetValue(_assetPrices, _assetDecimals, i, _trackedAsset, _balance);
+                }
+            }
+            _pegTokenPrice = ((_totalValueInVault + totalDebt - _totalTransferValue) * 1e18) / _totalSupply;
+        }
+        return _pegTokenPrice;
+    }
+
     /// @notice All strategies
     function getStrategies() external view returns (address[] memory) {
         return strategySet.values();

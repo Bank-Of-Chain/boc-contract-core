@@ -499,9 +499,12 @@ describe("Vault", function () {
         console.log("valueOfTrackedTokens after deposit:%s,totalValueInVault：%s", new BigNumber(await iVault.valueOfTrackedTokens()).toFixed(), new BigNumber(await iVault.totalValueInVault()).toFixed());
         console.log("valueOfTrackedTokensIncludeVaultBuffer after deposit:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
 
+        console.log("before startAdjustPosition PegTokenPrice:%s", new BigNumber(await iVault.getPegTokenPrice()).toFixed());
+
         //startAdjustPosition
         console.log("startAdjustPosition");
         let tx =  await iVault.startAdjustPosition({from: keeper});
+        console.log("after startAdjustPosition PegTokenPrice:%s", new BigNumber(await iVault.getPegTokenPrice()).toFixed());
         let gasUsed = tx.receipt.gasUsed;
         console.log('startAdjustPosition gasUsed: %d', gasUsed);
         console.log("Balance of usdt of vault before redeem:%s", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed());
@@ -560,9 +563,11 @@ describe("Vault", function () {
         console.log("Balance of dai of vault after lend:%s", new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
         Utils.assertBNGt(beforeUsdt, afterUsdt);
 
+        console.log("before endAdjustPosition PegTokenPrice:%s", new BigNumber(await iVault.getPegTokenPrice()).toFixed());
         tx = await iVault.endAdjustPosition({from: keeper});
         gasUsed = tx.receipt.gasUsed;
         console.log('endAdjustPosition gasUsed: %d', gasUsed);
+        console.log("after endAdjustPosition PegTokenPrice:%s", new BigNumber(await iVault.getPegTokenPrice()).toFixed());
 
         console.log('start distributeWhenDistributing');
         await vaultBuffer.distributeWhenDistributing({from: keeper});
@@ -574,7 +579,9 @@ describe("Vault", function () {
     });
 
     it('Verify：burn from strategy', async function (){
+        console.log("before rebase PegTokenPrice:%s", new BigNumber(await iVault.getPegTokenPrice()).toFixed());
         await iVault.rebase();
+        console.log("after rebase PegTokenPrice:%s", new BigNumber(await iVault.getPegTokenPrice()).toFixed());
         console.log("totalValueInStrategies before withdraw: %s",new BigNumber(await iVault.totalValueInStrategies()).toFixed());
         console.log("totalAssets before withdraw: %s",new BigNumber(await iVault.totalAssets()).toFixed());
         console.log("Balance of usdi of farmer1 before withdraw: %s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
