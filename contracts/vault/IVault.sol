@@ -124,6 +124,9 @@ interface IVault {
     /// @notice Vault total asset in USD
     function totalAssets() external view returns (uint256);
 
+    /// @notice Get pegToken price in USD(1e18)
+    function getPegTokenPrice() external view returns (uint256);
+
     /// @notice Vault and vault buffer total asset in USD
     function totalAssetsIncludeVaultBuffer() external view returns (uint256);
 
