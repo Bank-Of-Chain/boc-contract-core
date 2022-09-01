@@ -5,8 +5,6 @@ pragma solidity ^0.8.0;
 import "../strategy/BaseStrategy.sol";
 import "./Mock3rdPool.sol";
 
-import "hardhat/console.sol";
-
 contract MockStrategy is BaseStrategy {
     Mock3rdPool mock3rdPool;
 
@@ -15,26 +13,15 @@ contract MockStrategy is BaseStrategy {
         address _harvester,
         address _mock3rdPool
     ) public initializer {
-        console.log("MockStrategy--initialize");
         mock3rdPool = Mock3rdPool(_mock3rdPool);
 
         address[] memory _wants = new address[](1);
         _wants[0] = mock3rdPool.underlyingToken();
-        super._initialize(_vault, _harvester, 23, _wants);
+        super._initialize(_vault, _harvester, "MockStrategy", 23, _wants);
     }
 
-    function getVersion()
-        external
-        pure
-        virtual
-        override
-        returns (string memory)
-    {
+    function getVersion() external pure virtual override returns (string memory) {
         return "0.0.1";
-    }
-
-    function name() external pure virtual override returns (string memory) {
-        return "MockStrategy";
     }
 
     function getWantsInfo()
@@ -51,6 +38,14 @@ contract MockStrategy is BaseStrategy {
         _ratios[0] = 1;
     }
 
+    function getOutputsInfo() external view virtual override returns (OutputInfo[] memory _outputsInfo) {
+        _outputsInfo = new OutputInfo[](1);
+        OutputInfo memory _info = _outputsInfo[0];
+        _info.outputCode = 0;
+        _info.outputTokens = new address[](1);
+        _info.outputTokens[0] = mock3rdPool.underlyingToken();
+    }
+
     /// @notice Returns the position details of the strategy.
     function getPositionDetail()
         public
@@ -60,40 +55,31 @@ contract MockStrategy is BaseStrategy {
         returns (
             address[] memory _tokens,
             uint256[] memory _amounts,
-            bool isUsd,
-            uint256 usdValue
+            bool _isUsd,
+            uint256 _usdValue
         )
     {
-        isUsd = true;
-        uint256 lpAmount = mock3rdPool.balanceOf(address(this));
-        uint256 sharePrice = mock3rdPool.pricePerShare();
-        uint256 decimals = mock3rdPool.decimals();
+        _isUsd = true;
+        uint256 _lpAmount = mock3rdPool.balanceOf(address(this));
+        uint256 _sharePrice = mock3rdPool.pricePerShare();
+        uint256 _decimals = mock3rdPool.decimals();
 
-        usdValue = (lpAmount * sharePrice) / 10**decimals;
+        _usdValue = (_lpAmount * _sharePrice) / 10**_decimals;
     }
 
-    function get3rdPoolAssets()
-        external
-        view
-        virtual
-        override
-        returns (uint256)
-    {
-        uint256 totalSupply = mock3rdPool.totalSupply();
-        uint256 sharePrice = mock3rdPool.pricePerShare();
-        uint256 decimals = mock3rdPool.decimals();
+    function get3rdPoolAssets() external view virtual override returns (uint256) {
+        uint256 _totalSupply = mock3rdPool.totalSupply();
+        uint256 _sharePrice = mock3rdPool.pricePerShare();
+        uint256 _decimals = mock3rdPool.decimals();
 
-        return (totalSupply * sharePrice) / 10**decimals;
+        return (_totalSupply * _sharePrice) / 10**_decimals;
     }
 
     function getPendingRewards()
         public
         view
         virtual
-        returns (
-            address[] memory _rewardsTokens,
-            uint256[] memory _pendingAmounts
-        )
+        returns (address[] memory _rewardsTokens, uint256[] memory _pendingAmounts)
     {
         (_rewardsTokens, _pendingAmounts) = mock3rdPool.getPendingRewards();
     }
@@ -101,42 +87,27 @@ contract MockStrategy is BaseStrategy {
     function claimRewards()
         internal
         virtual
-        returns (
-            address[] memory _rewardsTokens,
-            uint256[] memory _claimAmounts
-        )
+        returns (address[] memory _rewardsTokens, uint256[] memory _claimAmounts)
     {
         (_rewardsTokens, ) = mock3rdPool.getPendingRewards();
         _claimAmounts = mock3rdPool.claim();
     }
 
-    function depositTo3rdPool(
-        address[] memory _assets,
-        uint256[] memory _amounts
-    ) internal virtual override {
+    function depositTo3rdPool(address[] memory _assets, uint256[] memory _amounts)
+        internal
+        virtual
+        override
+    {
         mock3rdPool.deposit(_assets, _amounts);
     }
 
-    function withdrawFrom3rdPool(uint256 _withdrawShares, uint256 _totalShares)
-        internal
-        virtual
-        override
-    {
-        uint256 lpAmount = mock3rdPool.balanceOf(address(this));
-        uint256 withdrawAmount = (lpAmount * _withdrawShares) / _totalShares;
-        mock3rdPool.withdraw(withdrawAmount);
-    }
-
-    function protectedTokens()
-        internal
-        view
-        virtual
-        override
-        returns (address[] memory)
-    {
-        address[] memory tokens = new address[](1);
-        tokens[0] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; //WETH
-
-        return tokens;
+    function withdrawFrom3rdPool(
+        uint256 _withdrawShares,
+        uint256 _totalShares,
+        uint256 _outputCode
+    ) internal virtual override {
+        uint256 _lpAmount = mock3rdPool.balanceOf(address(this));
+        uint256 _withdrawAmount = (_lpAmount * _withdrawShares) / _totalShares;
+        mock3rdPool.withdraw(_withdrawAmount);
     }
 }

@@ -6,7 +6,7 @@ require('@nomiclabs/hardhat-truffle5');
 require("hardhat-gas-reporter");
 require("solidity-coverage");
 require('hardhat-contract-sizer');
-require('hardhat-spdx-license-identifier');
+// require('hardhat-spdx-license-identifier');
 const {
   removeConsoleLog
 } = require('hardhat-preprocessor');
@@ -57,7 +57,7 @@ module.exports = {
     localhost: {
       url: 'http://localhost:8545',
       allowUnlimitedContractSize: true,
-      // 执行打块时使用的gasPrice，单位：wei
+      // GasPrice used when performing blocking, in wei
       // gasPrice: 100 * 10 ** 9,
       timeout: 1800000,
 
@@ -73,7 +73,7 @@ module.exports = {
     },
   },
   preprocess: {
-    eachLine: removeConsoleLog(bre => false),
+    eachLine: removeConsoleLog(bre => bre.network.name !== 'hardhat' && bre.network.name !== 'localhost'),
   },
   gasReporter: {
     enabled: true,
@@ -121,8 +121,8 @@ module.exports = {
     cache: './cache',
     artifacts: './artifacts',
   },
-  spdxLicenseIdentifier: {
-    overwrite: true,
-    runOnCompile: true,
-  }
+  // spdxLicenseIdentifier: {
+  //   overwrite: true,
+  //   runOnCompile: true,
+  // }
 };

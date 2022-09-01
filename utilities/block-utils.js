@@ -3,8 +3,8 @@ const {
     logPercent
 } = require('./log-utils')
 /**
- * 模拟区块增长
- * @param {number} days 天数
+ * Simulation of block growth
+ * @param {number} days Number of days
  */
 async function advanceBlock(days) {
     for (const i of Array.from(new Array(days)).map((i, index) => index + 1)) {

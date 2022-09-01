@@ -9,6 +9,7 @@ import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
 import "./../strategy/IStrategy.sol";
 import "./../vault/IVault.sol";
+
 /**
  * @title USDI Dripper
  *
@@ -52,11 +53,16 @@ contract Dripper is AccessControlMixin, Initializable {
 
     event DripDurationChanged(uint256 _durationSeconds);
     event TokenChanged(address _token);
-    event Collection(address token, uint256 amount);
-
+    event Collection(address _token, uint256 _amount);
+    
+    /**
+     * @param lastCollect The timestamp of last collection, 
+     * will overflows 262 billion years after the sun dies
+     * @param perBlock The drip rate per block <-- maybe need rename to ratePerBlock
+     */
     struct Drip {
-        uint64 lastCollect; // overflows 262 billion years after the sun dies
-        uint192 perBlock; // drip rate per block
+        uint64 lastCollect; 
+        uint192 perBlock;
     }
 
     address public vault; // USDI vault
@@ -81,8 +87,8 @@ contract Dripper is AccessControlMixin, Initializable {
     //   available to be sent to the vault.
     /// @return The amount that would be sent if a collect was called
     function availableFunds() external view returns (uint256) {
-        uint256 balance = IERC20Upgradeable(token).balanceOf(address(this));
-        return _availableFunds(balance, drip);
+        uint256 _balance = IERC20Upgradeable(token).balanceOf(address(this));
+        return _availableFunds(_balance, drip);
     }
 
     /// @notice Collect all dripped funds and send to vault.
@@ -111,16 +117,13 @@ contract Dripper is AccessControlMixin, Initializable {
     function setToken(address _token) external isVaultManager {
         require(_token != address(0), "Must be a non-zero address");
         token = _token;
-        emit TokenChanged(token);
+        emit TokenChanged(_token);
     }
 
-    // @dev Transfer out ERC20 tokens held by the contract. Governor only.
-    // @param _asset ERC20 token address
-    // @param _amount amount to transfer
-    function transferToken(address _asset, uint256 _amount)
-        external
-        onlyRole(BocRoles.GOV_ROLE)
-    {
+    /// @dev Transfer out ERC20 tokens held by the contract. Governor only.
+    /// @param _asset ERC20 token address
+    /// @param _amount amount to transfer
+    function transferToken(address _asset, uint256 _amount) external onlyRole(BocRoles.GOV_ROLE) {
         IERC20Upgradeable(_asset).safeTransfer(IVault(vault).treasury(), _amount);
     }
 
@@ -129,11 +132,8 @@ contract Dripper is AccessControlMixin, Initializable {
     ///  Uses passed in parameters to calculate with for gas savings.
     /// @param _balance current balance in contract
     /// @param _drip current drip parameters
-    function _availableFunds(uint256 _balance, Drip memory _drip)
-        internal
-        view
-        returns (uint256)
-    {
+    /// @return the available funds
+    function _availableFunds(uint256 _balance, Drip memory _drip) internal view returns (uint256) {
         uint256 elapsed = block.timestamp - _drip.lastCollect;
         uint256 allowed = (elapsed * _drip.perBlock);
         return (allowed > _balance) ? _balance : allowed;
@@ -143,17 +143,14 @@ contract Dripper is AccessControlMixin, Initializable {
     ///  the new drip rate based on the new balance.
     function _collect() internal {
         // Calculate send
-        uint256 balance = IERC20Upgradeable(token).balanceOf(address(this));
-        uint256 amountToSend = _availableFunds(balance, drip);
-        uint256 remaining = balance - amountToSend;
+        uint256 _balance = IERC20Upgradeable(token).balanceOf(address(this));
+        uint256 _amountToSend = _availableFunds(_balance, drip);
+        uint256 _remaining = _balance - _amountToSend;
         // Calculate new drip perBlock
         //   Gas savings by setting entire struct at one time
-        drip = Drip({
-            perBlock: uint192(remaining / dripDuration),
-            lastCollect: uint64(block.timestamp)
-        });
+        drip = Drip({perBlock: uint192(_remaining / dripDuration), lastCollect: uint64(block.timestamp)});
         // Send funds
-        IERC20Upgradeable(token).safeTransfer(vault, amountToSend);
-        emit Collection(token, amountToSend);
+        IERC20Upgradeable(token).safeTransfer(vault, _amountToSend);
+        emit Collection(token, _amountToSend);
     }
 }

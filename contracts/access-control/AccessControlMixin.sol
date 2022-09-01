@@ -2,7 +2,7 @@
 
 pragma solidity >=0.6.0 <0.9.0;
 
-import './IAccessControlProxy.sol';
+import "./IAccessControlProxy.sol";
 
 abstract contract AccessControlMixin {
     IAccessControlProxy public accessControlProxy;
@@ -11,27 +11,27 @@ abstract contract AccessControlMixin {
         accessControlProxy = IAccessControlProxy(_accessControlProxy);
     }
 
-    modifier hasRole(bytes32 role, address account) {
-        accessControlProxy.checkRole(role, account);
+    modifier hasRole(bytes32 _role, address _account) {
+        accessControlProxy.checkRole(_role, _account);
         _;
     }
 
-    modifier onlyRole(bytes32 role) {
-        accessControlProxy.checkRole(role, msg.sender);
+    modifier onlyRole(bytes32 _role) {
+        accessControlProxy.checkRole(_role, msg.sender);
         _;
     }
 
-    modifier onlyGovOrDelegate {
+    modifier onlyGovOrDelegate() {
         accessControlProxy.checkGovOrDelegate(msg.sender);
         _;
     }
 
-    modifier isVaultManager {
+    modifier isVaultManager() {
         accessControlProxy.checkVaultOrGov(msg.sender);
         _;
     }
 
-    modifier isKeeper {
+    modifier isKeeper() {
         accessControlProxy.checkKeeperOrVaultOrGov(msg.sender);
         _;
     }

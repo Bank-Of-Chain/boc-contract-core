@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import './IDerivativePriceFeed.sol';
+import "./IDerivativePriceFeed.sol";
 
 /// @title IDerivativePriceFeed Interface
 interface IAggregatedDerivativePriceFeed is IDerivativePriceFeed {

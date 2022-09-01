@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/BocRoles.sol";
-import "../token/USDi.sol";
 
 contract Treasury is
     Initializable,
@@ -26,14 +25,21 @@ contract Treasury is
 
     fallback() external payable {}
 
+    /// @notice Return the current version of this contract.
     function version() public pure returns (string memory) {
         return "V1.0.0";
     }
 
+    /// @notice Return the '_token' balance of this contract.
     function balance(address _token) public view returns (uint256) {
         return IERC20Upgradeable(_token).balanceOf(address(this));
     }
 
+    /// @notice Withdraw '_amount' '_token' from this contract to '_destination'
+    /// @param _token The token to withdraw
+    /// @param _destination The destination address to withdraw
+    /// @param _amount The amount of token to withdraw
+    /// Requirements: only governance role can call
     function withdraw(
         address _token,
         address _destination,
@@ -43,6 +49,10 @@ contract Treasury is
         IERC20Upgradeable(_token).safeTransfer(_destination, _amount);
     }
 
+    /// @notice Withdraw ETH from this contract to '_destination'
+    /// @param _destination The destination address to withdraw
+    /// @param _amount The amount of ETH to withdraw
+    /// Requirements: only governance role can call
     function withdrawETH(address payable _destination, uint256 _amount)
         external
         payable
