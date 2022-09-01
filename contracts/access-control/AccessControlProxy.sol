@@ -27,8 +27,10 @@ contract AccessControlProxy is Initializable, AccessControlEnumerable {
                 _keeper == address(0))
         );
 
-        _setupRole(DEFAULT_ADMIN_ROLE, _governance);
-        _setupRole(DELEGATE_ROLE, _delegate);
+        _grantRole(DEFAULT_ADMIN_ROLE, _governance);
+        _grantRole(DELEGATE_ROLE, _delegate);
+        _grantRole(VAULT_ROLE, _vault);
+        _grantRole(KEEPER_ROLE, _keeper);
 
         // gov is its own admin
         _setRoleAdmin(DEFAULT_ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
@@ -36,8 +38,6 @@ contract AccessControlProxy is Initializable, AccessControlEnumerable {
         _setRoleAdmin(VAULT_ROLE, DELEGATE_ROLE);
         _setRoleAdmin(KEEPER_ROLE, DELEGATE_ROLE);
 
-        grantRole(VAULT_ROLE, _vault);
-        grantRole(KEEPER_ROLE, _keeper);
     }
 
     function addRole(bytes32 _role, bytes32 _roleAdmin) external {
