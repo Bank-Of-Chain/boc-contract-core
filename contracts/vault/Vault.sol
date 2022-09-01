@@ -229,7 +229,7 @@ contract Vault is VaultStorage {
         address[] memory _trackedAssets = _getTrackedAssets();
         uint256[] memory _assetPrices = new uint256[](_trackedAssets.length);
         uint256[] memory _assetDecimals = new uint256[](_trackedAssets.length);
-        (uint256 _sharesAmount, uint256 _actualAsset) = _replayToVault(
+        (uint256 _sharesAmount, uint256 _actualAsset) = _repayToVault(
             _amount,
             _accountBalance,
             _trackedAssets,
@@ -850,7 +850,7 @@ contract Vault is VaultStorage {
         return _actualAmount;
     }
 
-    function _replayToVault(
+    function _repayToVault(
         uint256 _amount,
         uint256 _accountBalance,
         address[] memory _trackedAssets,
