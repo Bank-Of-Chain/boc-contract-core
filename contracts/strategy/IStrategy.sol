@@ -81,5 +81,5 @@ interface IStrategy {
     function isWantRatioIgnorable() external view returns (bool);
 
     /// @notice Investable amount of strategy in USD
-    function poolQuota() external view virtual returns (uint256);
+    function poolQuota() external view returns (uint256);
 }
