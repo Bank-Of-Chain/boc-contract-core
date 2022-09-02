@@ -28,9 +28,9 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
      * emit {ExchangeAdapterAdded} event
      */
     function addExchangeAdapters(address[] calldata _exchangeAdapters)
-    external
-    override
-    onlyGovOrDelegate
+        external
+        override
+        onlyGovOrDelegate
     {
         __addExchangeAdapters(_exchangeAdapters);
     }
@@ -41,9 +41,9 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
      * emit {ExchangeAdapterRemoved} event
      */
     function removeExchangeAdapters(address[] calldata _exchangeAdapters)
-    external
-    override
-    onlyGovOrDelegate
+        external
+        override
+        onlyGovOrDelegate
     {
         require(_exchangeAdapters.length > 0, "_exchangeAdapters cannot be empty");
 
@@ -76,7 +76,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
             uint256 _ethValue = _sd.amount;
             require(_ethValue <= msg.value, "ETH not enough");
-            _exchangeAmount  = IExchangeAdapter(_platform).swap{value: _ethValue}(_method, _data, _sd);
+            _exchangeAmount = IExchangeAdapter(_platform).swap{value: _ethValue}(_method, _data, _sd);
         } else {
             IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
             _exchangeAmount = IExchangeAdapter(_platform).swap(_method, _data, _sd);
@@ -95,10 +95,10 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     }
 
     function batchSwap(SwapParam[] calldata _swapParams)
-    external
-    payable
-    override
-    returns (uint256[] memory)
+        external
+        payable
+        override
+        returns (uint256[] memory)
     {
         uint256 _platformsLength = _swapParams.length;
         uint256[] memory _amounts = new uint256[](_platformsLength);
@@ -121,10 +121,10 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
 
     /// @notice Get all exchange adapters and its identifiers
     function getExchangeAdapters()
-    external
-    view
-    override
-    returns (address[] memory _exchangeAdapters, string[] memory _identifiers)
+        external
+        view
+        override
+        returns (address[] memory _exchangeAdapters, string[] memory _identifiers)
     {
         _exchangeAdapters = new address[](exchangeAdapters.length());
         _identifiers = new string[](_exchangeAdapters.length);
