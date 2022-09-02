@@ -124,6 +124,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
             dstToken: _toToken,
             receiver: profitReceiver
         });
+        IERC20Upgradeable(_fromToken).safeApprove(exchangeManager, 0);
         IERC20Upgradeable(_fromToken).safeApprove(exchangeManager, _amount);
         _exchangeAmount = IExchangeAggregator(exchangeManager).swap(
             _exchangeParam.platform,
