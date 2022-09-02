@@ -1067,6 +1067,7 @@ contract Vault is VaultStorage {
             dstToken: _toToken,
             receiver: address(this)
         });
+        IERC20Upgradeable(_fromToken).safeApprove(exchangeManager, 0);
         IERC20Upgradeable(_fromToken).safeApprove(exchangeManager, _amount);
         _exchangeAmount = IExchangeAggregator(exchangeManager).swap(
             _exchangeParam.platform,
