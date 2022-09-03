@@ -72,14 +72,15 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     ) public payable override returns (uint256) {
         require(exchangeAdapters.contains(_platform), "error swap platform");
         require(_sd.receiver != address(0), "error receiver");
-        uint256 _ethValue = 0;
+        uint256 _exchangeAmount = 0;
         if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
-            _ethValue = _sd.amount;
+            uint256 _ethValue = _sd.amount;
             require(_ethValue <= msg.value, "ETH not enough");
+            _exchangeAmount = IExchangeAdapter(_platform).swap{value: _ethValue}(_method, _data, _sd);
         } else {
             IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
+            _exchangeAmount = IExchangeAdapter(_platform).swap(_method, _data, _sd);
         }
-        uint256 _exchangeAmount = IExchangeAdapter(_platform).swap{value: _ethValue}(_method, _data, _sd);
 
         emit Swap(
             _platform,
@@ -94,10 +95,10 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     }
 
     function batchSwap(SwapParam[] calldata _swapParams)
-    external
-    payable
-    override
-    returns (uint256[] memory)
+        external
+        payable
+        override
+        returns (uint256[] memory)
     {
         uint256 _platformsLength = _swapParams.length;
         uint256[] memory _amounts = new uint256[](_platformsLength);
