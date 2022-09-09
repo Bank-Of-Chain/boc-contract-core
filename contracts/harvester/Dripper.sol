@@ -47,29 +47,38 @@ import "./../vault/IVault.sol";
  * longer curve the more collect() is called without incoming yield.
  *
  */
-
 contract Dripper is AccessControlMixin, Initializable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    /// @param _durationSeconds the new duration to drip
     event DripDurationChanged(uint256 _durationSeconds);
+    /// @param _token the new token to drip out
     event TokenChanged(address _token);
+    /// @param _token the new token to drip out
+    /// @param _amount The amount collected
     event Collection(address _token, uint256 _amount);
     
-    /**
-     * @param lastCollect The timestamp of last collection, 
-     * will overflows 262 billion years after the sun dies
-     * @param perBlock The drip rate per block <-- maybe need rename to ratePerBlock
-     */
+   
+    /// @param lastCollect The timestamp of last collection, will overflows 262 billion years after the sun dies
+    /// @param perBlock The drip rate per block
     struct Drip {
         uint64 lastCollect; 
         uint192 perBlock;
     }
 
-    address public vault; // USDI vault
-    address public token; // token to drip out
-    uint256 public dripDuration; // in seconds
-    Drip public drip; // active drip parameters
+    /// @notice USDI vault
+    address public vault; 
+    /// @notice token to drip out
+    address public token; 
+    /// @notice the duration to drip in seconds
+    uint256 public dripDuration; 
+    /// @notice active drip parameters
+    Drip public drip; 
 
+    /// @notice Initialize
+    /// @param _accessControlProxy The access control proxy address
+    /// @param _vault The vault address
+    /// @param _token The token to drip out
     function initialize(
         address _accessControlProxy,
         address _vault,
@@ -83,30 +92,26 @@ contract Dripper is AccessControlMixin, Initializable {
         _initAccessControl(_accessControlProxy);
     }
 
-    /// @notice How much funds have dripped out already and are currently
-    //   available to be sent to the vault.
-    /// @return The amount that would be sent if a collect was called
+    /// @notice Return The available amount to sent currently
     function availableFunds() external view returns (uint256) {
         uint256 _balance = IERC20Upgradeable(token).balanceOf(address(this));
         return _availableFunds(_balance, drip);
     }
 
-    /// @notice Collect all dripped funds and send to vault.
-    ///  Recalculate new drip rate.
+    /// @notice Collect all dripped funds, send to vault and recalculate new drip rate
     function collect() external {
         _collect();
     }
 
-    /// @notice Collect all dripped funds, send to vault, recalculate new drip
-    ///  rate, and rebase USDI.
+    /// @notice Collect all dripped funds, send to vault, recalculate new drip rate, and rebase USDI.
     function collectAndRebase() external {
         _collect();
         IVault(vault).rebase();
     }
 
-    /// @dev Change the drip duration. Governor only.
-    /// @param _durationSeconds the number of seconds to drip out the entire
-    ///  balance over if no collects were called during that time.
+    /// @notice Set the new drip duration. Governor call only
+    /// @dev Drip out the entire balance over if no collects were called during that time
+    /// @param _durationSeconds the new drip duration in seconds 
     function setDripDuration(uint256 _durationSeconds) external isVaultManager {
         require(_durationSeconds > 0, "duration must be non-zero");
         dripDuration = uint192(_durationSeconds);
@@ -114,20 +119,21 @@ contract Dripper is AccessControlMixin, Initializable {
         emit DripDurationChanged(dripDuration);
     }
 
+    /// @notice Sets new token to drip out
     function setToken(address _token) external isVaultManager {
         require(_token != address(0), "Must be a non-zero address");
         token = _token;
         emit TokenChanged(_token);
     }
 
-    /// @dev Transfer out ERC20 tokens held by the contract. Governor only.
+    /// @notice Transfer ERC20 tokens to treasury. Governor call only
     /// @param _asset ERC20 token address
     /// @param _amount amount to transfer
     function transferToken(address _asset, uint256 _amount) external onlyRole(BocRoles.GOV_ROLE) {
         IERC20Upgradeable(_asset).safeTransfer(IVault(vault).treasury(), _amount);
     }
 
-    /// @dev Calculate available funds by taking the lower of either the
+    /// @notice Calculate available funds by taking the lower of either the
     ///  currently dripped out funds or the balance available.
     ///  Uses passed in parameters to calculate with for gas savings.
     /// @param _balance current balance in contract
@@ -139,7 +145,7 @@ contract Dripper is AccessControlMixin, Initializable {
         return (allowed > _balance) ? _balance : allowed;
     }
 
-    /// @dev Sends the currently dripped funds to be vault, and sets
+    /// @notice Sends the currently dripped funds to be vault, and sets
     ///  the new drip rate based on the new balance.
     function _collect() internal {
         // Calculate send
@@ -147,7 +153,7 @@ contract Dripper is AccessControlMixin, Initializable {
         uint256 _amountToSend = _availableFunds(_balance, drip);
         uint256 _remaining = _balance - _amountToSend;
         // Calculate new drip perBlock
-        //   Gas savings by setting entire struct at one time
+        // Gas savings by setting entire struct at one time
         drip = Drip({perBlock: uint192(_remaining / dripDuration), lastCollect: uint64(block.timestamp)});
         // Send funds
         IERC20Upgradeable(token).safeTransfer(vault, _amountToSend);

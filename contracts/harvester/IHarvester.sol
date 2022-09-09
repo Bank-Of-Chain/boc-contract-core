@@ -5,6 +5,12 @@ pragma solidity ^0.8.0;
 import "../exchanges/IExchangeAggregator.sol";
 
 interface IHarvester {
+
+    /// @param _platform Called exchange platforms
+    /// @param _fromToken The token swap from
+    /// @param _fromAmount The amount In to swap
+    /// @param _toToken The token swap to
+    /// @param _exchangeAmount The return amount of this swap
     event Exchange(
         address _platform,
         address _fromToken,
@@ -12,27 +18,32 @@ interface IHarvester {
         address _toToken,
         uint256 _exchangeAmount
     );
+
+    /// @param _receiver The profit receive address 
     event ReceiverChanged(address _receiver);
 
+    /// @param _sellTo The return token when sell rewards
     event SellToChanged(address _sellTo);
 
-    /// @notice Setting profit receive address.
+    /// @notice Sets profit receiving address
+    /// @param _receiver The profit receive address 
     function setProfitReceiver(address _receiver) external;
 
-    /// @notice Setting sell to token.
+    /// @notice Sets the return token when sell rewards 
+    /// @param _sellTo The new return token when sell rewards
     function setSellTo(address _sellTo) external;
 
-    /// @notice Collect reward tokens from all strategies
+    /// @notice Multi strategies harvest and collect all rewards to this contarct
+    /// @param _strategies The multi strategies to harvest
     function collect(address[] calldata _strategies) external;
 
-    /// @notice Swap reward token to stablecoins
+    /// @notice After collect all rewards,exchange from all reward tokens to 'sellTo' token(one stablecoin),finally send stablecoin to receiver
+    /// @param _exchangeTokens The all exchange info will be used
     function exchangeAndSend(IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) external;
 
-    /**
-     * @dev Transfer token to governor. Intended for recovering tokens stuck in
-     *      contract, i.e. mistaken sends.
-     * @param _asset Address for the asset
-     * @param _amount Amount of the asset to transfer
-     */
+    /// @notice Recover tokens stuck in contract, i.e. transfer by mistaken.
+    /// @dev Transfer token to governor.
+    /// @param _asset Address for the asset
+    /// @param _amount Amount of the asset to transfer
     function transferToken(address _asset, uint256 _amount) external;
 }

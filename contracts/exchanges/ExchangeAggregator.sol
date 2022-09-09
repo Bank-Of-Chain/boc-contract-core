@@ -9,12 +9,16 @@ import "./IExchangeAggregator.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/NativeToken.sol";
 
+/// @title ExchangeAggregator
+/// @notice A exchange aggregator with access control
 contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private exchangeAdapters;
 
+    /// @param _exchangeAdapters The exchange adapter list
+    /// @param _accessControlProxy  The access control proxy
     constructor(address[] memory _exchangeAdapters, address _accessControlProxy) {
         _initAccessControl(_accessControlProxy);
         __addExchangeAdapters(_exchangeAdapters);
@@ -22,11 +26,9 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
 
     receive() external payable {}
 
-    /**
-     * @notice Add multi exchange adapters
-     * Requirements: only governance or delegate role can call
-     * emit {ExchangeAdapterAdded} event
-     */
+    /// Requirements: only governance or delegate role can call
+    /// emit {ExchangeAdapterAdded} event
+    /// @inheritdoc IExchangeAggregator
     function addExchangeAdapters(address[] calldata _exchangeAdapters)
         external
         override
@@ -35,11 +37,8 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         __addExchangeAdapters(_exchangeAdapters);
     }
 
-    /**
-     * @notice Remove multi exchange adapters
-     * Requirements: only governance or delegate role can call
-     * emit {ExchangeAdapterRemoved} event
-     */
+    /// Requirements: only governance or delegate role can call
+    /// @inheritdoc IExchangeAggregator
     function removeExchangeAdapters(address[] calldata _exchangeAdapters)
         external
         override
@@ -53,17 +52,9 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         emit ExchangeAdapterRemoved(_exchangeAdapters);
     }
 
-    /**
-     * @notice Swap with `_sd` data by using `_method` and `_data` on `_platform`.
-     * @param _platform Called exchange platforms
-     * @param _method The method of the exchange platform
-     * @param _data The encoded parameters to call
-     * @param _sd The description info of this swap
-     * Requirements:
-     *
-     * - `_platform` be contained.
-     * - if using ETH to swap, `msg.value` need GT `_sd.amount`
-     */
+    /// Requirements: `_platform` be contained. `_sd.receiver` is not 0x00
+    /// if using ETH to swap, `msg.value` need GT `_sd.amount`
+    /// @inheritdoc IExchangeAggregator
     function swap(
         address _platform,
         uint8 _method,
@@ -94,6 +85,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         return _exchangeAmount;
     }
 
+    /// @inheritdoc IExchangeAggregator
     function batchSwap(SwapParam[] calldata _swapParams)
         external
         payable
@@ -119,7 +111,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         return _amounts;
     }
 
-    /// @notice Get all exchange adapters and its identifiers
+    /// @inheritdoc IExchangeAggregator
     function getExchangeAdapters()
         external
         view
@@ -135,10 +127,9 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         return (_exchangeAdapters, _identifiers);
     }
 
-    /**
-     * @notice Add multi exchange adapters
-     * emit {ExchangeAdapterAdded} event
-     */
+    /// @notice Add multi exchange adapters
+    /// @param _exchangeAdapters The new exchange adapter list to add
+    /// emit {ExchangeAdapterAdded} event
     function __addExchangeAdapters(address[] memory _exchangeAdapters) private {
         for (uint256 i = 0; i < _exchangeAdapters.length; i++) {
             exchangeAdapters.add(_exchangeAdapters[i]);
