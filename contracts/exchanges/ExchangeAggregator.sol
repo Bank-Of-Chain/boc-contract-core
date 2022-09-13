@@ -52,7 +52,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         emit ExchangeAdapterRemoved(_exchangeAdapters);
     }
 
-    /// Requirements: `_platform` be contained. `_sd.receiver` is not 0x00
+    /// @dev `_platform` need be contained. `_sd.receiver` is not 0x00
     /// if using ETH to swap, `msg.value` need GT `_sd.amount`
     /// @inheritdoc IExchangeAggregator
     function swap(

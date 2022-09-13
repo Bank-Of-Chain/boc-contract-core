@@ -32,7 +32,7 @@ interface IExchangeAggregator {
 
     /// @param srcToken The token swap from
     /// @param dstToken The token swap to
-    /// @param amount The amount to swap
+    /// @param amount The amount of token swap from
     /// @param exchangeParam The struct of ExchangeParam
     struct ExchangeToken {
         address fromToken;

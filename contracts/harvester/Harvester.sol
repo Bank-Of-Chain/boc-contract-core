@@ -48,7 +48,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         _initAccessControl(_accessControlProxy);
     }
 
-    /// Requirements: Only governance role can call
+    /// @dev Only governance role can call
     /// @inheritdoc IHarvester
     function setProfitReceiver(address _receiver) external override onlyRole(BocRoles.GOV_ROLE) {
         require(_receiver != address(0), "Must be a non-zero address");
@@ -74,7 +74,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         IERC20Upgradeable(_asset).safeTransfer(IVault(vaultAddress).treasury(), _amount);
     }
 
-    /// Requirements: only Keeper can call
+    /// @dev Only Keeper can call
     /// @inheritdoc IHarvester
     function collect(address[] calldata _strategies) external override isKeeper {
         for (uint256 i = 0; i < _strategies.length; i++) {
@@ -84,7 +84,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         }
     }
 
-    /// Requirements: only Keeper can call
+    /// @dev Only Keeper can call
     /// @inheritdoc IHarvester
     function exchangeAndSend(IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens)
         external
@@ -94,7 +94,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         address _sellToCopy = sellTo;
         for (uint256 i = 0; i < _exchangeTokens.length; i++) {
             IExchangeAggregator.ExchangeToken memory _exchangeToken = _exchangeTokens[i];
-            require(_exchangeToken.toToken == _sellToCopy, "Rewards can only be sold as sellTo");
+            require(_exchangeToken.toToken == _sellToCopy, "Rewards can Only be sold as sellTo");
             _exchange(
                 _exchangeToken.fromToken,
                 _exchangeToken.toToken,

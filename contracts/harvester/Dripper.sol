@@ -52,8 +52,10 @@ contract Dripper is AccessControlMixin, Initializable {
 
     /// @param _durationSeconds the new duration to drip
     event DripDurationChanged(uint256 _durationSeconds);
+
     /// @param _token the new token to drip out
     event TokenChanged(address _token);
+    
     /// @param _token the new token to drip out
     /// @param _amount The amount collected
     event Collection(address _token, uint256 _amount);
@@ -92,7 +94,7 @@ contract Dripper is AccessControlMixin, Initializable {
         _initAccessControl(_accessControlProxy);
     }
 
-    /// @notice Return The available amount to sent currently
+    /// @notice Return the available amount to sent currently
     function availableFunds() external view returns (uint256) {
         uint256 _balance = IERC20Upgradeable(token).balanceOf(address(this));
         return _availableFunds(_balance, drip);

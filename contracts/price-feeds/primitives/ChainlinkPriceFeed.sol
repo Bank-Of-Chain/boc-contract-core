@@ -10,7 +10,14 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./IPrimitivePriceFeed.sol";
 import "./../../access-control/AccessControlMixin.sol";
 
+/// @title AggregatedDerivativePriceFeed
+/// @notice The price feed is from the chainlink
 contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
+
+    /// @param _prevEthUsdAggregator The address of the previous eth-usd aggregator contract
+    /// @param _prevEthUsdHeartbeat The previous value of `ethUsdHeartbeat` state variable
+    /// @param _nextEthUsdAggregator The address of the  current eth-usd aggregator contract
+    /// @param _nextEthUsdHeartbeat The current value of `ethUsdHeartbeat` state variable
     event EthUsdAggregatorSet(
         address _prevEthUsdAggregator,
         uint256 _prevEthUsdHeartbeat,
@@ -18,6 +25,11 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         uint256 _nextEthUsdHeartbeat
     );
 
+    /// @param _primitive The new primitive asset added
+    /// @param _aggregator The aggregator address for `_primitive`
+    /// @param _heartbeat The heartbeat value for `_primitive`
+    /// @param _rateAsset The `RateAsset` enum value for `_primitive`
+    /// @param _unit The uint value for `_primitive`
     event PrimitiveAdded(
         address indexed _primitive,
         address _aggregator,
@@ -26,11 +38,20 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         uint256 _unit
     );
 
+    /// @param _basePegged The new pegged Token added
+    /// @param _rateAsset The `RateAsset` enum value for `_basePegged`
     event BasePeggedAdded(address indexed _basePegged, RateAsset _rateAsset);
 
+    /// @param _primitive The primitive asset removed
     event PrimitiveRemoved(address indexed _primitive);
+
+    /// @param _basePegged The pegged Token removed
     event BasePeggedRemoved(address indexed _basePegged);
 
+    /// @param _primitive The primitive asset Updated
+    /// @param _prevAggregator The previous aggregator address for `_primitive`
+    /// @param _nextAggregator The current aggregator address for `_primitive`
+    /// @param _nextHeartbeat The current heartbeat value for `_primitive`
     event PrimitiveUpdated(
         address indexed _primitive,
         address _prevAggregator,
@@ -38,19 +59,25 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         uint256 _nextHeartbeat
     );
 
-    event StalePrimitiveRemoved(address indexed _primitive);
+    //event StalePrimitiveRemoved(address indexed _primitive);
 
     enum RateAsset {
-        ETH,
-        USD
+        ETH, // ETH as asset unit
+        USD  // USD as asset unit
     }
 
+    /// @param aggregator The aggregator address 
+    /// @param heartbeat The heartbeat value for `aggregator`
+    /// @param rateAsset The `RateAsset` enum value for one primitive asset
     struct AggregatorInfo {
         address aggregator;
         uint256 heartbeat;
         RateAsset rateAsset;
     }
 
+    /// @param aggregator The aggregator address 
+    /// @param heartbeat The heartbeat value for `aggregator`
+    /// @param rateAsset The `RateAsset` enum value for one pegged token
     struct BasePeggedInfo {
         bool isBasePegged;
         uint256 tokenUnit;
@@ -80,7 +107,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     ) {
         _initAccessControl(_accessControlProxy);
 
-        // 24 hour heartbeat + 1hr buffer
+        // 24 hour heartbeat + 1 hour buffer
         __setEthUsdAggregator(_ethUsdAggregator, _ethUsdHeartbeat);
 
         if (_basePeggeds.length > 0) {
@@ -94,12 +121,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
 
     // EXTERNAL FUNCTIONS
 
-    /// @notice Calculates the value of a base asset in terms of a quote asset (using a canonical rate)
-    /// @param _baseAsset The base asset
-    /// @param _baseAssetAmount The base asset amount to convert
-    /// @param _quoteAsset The quote asset
-    /// @return _quoteAssetAmount The equivalent quote asset amount
-    /// @return _isValid True if the rates used in calculations are deemed valid
+    /// @inheritdoc IPrimitivePriceFeed
     function calcCanonicalValue(
         address _baseAsset,
         uint256 _baseAssetAmount,
@@ -128,11 +150,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         return (_quoteAssetAmount, _isValid);
     }
 
-    /// @notice Calculates the value of a base asset in terms of a quote asset (using a canonical rate)
-    /// @param _baseAsset The base asset
-    /// @param _baseAssetAmount The base asset amount to convert
-    /// @return _quoteAssetAmount The equivalent quote asset amount (usd 1e8)
-    /// @return _isValid True if the rates used in calculations are deemed valid
+    /// @inheritdoc IPrimitivePriceFeed
     function calcValueInUsd(address _baseAsset, uint256 _baseAssetAmount)
         external
         view
@@ -155,23 +173,21 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         return (_quoteAssetAmount, _isValid);
     }
 
-    /// @notice Gets the unit variable value for a primitive
-    /// @return _unit The unit variable value
+    /// @inheritdoc IPrimitivePriceFeed
     function getAssetUnit(address _asset) public view override returns (uint256 _unit) {
         return getUnitForPrimitive(_asset);
     }
 
-    /// @notice Checks whether an asset is a supported primitive of the price feed
-    /// @param _asset The asset to check
-    /// @return _isSupported True if the asset is a supported primitive
+    /// @inheritdoc IPrimitivePriceFeed
     function isSupportedAsset(address _asset) external view override returns (bool _isSupported) {
         return
             basePeggedInfos[_asset].isBasePegged ||
             primitiveToAggregatorInfo[_asset].aggregator != address(0);
     }
 
-    /// @notice Sets the `ehUsdAggregator` variable value
-    /// @param _nextEthUsdAggregator The `ehUsdAggregator` value to set
+    /// @notice Sets the `ethUsdAggregator` variable value
+    /// @param _nextEthUsdAggregator The `ethUsdAggregator` value to set
+    /// Requirements: only governance or delegate role can call
     function setEthUsdAggregator(address _nextEthUsdAggregator, uint256 _nextEthUsdHeartbeat)
         external
         onlyGovOrDelegate
@@ -387,6 +403,8 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     // PRIMITIVES REGISTRY //
     /////////////////////////
 
+    /// @notice Adds a list of `_peggedTokens` and  `_rateAssets` into `basePeggedInfos` state
+    /// Requirements: only governance or delegate role can call
     function addBasePeggedInfos(address[] calldata _peggedTokens, RateAsset[] calldata _rateAssets)
         external
         onlyGovOrDelegate
@@ -396,6 +414,8 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         __addBasePeggedInfos(_peggedTokens, _rateAssets);
     }
 
+    /// @notice Removes a list of `_peggedTokens` from `basePeggedInfos` state
+    /// Requirements: only governance or delegate role can call
     function removeBasePeggedInfos(address[] calldata _peggedTokens) external onlyGovOrDelegate {
         require(_peggedTokens.length > 0, "removeBasePeggedInfos: _peggedTokens cannot be empty");
 
@@ -415,6 +435,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     /// @param _primitives The primitives to add
     /// @param _aggregators The ordered aggregators corresponding to the list of _primitives
     /// @param _rateAssets The ordered rate assets corresponding to the list of _primitives
+    /// Requirements: only governance or delegate role can call
     function addPrimitives(
         address[] calldata _primitives,
         address[] calldata _aggregators,
@@ -428,6 +449,8 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
 
     /// @notice Removes a list of primitives from the feed
     /// @param _primitives The primitives to remove
+    /// Requirements: only governance or delegate role can call
+    /// emit {PrimitiveRemoved} event
     function removePrimitives(address[] calldata _primitives) external onlyGovOrDelegate {
         require(_primitives.length > 0, "removePrimitives: _primitives cannot be empty");
 
@@ -447,6 +470,8 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     /// @notice Updates the aggregators for given primitives
     /// @param _primitives The primitives to update
     /// @param _aggregators The ordered aggregators corresponding to the list of _primitives
+    /// Requirements: only governance or delegate role can call
+    /// emit {PrimitiveUpdated} event
     function updatePrimitives(
         address[] calldata _primitives,
         address[] calldata _aggregators,
@@ -471,6 +496,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         }
     }
 
+    /// @dev Helper to validate whether the rate is stale or not
     function __validateRateIsNotStale(
         address _aggregator,
         uint256 _latestUpdatedAt,
@@ -580,6 +606,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     }
 
     /// @notice Gets the rateAsset variable value for a primitive
+    /// @param _primitive The primitive asset for which to get the value of the field `rateAsset` 
     /// @return _rateAsset The rateAsset variable value
     /// @dev This isn't strictly necessary as WETH_TOKEN will be undefined and thus
     /// the RateAsset will be the 0-position of the enum (i.e. ETH), but it makes the
@@ -593,6 +620,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     }
 
     /// @notice Gets the unit variable value for a primitive
+    /// @param _primitive The primitive asset for which to get the value of the field `tokenUnit` 
     /// @return _unit The unit variable value
     function getUnitForPrimitive(address _primitive) public view returns (uint256 _unit) {
         if (basePeggedInfos[_primitive].isBasePegged) {
