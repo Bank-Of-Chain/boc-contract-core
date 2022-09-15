@@ -18,8 +18,8 @@ interface IStrategy {
     /// @param _amounts The amount list of tokens borrowing
     event Borrow(address[] _assets, uint256[] _amounts);
 
-    /// @param _withdrawShares The amount of shares to withdraw, Numerator
-    /// @param _totalShares The total amount of shares ,Denominator
+    /// @param _withdrawShares The amount of shares to withdraw. Numerator
+    /// @param _totalShares The total amount of shares owned by the strategy. Denominator
     /// @param _assets The address list of the assets repaying
     /// @param _amounts The amount list of the assets repaying
     event Repay(uint256 _withdrawShares, uint256 _totalShares, address[] _assets, uint256[] _amounts);
