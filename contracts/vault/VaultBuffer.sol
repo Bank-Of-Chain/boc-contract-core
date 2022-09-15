@@ -363,7 +363,6 @@ contract VaultBuffer is
 
     /// @dev Destroys `amount` tokens from `account`, reducing the
     /// total supply.
-/// 
     /// Emits a {Transfer} event with `to` set to the zero address.
     /// Requirements:
     /// - `account` cannot be the zero address.
