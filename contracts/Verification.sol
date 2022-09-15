@@ -21,7 +21,7 @@ contract Verification {
     /// @notice Gets the address of user produced a `_signature`
     /// @param _data The original message signed
     /// @param _signature The signature
-    /// @return The address recovered from `recover` and `_data`
+    /// @return The address recovered from `_signature` and `_data`
     function getSignatureAccount(bytes32 _data, bytes memory _signature) public pure returns (address) {
         bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(_data);
         return ECDSA.recover(ethSignedMessageHash, _signature);
