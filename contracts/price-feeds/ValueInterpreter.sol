@@ -16,8 +16,13 @@ import "./IValueInterpreter.sol";
 /// is immutable in this contract and only has one type of value. Including the 'live' versions of
 /// functions only serves as a placeholder for infrastructural components and plugins (e.g., policies)
 /// to explicitly define the types of values that they should (and will) be using in a future release.
+/// @author Bank of Chain Protocol Inc
 contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
+
+    /// @param _primitivePriceFeed The address of the new primitive price feed contract
     event UpdatePrimitivePriceFeed(address _primitivePriceFeed);
+
+    /// @param _aggregatedDerivativePriceFeed The price feed address of the new aggregated derivative
     event UpdateAggregatedDerivativePriceFeed(
         address _aggregatedDerivativePriceFeed
     );
@@ -355,6 +360,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     ///////////////////
 
     /// @notice Set the primitive price feed. Only governance or delegate role can call.
+    /// @param _primitivePriceFeed The address of the new primitive price feed contract
     function setPrimitivePriceFeed(address _primitivePriceFeed)
         external
         onlyGovOrDelegate
@@ -364,6 +370,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     }
 
     /// @notice Set the aggregated derivative price feed. Only governance or delegate role can call.
+    /// @param _aggregatedDerivativePriceFeed The price feed address of the new aggregated derivative
     function setAggregatedDerivativePriceFeed(
         address _aggregatedDerivativePriceFeed
     ) external onlyGovOrDelegate {

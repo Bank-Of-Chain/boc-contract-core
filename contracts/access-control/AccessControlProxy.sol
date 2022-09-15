@@ -5,10 +5,10 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-/// @title A access control proxy
-/// @author The BoC team
-/// @dev Contract module that allows children to implement role-based access control mechanisms.
+/// @title AccessControlProxy
+/// @dev AccessControlProxy contract that allows children to implement role-based access control mechanisms.
 /// @notice The ownership will transfer to multi-signature account after deployment
+/// @author Bank of Chain Protocol Inc
 contract AccessControlProxy is Initializable, AccessControlEnumerable {
     /// @notice The privileges of `DELEGATE_ROLE` same as `gov_role`
     bytes32 public constant DELEGATE_ROLE = keccak256("DELEGATE_ROLE");

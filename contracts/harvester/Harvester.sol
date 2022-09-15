@@ -15,6 +15,7 @@ import "./../strategy/IStrategy.sol";
 
 /// @title Harvester
 /// @notice Harvester for function used by keeper
+/// @author Bank of Chain Protocol Inc
 contract Harvester is IHarvester, AccessControlMixin, Initializable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 

@@ -4,9 +4,9 @@ pragma solidity >=0.6.0 <0.9.0;
 
 import "./IAccessControlProxy.sol";
 
-/// @title A access control mixin
-/// @author The BoC team
-/// @dev Contract module that allows children to implement multi-role-based access control mechanisms.
+/// @title AccessControlMixin
+/// @dev AccessControlMixin contract that allows children to implement multi-role-based access control mechanisms.
+/// @author Bank of Chain Protocol Inc
 abstract contract AccessControlMixin {
     IAccessControlProxy public accessControlProxy;
 
@@ -14,19 +14,22 @@ abstract contract AccessControlMixin {
         accessControlProxy = IAccessControlProxy(_accessControlProxy);
     }
 
-    /// @dev Modifier that checks that `_account has `_role`. Revert with a standard message if `_account` is missing `_role`.
+    /// @dev Modifier that checks that `_account has `_role`. 
+    /// Revert with a standard message if `_account` is missing `_role`.
     modifier hasRole(bytes32 _role, address _account) {
         accessControlProxy.checkRole(_role, _account);
         _;
     }
 
-    /// @dev Modifier that checks that msg.sender has a specific role. Reverts  with a standardized message including the required role.
+    /// @dev Modifier that checks that msg.sender has a specific role. 
+    /// Reverts  with a standardized message including the required role.
     modifier onlyRole(bytes32 _role) {
         accessControlProxy.checkRole(_role, msg.sender);
         _;
     }
 
-    /// @dev Modifier that checks that msg.sender has a default admin role or delegate role. Reverts  with a standardized message including the required role.
+    /// @dev Modifier that checks that msg.sender has a default admin role or delegate role. 
+    /// Reverts  with a standardized message including the required role.
     modifier onlyGovOrDelegate() {
         accessControlProxy.checkGovOrDelegate(msg.sender);
         _;

@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "./IExchangeAdapter.sol";
 
+/// @title IExchangeAggregator interface
 interface IExchangeAggregator {
 
     /// @param platform Called exchange platforms

@@ -16,6 +16,11 @@ import "./../access-control/AccessControlMixin.sol";
 import "./IVault.sol";
 import "./IVaultBuffer.sol";
 
+/**
+ * @title VaultBuffer
+ * @notice The vault buffer contract receives assets from users and returns asset ticket to them
+ * @author Bank of Chain Protocol Inc
+ */
 contract VaultBuffer is
     IVaultBuffer,
     Initializable,
@@ -37,13 +42,18 @@ contract VaultBuffer is
     string private mName;
     string private mSymbol;
 
+    /// @notice The vault address
     address public vault;
+
+    /// @notice The pegToken address
     address public pegTokenAddr;
 
+    /// @inheritdoc IVaultBuffer
     bool public override isDistributing;
 
     uint256 private mDistributeLimit;
 
+    /// @dev Modifier that checks that msg.sender is the vault or not
     modifier onlyVault() {
         require(msg.sender == vault);
         _;
@@ -53,6 +63,15 @@ contract VaultBuffer is
 
     fallback() external payable {}
 
+    /**
+     * @dev Initialize contract state
+     * @param _name The name of token ticket
+     * @param _symbol The symbol of token ticket
+     * @param _vault The vault contract address
+     * @param _pegTokenAddr The pegToken address
+     * @param _accessControlProxy The access control proxy
+     * Requirement: only vault can call
+     */
     function initialize(
         string memory _name,
         string memory _symbol,
@@ -69,19 +88,33 @@ contract VaultBuffer is
         mDistributeLimit = 50;
     }
 
+    /// @inheritdoc IVaultBuffer
     function getDistributeLimit() external view override returns (uint256) {
         return mDistributeLimit;
     }
 
+    /// @inheritdoc IVaultBuffer
     function setDistributeLimit(uint256 _limit) external override isVaultManager {
         assert(_limit > 0);
         mDistributeLimit = _limit;
     }
 
+    /**
+     * @dev Mints `amount` tokens and assigns them to `_sender`
+     * @param _sender the recepient assigned
+     * @param _amount the amount to mint
+     * Requirement: only vault can call
+     */
     function mint(address _sender, uint256 _amount) external payable override onlyVault {
         _mint(_sender, _amount);
     }
 
+    /**
+     * @dev Transfer all assets to vault, including ETH and ERC20 tokens
+     * @param _assets The address list of multi assets to transfer
+     * @param _amounts the amount list of `_assets` to transfer
+     * Requirement: only vault can call
+     */
     function transferCashToVault(address[] memory _assets, uint256[] memory _amounts)
         external
         override
@@ -101,6 +134,8 @@ contract VaultBuffer is
         }
     }
 
+    /// Requirement: only vault can call
+    /// @inheritdoc IVaultBuffer
     function openDistribute() external override onlyVault {
         assert(!isDistributing);
         uint256 _pegTokenBalance = IERC20Upgradeable(pegTokenAddr).balanceOf(address(this));
@@ -111,6 +146,8 @@ contract VaultBuffer is
         }
     }
 
+    /// Requirement: only keeper can call
+    /// @inheritdoc IVaultBuffer
     function distributeWhenDistributing() external override isKeeper returns (bool) {
         assert(!IVault(vault).adjustPositionPeriod());
         bool _result = _distribute();
@@ -121,6 +158,8 @@ contract VaultBuffer is
         return _result;
     }
 
+    /// Requirement: only keeper can call
+    /// @inheritdoc IVaultBuffer
     function distributeOnce() external override isKeeper returns (bool) {
         assert(!IVault(vault).adjustPositionPeriod());
         address[] memory _assets = IVault(vault).getTrackedAssets();

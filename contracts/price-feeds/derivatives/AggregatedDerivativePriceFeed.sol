@@ -9,6 +9,7 @@ import "./../../access-control/AccessControlMixin.sol";
 /// @title AggregatedDerivativePriceFeed
 /// @notice Aggregates multiple derivative price feeds (e.g., Compound, Chai) and dispatches
 /// rate requests to the appropriate feed
+/// @author Bank of Chain Protocol Inc
 contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, AccessControlMixin {
 
     /// @param _derivative The address of derivative contract 

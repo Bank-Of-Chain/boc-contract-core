@@ -10,14 +10,15 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./IPrimitivePriceFeed.sol";
 import "./../../access-control/AccessControlMixin.sol";
 
-/// @title AggregatedDerivativePriceFeed
+/// @title ChainlinkPriceFeed
 /// @notice The price feed is from the chainlink
+/// @author Bank of Chain Protocol Inc
 contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
 
-    /// @param _prevEthUsdAggregator The address of the previous eth-usd aggregator contract
+    /// @param _prevEthUsdAggregator The address of the previous eth / usd aggregator contract
     /// @param _prevEthUsdHeartbeat The previous value of `ethUsdHeartbeat` state variable
-    /// @param _nextEthUsdAggregator The address of the  current eth-usd aggregator contract
-    /// @param _nextEthUsdHeartbeat The current value of `ethUsdHeartbeat` state variable
+    /// @param _nextEthUsdAggregator The address of the  new eth / usd aggregator contract
+    /// @param _nextEthUsdHeartbeat The new value of `ethUsdHeartbeat` state variable
     event EthUsdAggregatorSet(
         address _prevEthUsdAggregator,
         uint256 _prevEthUsdHeartbeat,
@@ -50,8 +51,8 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
 
     /// @param _primitive The primitive asset Updated
     /// @param _prevAggregator The previous aggregator address for `_primitive`
-    /// @param _nextAggregator The current aggregator address for `_primitive`
-    /// @param _nextHeartbeat The current heartbeat value for `_primitive`
+    /// @param _nextAggregator The new aggregator address for `_primitive`
+    /// @param _nextHeartbeat The new heartbeat value for `_primitive`
     event PrimitiveUpdated(
         address indexed _primitive,
         address _prevAggregator,

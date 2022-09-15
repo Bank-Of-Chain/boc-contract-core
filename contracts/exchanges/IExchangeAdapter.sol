@@ -3,6 +3,7 @@
 pragma solidity >=0.6.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
+/// @title IExchangeAdapter interface
 interface IExchangeAdapter {
     /// @param amount The amount to swap
     /// @param srcToken The token swap from

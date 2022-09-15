@@ -8,6 +8,8 @@ import "../../price-feeds/IValueInterpreter.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
+/// @title TestAdapter
+/// @author Bank of Chain Protocol Inc
 contract TestAdapter is IExchangeAdapter {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     address private valueInterpreter;

@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "../exchanges/IExchangeAggregator.sol";
 
+/// @title IHarvester interface
 interface IHarvester {
 
     /// @param _platform Called exchange platforms

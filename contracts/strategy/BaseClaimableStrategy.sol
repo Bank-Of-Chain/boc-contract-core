@@ -4,12 +4,11 @@ pragma solidity ^0.8.0;
 
 import "./BaseStrategy.sol";
 
+/// @title BaseClaimableStrategy
+/// @author Bank of Chain Protocol Inc
 abstract contract BaseClaimableStrategy is BaseStrategy {
 
-    /// @notice Harvests the Strategy, 
-    /// recognizing any profits or losses and adjusting the Strategy's position.
-    /// @return  _rewardsTokens The reward tokens list
-    /// @return _claimAmounts The claim amounts list
+    /// @inheritdoc BaseStrategy
     function harvest()
         public
         virtual
@@ -26,8 +25,8 @@ abstract contract BaseClaimableStrategy is BaseStrategy {
     }
 
     /// @notice Collect the rewards from 3rd protocol
-    /// @return  _rewardsTokens The reward tokens list
-    /// @return _claimAmounts The claim amounts list
+    /// @return _rewardsTokens The list of the reward token
+    /// @return _claimAmounts The list of the reward amount claimed
     function claimRewards()
         internal
         virtual
@@ -36,9 +35,7 @@ abstract contract BaseClaimableStrategy is BaseStrategy {
             uint256[] memory _claimAmounts
         );
 
-    /// @notice Strategy repay the funds to vault
-    /// @param _repayShares Numerator
-    /// @param _totalShares Denominator
+    /// @inheritdoc BaseStrategy
     function repay(uint256 _repayShares, uint256 _totalShares,uint256 _outputCode)
         public
         virtual

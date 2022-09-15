@@ -8,11 +8,23 @@ import "./IPegToken.sol";
 import "../vault/IVault.sol";
 import "../library/BocRoles.sol";
 
+/// @title PegToken
+/// @notice Tokens that are pegged to reflect users' positions in Vault of the protocol
+/// @author Bank of Chain Protocol Inc
 contract PegToken is IPegToken, Initializable, AccessControlMixin {
+
+    /// @param _account The recipient of shares minting
+    /// @param _shareAmount The amount of shares minting
     event MintShares(address _account,uint256 _shareAmount);
+
+    /// @param _account The owner of shares burning
+    /// @param _shareAmount The amount of shares burning
     event BurnShares(address _account,uint256 _shareAmount);
+
+    /// @param _isPaused The new value of `isPaused`
     event PauseStateChanged(bool _isPaused);
-    event Migrate(address[] _accounts);
+
+    //event Migrate(address[] _accounts);
 
     string private mName;
 
@@ -22,8 +34,10 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
 
     uint256 private mTotalShares;
 
+    /// @notice The global pause flag
     bool public isPaused;
 
+    /// @notice The address of Vault contract
     address public vaultAddr;
 
 
@@ -37,16 +51,28 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
      */
     mapping(address => mapping(address => uint256)) private allowances;
 
+    /**
+     * @dev Modifier that checks that msg.sender is the vault or not
+     */
     modifier onlyVault() {
         require(msg.sender == vaultAddr, "Only Vault can operate.");
         _;
     }
 
+    /**
+     * @dev Modifier that checks that The global pause flag is "true" or not
+     */
     modifier whenNotPaused() {
         require(!isPaused, "No operate during pause.");
         _;
     }
 
+    /**
+     * @dev Modifier that checks that The global pause flag is "true" or not
+     * @param _isPaused The new value of `isPaused`
+     * Requirements: only governance role can call
+     * emit {PauseStateChanged} event
+     */
     function changePauseState(bool _isPaused)
         external
         override
@@ -78,8 +104,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     }
 
     /**
-     * @return the symbol of the token, usually a shorter version of the
-     * name.
+     * @return the symbol of the token, usually a shorter version of the name.
      */
     function symbol() public view returns (string memory) {
         return mSymbol;
@@ -250,7 +275,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     }
 
     /**
-     * @return the amount of shares that corresponds to `underlying units` .
+     * @return the amount of Ether that corresponds to `_sharesAmount` shares.
      */
     function getUnderlyingUnitsByShares(uint256 _sharesAmount)
         public
@@ -262,7 +287,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     }
 
     /**
-     * @return the amount of Ether that corresponds to `_sharesAmount` token shares.
+     * @return the amount of shares that corresponds to `_underlyingUnits` Ether
      */
     function getSharesByUnderlyingUnits(uint256 _underlyingUnits)
         public

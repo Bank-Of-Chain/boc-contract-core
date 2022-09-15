@@ -9,6 +9,9 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/BocRoles.sol";
 
+/// @title Treasury
+/// @notice The treasury contract mainly used to store public assets of the protocol
+/// @author Bank of Chain Protocol Inc
 contract Treasury is
     Initializable,
     ReentrancyGuardUpgradeable,

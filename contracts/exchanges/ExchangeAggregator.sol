@@ -11,6 +11,7 @@ import "../library/NativeToken.sol";
 
 /// @title ExchangeAggregator
 /// @notice A exchange aggregator with access control
+/// @author Bank of Chain Protocol Inc
 contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;

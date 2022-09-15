@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 pragma solidity ^0.8.0;
-/**
- * @title  Vault Contract
- * @notice The Vault contract defines the storage for the Vault contracts
- * @author BankOfChain Protocol Inc
- */
+
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "./VaultStorage.sol";
 import "../exchanges/IExchangeAggregator.sol";
 
+/**
+ * @title Vault
+ * @notice Vault is the core of the BoC protocol
+ * @notice Vault stores and manages collateral funds of all positions
+ * @author Bank of Chain Protocol Inc
+ **/
 contract Vault is VaultStorage {
     using StableMath for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -213,9 +215,11 @@ contract Vault is VaultStorage {
         return _shareAmount;
     }
 
-    /// @notice burn USDi,return stablecoins
+    /// @notice Burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
     /// @param _minimumAmount Minimum usd to receive in return
+    /// @return _assets The address list of assets to receive
+    /// @return _amounts The amount list of assets to receive
     function burn(uint256 _amount, uint256 _minimumAmount)
         external
         whenNotEmergency
@@ -260,7 +264,10 @@ contract Vault is VaultStorage {
         );
     }
 
-    /// @notice redeem the funds from specified strategy.
+    /// @notice Redeem the funds from specified strategy.
+    /// @param  _strategy The specified strategy to redeem
+    /// @param _amount The amount to redeem in USD
+    /// @param _outputCode The code of output 
     function redeem(
         address _strategy,
         uint256 _amount,

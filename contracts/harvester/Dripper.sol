@@ -45,6 +45,7 @@ import "./../vault/IVault.sol";
  * new funds have been deposited the duration is being pushed back and the
  * rate decreases. This is expected, and ends up following a smoother but
  * longer curve the more collect() is called without incoming yield.
+ * @author Bank of Chain Protocol Inc
  *
  */
 contract Dripper is AccessControlMixin, Initializable {
