@@ -15,11 +15,9 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-/**
- * @title VaultStorage
- * @notice The VaultStorage contract defines The storage layout for the Vault contract
- * @author Bank of Chain Protocol Inc
- **/
+/// @title VaultStorage
+/// @notice The VaultStorage contract defines The storage layout for the Vault contract
+/// @author Bank of Chain Protocol Inc
 contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessControlMixin {
     using StableMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -248,7 +246,8 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     bool public emergencyShutdown;
     /// @notice  Pausing bools
     bool public rebasePaused;
-    /// @notice  over this difference ratio automatically rebase. rebaseThreshold is the numerator and the denominator is 10000000 x/10000000.
+    /// @notice  over this difference ratio automatically rebase. 
+    /// rebaseThreshold is the numerator and the denominator is 1e7. x/1e7
     uint256 public rebaseThreshold;
     /// @notice  Deprecated
     uint256 public maxSupplyDiff;
@@ -294,14 +293,12 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     /// @notice Minimum investment amount
     uint256 public minimumInvestmentAmount;
 
-    /// @dev max percentage 10000000/10000000
+    /// @dev max percentage 1e7/1e7
     uint256 internal constant TEN_MILLION_BPS = 10000000;
 
-    /**
-     * @dev set the implementation for the admin, this needs to be in a base class else we cannot set it
-     * @param _newImpl address of the implementation
-     * Requirements: only governance or delegate role can call
-     */
+    /// @dev set the implementation for the admin, this needs to be in a base class else we cannot set it
+    /// @param _newImpl address of the implementation
+    /// Requirements: only governance or delegate role can call
     function setAdminImpl(address _newImpl) external onlyGovOrDelegate {
         require(AddressUpgradeable.isContract(_newImpl), "new implementation is not a contract");
         bytes32 _position = ADMIN_IMPL_POSITION;

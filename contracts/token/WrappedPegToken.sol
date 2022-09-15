@@ -12,11 +12,9 @@ contract WrappedPegToken is ERC20Permit {
     /// @notice the interface of PegToken wrapped
     IPegToken public pegToken;
 
-    /**
-     * @param _pegToken address of the peg token to wrap
-     * @param _name The name of this wrapped PegToken
-     * @param _symbol The symbol of this wrapped PegToken
-     */
+    /// @param _pegToken address of the peg token to wrap
+    /// @param _name The name of this wrapped PegToken
+    /// @param _symbol The symbol of this wrapped PegToken
     constructor(
         IPegToken _pegToken,
         string memory _name,
@@ -25,12 +23,10 @@ contract WrappedPegToken is ERC20Permit {
         pegToken = _pegToken;
     }
 
-    /**
-     * @notice Wrap the underlying token 
-     * @dev Deposit the underlying token and mint 'wPegToken' to 'msg.sender'
-     * @param _underlyingUnits The amount of underlying token
-     * @return  The amount of 'wPegToken' minted
-     */
+    /// @notice Wrap the underlying token 
+    /// @dev Deposit the underlying token and mint 'wPegToken' to 'msg.sender'
+    /// @param _underlyingUnits The amount of underlying token
+    /// @return  The amount of 'wPegToken' minted
     function wrap(uint256 _underlyingUnits) external returns (uint256) {
         require(_underlyingUnits > 0, "can't wrap zero peg token");
         uint256 _wPegTokenAmount = pegToken.getSharesByUnderlyingUnits(_underlyingUnits);
@@ -39,12 +35,10 @@ contract WrappedPegToken is ERC20Permit {
         return _wPegTokenAmount;
     }
 
-    /**
-     * @notice Unwrap the 'wPegToken' 
-     * @dev Burn thewPegToken' and and transfer underlying token to 'msg.sender'
-     * @param _wPegTokenAmount The amount of 'wPegToken'
-     * @return  The amount of underlying token released
-     */
+    /// @notice Unwrap the 'wPegToken' 
+    /// @dev Burn thewPegToken' and and transfer underlying token to 'msg.sender'
+    /// @param _wPegTokenAmount The amount of 'wPegToken'
+    /// @return  The amount of underlying token released
     function unwrap(uint256 _wPegTokenAmount) external returns (uint256) {
         require(_wPegTokenAmount > 0, "zero amount unwrap not allowed");
         uint256 _pegTokenAmount = pegToken.getUnderlyingUnitsByShares(_wPegTokenAmount);

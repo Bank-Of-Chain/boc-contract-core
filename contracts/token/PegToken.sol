@@ -24,8 +24,6 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     /// @param _isPaused The new value of `isPaused`
     event PauseStateChanged(bool _isPaused);
 
-    //event Migrate(address[] _accounts);
-
     string private mName;
 
     string private mSymbol;
@@ -41,38 +39,28 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     address public vaultAddr;
 
 
-    /**
-     * @dev Logic data，decimals：1e27
-     */
+    /// @dev Logic data，decimals：1e27
     mapping(address => uint256) private shares;
 
-    /**
-     * @dev Allowances are nominated in tokens, not token shares.
-     */
+    /// @dev Allowances are nominated in tokens, not token shares.
     mapping(address => mapping(address => uint256)) private allowances;
 
-    /**
-     * @dev Modifier that checks that msg.sender is the vault or not
-     */
+    /// @dev Modifier that checks that msg.sender is the vault or not
     modifier onlyVault() {
         require(msg.sender == vaultAddr, "Only Vault can operate.");
         _;
     }
 
-    /**
-     * @dev Modifier that checks that The global pause flag is "true" or not
-     */
+    /// @dev Modifier that checks that The global pause flag is "true" or not
     modifier whenNotPaused() {
         require(!isPaused, "No operate during pause.");
         _;
     }
 
-    /**
-     * @dev Modifier that checks that The global pause flag is "true" or not
-     * @param _isPaused The new value of `isPaused`
-     * Requirements: only governance role can call
-     * Emits a {PauseStateChanged} event
-     */
+    /// @dev Modifier that checks that The global pause flag is "true" or not
+    /// @param _isPaused The new value of `isPaused`
+    /// Requirements: only governance role can call
+    /// Emits a {PauseStateChanged} event
     function changePauseState(bool _isPaused)
         external
         override
@@ -96,37 +84,27 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         _initAccessControl(_accessControlProxy);
     }
 
-    /**
-     * @return the name of the token.
-     */
+    /// @return the name of the token.
     function name() public view returns (string memory) {
         return mName;
     }
 
-    /**
-     * @return the symbol of the token, usually a shorter version of the name.
-     */
+    /// @return the symbol of the token, usually a shorter version of the name.
     function symbol() public view returns (string memory) {
         return mSymbol;
     }
 
-    /**
-     * @return the number of decimals for getting user representation of a token amount.
-     */
+    /// @return the number of decimals for getting user representation of a token amount.
     function decimals() public view returns (uint8) {
         return mDecimals;
     }
 
-    /**
-     * @dev Returns the amount of tokens in existence.
-     */
+    /// @dev Returns the amount of tokens in existence.
     function totalSupply() public view override returns (uint256) {
         return (mTotalShares * IVault(vaultAddr).underlyingUnitsPerShare()) / 1e27;
     }
 
-    /**
-     * @dev Returns the amount of tokens owned by `account`.
-     */
+    /// @dev Returns the amount of tokens owned by `account`.
     function balanceOf(address account) public view override returns (uint256) {
         return getUnderlyingUnitsByShares(_sharesOf(account));
     }
@@ -135,20 +113,14 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         return mTotalShares;
     }
 
-    /**
-     * @return the amount of shares owned by `_account`.
-     */
+    /// @return the amount of shares owned by `_account`.
     function sharesOf(address _account) public view override returns (uint256) {
         return _sharesOf(_account);
     }
 
-    /**
-     * @dev Moves `amount` tokens from the caller's account to `to`.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
+    /// @dev Moves `amount` tokens from the caller's account to `to`.
+    /// Returns a boolean value indicating whether the operation succeeded.
+    /// Emits a {Transfer} event.
     function transfer(address _recipient, uint256 _amount)
         public
         override
@@ -158,13 +130,10 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         return true;
     }
 
-    /**
-     * @dev Returns the remaining number of tokens that `spender` will be
-     * allowed to spend on behalf of `owner` through {transferFrom}. This is
-     * zero by default.
-     *
-     * This value changes when {approve} or {transferFrom} are called.
-     */
+    /// @dev Returns the remaining number of tokens that `spender` will be
+    /// allowed to spend on behalf of `owner` through {transferFrom}. This is
+    /// zero by default.
+    /// This value changes when {approve} or {transferFrom} are called.
     function allowance(address _owner, address _spender)
         public
         view
@@ -174,20 +143,15 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         return allowances[_owner][_spender];
     }
 
-    /**
-     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * IMPORTANT: Beware that changing an allowance with this method brings the risk
-     * that someone may use both the old and the new allowance by unfortunate
-     * transaction ordering. One possible solution to mitigate this race
-     * condition is to first reduce the spender's allowance to 0 and set the
-     * desired value afterwards:
-     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
-     *
-     * Emits an {Approval} event.
-     */
+    /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
+    /// Returns a boolean value indicating whether the operation succeeded.
+    /// IMPORTANT: Beware that changing an allowance with this method brings the risk
+    /// that someone may use both the old and the new allowance by unfortunate
+    /// transaction ordering. One possible solution to mitigate this race
+    /// condition is to first reduce the spender's allowance to 0 and set the
+    /// desired value afterwards:
+    /// https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+    /// Emits an {Approval} event.
     function approve(address _spender, uint256 _amount)
         public
         override
@@ -197,15 +161,11 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         return true;
     }
 
-    /**
-     * @dev Moves `amount` tokens from `from` to `to` using the
-     * allowance mechanism. `amount` is then deducted from the caller's
-     * allowance.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
+    /// @dev Moves `amount` tokens from `from` to `to` using the
+    /// allowance mechanism. `amount` is then deducted from the caller's
+    /// allowance.
+    /// Returns a boolean value indicating whether the operation succeeded.
+    /// Emits a {Transfer} event.
     function transferFrom(
         address _sender,
         address _recipient,
@@ -222,19 +182,14 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         return true;
     }
 
-    /**
-     * @notice Atomically increases the allowance granted to `_spender` by the caller by `_addedValue`.
-     *
-     * This is an alternative to `approve` that can be used as a mitigation for
-     * problems described in:
-     * https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol#L42
-     * Emits an `Approval` event indicating the updated allowance.
-     *
-     * Requirements:
-     *
-     * - `_spender` cannot be the the zero address.
-     * - the contract must not be paused.
-     */
+    /// @notice Atomically increases the allowance granted to `_spender` by the caller by `_addedValue`.
+    /// This is an alternative to `approve` that can be used as a mitigation for
+    /// problems described in:
+    /// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol#L42
+    /// Emits an `Approval` event indicating the updated allowance.
+    /// Requirements:
+    /// - `_spender` cannot be the the zero address.
+    /// - the contract must not be paused.
     function increaseAllowance(address _spender, uint256 _addedValue)
         public
         returns (bool)
@@ -247,20 +202,15 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         return true;
     }
 
-    /**
-     * @notice Atomically decreases the allowance granted to `_spender` by the caller by `_subtractedValue`.
-     *
-     * This is an alternative to `approve` that can be used as a mitigation for
-     * problems described in:
-     * https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol#L42
-     * Emits an `Approval` event indicating the updated allowance.
-     *
-     * Requirements:
-     *
-     * - `_spender` cannot be the zero address.
-     * - `_spender` must have allowance for the caller of at least `_subtractedValue`.
-     * - the contract must not be paused.
-     */
+    /// @notice Atomically decreases the allowance granted to `_spender` by the caller by `_subtractedValue`.
+    /// This is an alternative to `approve` that can be used as a mitigation for
+    /// problems described in:
+    /// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol#L42
+    /// Emits an `Approval` event indicating the updated allowance.
+    /// Requirements:
+    /// - `_spender` cannot be the zero address.
+    /// - `_spender` must have allowance for the caller of at least `_subtractedValue`.
+    /// - the contract must not be paused.
     function decreaseAllowance(address _spender, uint256 _subtractedValue)
         public
         returns (bool)
@@ -274,9 +224,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         return true;
     }
 
-    /**
-     * @return the amount of Ether that corresponds to `_sharesAmount` shares.
-     */
+    /// @return the amount of Ether that corresponds to `_sharesAmount` shares.
     function getUnderlyingUnitsByShares(uint256 _sharesAmount)
         public
         view
@@ -286,9 +234,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         return (_sharesAmount * IVault(vaultAddr).underlyingUnitsPerShare()) / 1e27;
     }
 
-    /**
-     * @return the amount of shares that corresponds to `_underlyingUnits` Ether
-     */
+    /// @return the amount of shares that corresponds to `_underlyingUnits` Ether
     function getSharesByUnderlyingUnits(uint256 _underlyingUnits)
         public
         view
@@ -298,10 +244,8 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         return (_underlyingUnits * 1e27) / IVault(vaultAddr).underlyingUnitsPerShare();
     }
 
-    /**
-     * @notice Moves `_amount` tokens from `_sender` to `_recipient`.
-     * Emits a `Transfer` event.
-     */
+    /// @notice Moves `_amount` tokens from `_sender` to `_recipient`.
+    /// Emits a `Transfer` event.
     function _transfer(
         address _sender,
         address _recipient,
@@ -318,17 +262,12 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         emit Transfer(_sender, _recipient, _amount);
     }
 
-    /**
-     * @notice Sets `_amount` as the allowance of `_spender` over the `_owner` s tokens.
-     *
-     * Emits an `Approval` event.
-     *
-     * Requirements:
-     *
-     * - `_owner` cannot be the zero address.
-     * - `_spender` cannot be the zero address.
-     * - the contract must not be paused.
-     */
+    /// @notice Sets `_amount` as the allowance of `_spender` over the `_owner` s tokens.
+    /// Emits an `Approval` event.
+    /// Requirements:
+    /// - `_owner` cannot be the zero address.
+    /// - `_spender` cannot be the zero address.
+    /// - the contract must not be paused.
     function _approve(
         address _owner,
         address _spender,
@@ -341,23 +280,17 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         emit Approval(_owner, _spender, _amount);
     }
 
-    /**
-     * @return the amount of shares owned by `_account`.
-     */
+    /// @return the amount of shares owned by `_account`.
     function _sharesOf(address _account) internal view returns (uint256) {
         return shares[_account];
     }
 
-    /**
-     * @notice Moves `_sharesAmount` shares from `_sender` to `_recipient`.
-     *
-     * Requirements:
-     *
-     * - `_sender` cannot be the zero address.
-     * - `_recipient` cannot be the zero address.
-     * - `_sender` must hold at least `_sharesAmount` shares.
-     * - the contract must not be paused.
-     */
+    /// @notice Moves `_sharesAmount` shares from `_sender` to `_recipient`.
+    /// Requirements:
+    /// - `_sender` cannot be the zero address.
+    /// - `_recipient` cannot be the zero address.
+    /// - `_sender` must hold at least `_sharesAmount` shares.
+    /// - the contract must not be paused.
     function _transferShares(
         address _sender,
         address _recipient,
@@ -376,15 +309,11 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         shares[_recipient] = shares[_recipient] + _sharesAmount;
     }
 
-    /**
-     * @notice Creates `_sharesAmount` shares and assigns them to `_recipient`, increasing the total amount of shares.
-     * @dev This doesn't increase the token total supply.
-     *
-     * Requirements:
-     *
-     * - `_recipient` cannot be the zero address.
-     * - the contract must not be paused.
-     */
+    /// @notice Creates `_sharesAmount` shares and assigns them to `_recipient`, increasing the total amount of shares.
+    /// @dev This doesn't increase the token total supply.
+    /// Requirements:
+    /// - `_recipient` cannot be the zero address.
+    /// - the contract must not be paused.
     function mintShares(address _recipient, uint256 _sharesAmount)
         external
         override
@@ -399,16 +328,12 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         emit MintShares(_recipient,_sharesAmount);
     }
 
-    /**
-     * @notice Destroys `_sharesAmount` shares from `_account`'s holdings, decreasing the total amount of shares.
-     * @dev This doesn't decrease the token total supply.
-     *
-     * Requirements:
-     *
-     * - `_account` cannot be the zero address.
-     * - `_account` must hold at least `_sharesAmount` shares.
-     * - the contract must not be paused.
-     */
+    /// @notice Destroys `_sharesAmount` shares from `_account`'s holdings, decreasing the total amount of shares.
+    /// @dev This doesn't decrease the token total supply.
+    /// Requirements:
+    /// - `_account` cannot be the zero address.
+    /// - `_account` must hold at least `_sharesAmount` shares.
+    /// - the contract must not be paused.
     function burnShares(address _account, uint256 _sharesAmount)
         external
         override

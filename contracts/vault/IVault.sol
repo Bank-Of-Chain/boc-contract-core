@@ -244,16 +244,12 @@ interface IVault {
     /// @notice Get pegToken price in USD(1e18)
     function getPegTokenPrice() external view returns (uint256);
 
-    /**
-     * @dev Calculate total value of all assets held in Vault.
-     * @return _value Total value(by chainlink price) in USD (1e18)
-     */
+    /// @dev Calculate total value of all assets held in Vault.
+    /// @return _value Total value(by chainlink price) in USD (1e18)
     function totalValueInVault() external view returns (uint256 _value);
 
-    /**
-     * @dev Calculate total value of all assets held in Strategies.
-     * @return _value Total value(by chainlink price) in USD (1e18)
-     */
+    /// @dev Calculate total value of all assets held in Strategies.
+    /// @return _value Total value(by chainlink price) in USD (1e18)
     function totalValueInStrategies() external view returns (uint256 _value);
 
     /// @notice Return all strategy addresses
@@ -311,15 +307,13 @@ interface IVault {
         uint256 _outputCode
     ) external;
 
-    /**
-     * @dev Exchange from '_fromToken' to '_toToken'
-     * @param _fromToken The token swap from
-     * @param _toToken The token swap to
-     * @param _amount The amount to swap
-     * @param _exchangeParam The struct of ExchangeParam, see {ExchangeParam} struct
-     * @return _exchangeAmount The real amount to exchange
-     * Emits a {Exchange} event.
-     */
+    /// @dev Exchange from '_fromToken' to '_toToken'
+    /// @param _fromToken The token swap from
+    /// @param _toToken The token swap to
+    /// @param _amount The amount to swap
+    /// @param _exchangeParam The struct of ExchangeParam, see {ExchangeParam} struct
+    /// @return _exchangeAmount The real amount to exchange
+    /// Emits a {Exchange} event.
     function exchange(
         address _fromToken,
         address _toToken,
@@ -327,12 +321,10 @@ interface IVault {
         IExchangeAggregator.ExchangeParam memory _exchangeParam
     ) external returns (uint256);
 
-    /**
-     * @dev Report the current asset of strategy caller
-     * @param _rewardTokens The reward token list
-     * @param _claimAmounts The claim amount list
-     * Emits a {StrategyReported} event.
-     */
+    /// @dev Report the current asset of strategy caller
+    /// @param _rewardTokens The reward token list
+    /// @param _claimAmounts The claim amount list
+    /// Emits a {StrategyReported} event.
     function report(address[] memory _rewardTokens, uint256[] memory _claimAmounts) external;
 
     /// @notice Shutdown the vault when an emergency occurs, cannot mint/burn.
@@ -341,33 +333,23 @@ interface IVault {
     /// @notice Sets adjustPositionPeriod true when adjust position occurs, cannot remove add asset/strategy and cannot mint/burn.
     function setAdjustPositionPeriod(bool _adjustPositionPeriod) external;
 
-    /**
-     * @dev Sets a minimum difference ratio automatically rebase.
-     * @param _threshold _threshold is the numerator and the denominator is 10000000 (x/10000000).
-     */
+    /// @dev Sets a minimum difference ratio automatically rebase.
+    /// @param _threshold _threshold is the numerator and the denominator is 1e7 (x/1e7).
     function setRebaseThreshold(uint256 _threshold) external;
 
-    /**
-     * @dev Sets a fee in basis points to be charged for a redeem.
-     * @param _redeemFeeBps Basis point fee to be charged
-     */
+    /// @dev Sets a fee in basis points to be charged for a redeem.
+    /// @param _redeemFeeBps Basis point fee to be charged
     function setRedeemFeeBps(uint256 _redeemFeeBps) external;
 
-    /**
-     * @dev Sets the treasuryAddress that can receive a portion of yield.
-     *      Setting to the zero address disables this feature.
-     */
+    /// @dev Sets the treasuryAddress that can receive a portion of yield.
+    ///      Setting to the zero address disables this feature.
     function setTreasuryAddress(address _address) external;
 
-    /**
-     * @dev Sets the exchangeManagerAddress that can receive a portion of yield.
-     */
+    /// @dev Sets the exchangeManagerAddress that can receive a portion of yield.
     function setExchangeManagerAddress(address _exchangeManagerAddress) external;
 
-    /**
-     * @dev Sets the TrusteeFeeBps to the percentage of yield that should be
-     *      received in basis points.
-     */
+    /// @dev Sets the TrusteeFeeBps to the percentage of yield that should be
+    ///      received in basis points.
     function setTrusteeFeeBps(uint256 _basis) external;
 
     /// @notice Sets '_queues' as advance withdrawal queue
@@ -384,14 +366,10 @@ interface IVault {
         uint256 _profitLimitRatio
     ) external;
 
-    /**
-     * @dev Sets the deposit paused flag to true to prevent rebasing.
-     */
+    /// @dev Sets the deposit paused flag to true to prevent rebasing.
     function pauseRebase() external;
 
-    /**
-     * @dev Sets the deposit paused flag to true to allow rebasing.
-     */
+    /// @dev Sets the deposit paused flag to true to allow rebasing.
     function unpauseRebase() external;
 
     /// @notice Added support for specific asset.
@@ -413,9 +391,9 @@ interface IVault {
     /// @notice Forced to remove the '_strategy' 
     function forceRemoveStrategy(address _strategy) external;
 
-    /***************************************
-                     WithdrawalQueue
-     ****************************************/
+    /////////////////////////////////////////
+    //           WithdrawalQueue           //
+    /////////////////////////////////////////
     
     /// @notice Return the withdrawal queue
     function getWithdrawalQueue() external view returns (address[] memory);
@@ -435,8 +413,8 @@ interface IVault {
 
     /// @notice Return the rebaseThreshold value,
     /// over this difference ratio automatically rebase.
-    /// rebaseThreshold is the numerator and the denominator is 10000000, 
-    /// the real ratio is `rebaseThreshold`/10000000.
+    /// rebaseThreshold is the numerator and the denominator is 1e7, 
+    /// the real ratio is `rebaseThreshold`/1e7.
     function rebaseThreshold() external view returns (uint256);
 
     /// @notice Return the Amount of yield collected in basis points

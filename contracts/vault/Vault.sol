@@ -8,12 +8,10 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./VaultStorage.sol";
 import "../exchanges/IExchangeAggregator.sol";
 
-/**
- * @title Vault
- * @notice Vault is the core of the BoC protocol
- * @notice Vault stores and manages collateral funds of all positions
- * @author Bank of Chain Protocol Inc
- **/
+/// @title Vault
+/// @notice Vault is the core of the BoC protocol
+/// @notice Vault stores and manages collateral funds of all positions
+/// @author Bank of Chain Protocol Inc
 contract Vault is VaultStorage {
     using StableMath for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -53,9 +51,7 @@ contract Vault is VaultStorage {
         _;
     }
 
-    /**
-     * @dev Verifies that the rebasing is not paused.
-     */
+    /// @dev Verifies that the rebasing is not paused.
     modifier whenNotRebasePaused() {
         require(!rebasePaused, "RP");
         _;
@@ -111,18 +107,14 @@ contract Vault is VaultStorage {
         return _totalValueInVault() + totalValueInStrategies();
     }
 
-    /**
-     * @dev Internal to calculate total value of all assets held in Vault.
-     * @return Total value(by chainlink price) in USD (1e18)
-     */
+    /// @dev Internal to calculate total value of all assets held in Vault.
+    /// @return Total value(by chainlink price) in USD (1e18)
     function totalValueInVault() external view returns (uint256) {
         return _totalValueInVault();
     }
 
-    /**
-     * @dev Internal to calculate total value of all assets held in Strategies.
-     * @return _value Total value(by chainlink price) in USD (1e18)
-     */
+    /// @dev Internal to calculate total value of all assets held in Strategies.
+    /// @return _value Total value(by chainlink price) in USD (1e18)
     function totalValueInStrategies() public view returns (uint256 _value) {
         uint256 _strategyLength = strategySet.length();
         for (uint256 i = 0; i < _strategyLength; i++) {
@@ -133,10 +125,8 @@ contract Vault is VaultStorage {
         }
     }
 
-    /**
-     * @notice Get pegToken price in USD
-     * @return  price in USD (1e18)
-     */
+    /// @notice Get pegToken price in USD
+    /// @return  price in USD (1e18)
     function getPegTokenPrice() external view returns (uint256) {
         uint256 _totalSupply = IPegToken(pegTokenAddress).totalSupply();
         uint256 _pegTokenPrice = 1e18;
@@ -959,11 +949,9 @@ contract Vault is VaultStorage {
         emit Burn(msg.sender, _amount, _actualAmount, _shareAmount, _assets, _amounts);
     }
 
-    /**
-     * @dev Calculate the total value of assets held by the Vault and all
-     *      strategies and update the supply of USDI, optionally sending a
-     *      portion of the yield to the trustee.
-     */
+    /// @dev Calculate the total value of assets held by the Vault and all
+    ///      strategies and update the supply of USDI, optionally sending a
+    ///      portion of the yield to the trustee.
     function _rebase(uint256 _totalAssets) internal {
         uint256 _totalShares = IPegToken(pegTokenAddress).totalShares();
         _rebase(_totalAssets, _totalShares);
@@ -1162,10 +1150,8 @@ contract Vault is VaultStorage {
         return IERC20Upgradeable(_trackedAsset).balanceOf(_owner);
     }
 
-    /**
-     * @notice Get the supported asset Decimal
-     * @return _assetDecimal asset Decimals
-     */
+    /// @notice Get the supported asset Decimal
+    /// @return _assetDecimal asset Decimals
     function _getAssetDecimals(
         uint256[] memory _assetDecimals,
         uint256 _assetIndex,
@@ -1179,10 +1165,8 @@ contract Vault is VaultStorage {
         return _decimal;
     }
 
-    /**
-     * @notice Get an array of the supported asset prices in USD
-     * @return  prices in USD (1e18)
-     */
+    /// @notice Get an array of the supported asset prices in USD
+    /// @return  prices in USD (1e18)
     function _getAssetPrice(
         uint256[] memory _assetPrices,
         uint256 _assetIndex,
@@ -1196,11 +1180,9 @@ contract Vault is VaultStorage {
         return _price;
     }
 
-    /**
-     * @dev Returns the total price in 18 digit USD for a given asset
-     * @param _asset Address of the asset
-     * @return _price USD price of 1 of the asset, in 18 decimal fixed
-     */
+    /// @dev Returns the total price in 18 digit USD for a given asset
+    /// @param _asset Address of the asset
+    /// @return _price USD price of 1 of the asset, in 18 decimal fixed
     function _priceUSD(address _asset) internal view returns (uint256 _price) {
         _price = IValueInterpreter(valueInterpreter).price(_asset);
     }
@@ -1220,10 +1202,8 @@ contract Vault is VaultStorage {
         }
     }
 
-    /**
-     * @dev Falldown to the admin implementation
-     * @notice This is a catch all for all functions not declared in core
-     */
+    /// @dev Falldown to the admin implementation
+    /// @notice This is a catch all for all functions not declared in core
     fallback() external payable {
         bytes32 _slot = ADMIN_IMPL_POSITION;
 

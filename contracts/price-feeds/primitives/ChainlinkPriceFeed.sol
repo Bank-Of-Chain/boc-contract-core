@@ -60,8 +60,6 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         uint256 _nextHeartbeat
     );
 
-    //event StalePrimitiveRemoved(address indexed _primitive);
-
     enum RateAsset {
         ETH, // ETH as asset unit
         USD  // USD as asset unit

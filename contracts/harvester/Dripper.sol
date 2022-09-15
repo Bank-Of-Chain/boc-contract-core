@@ -10,45 +10,40 @@ import "./../library/BocRoles.sol";
 import "./../strategy/IStrategy.sol";
 import "./../vault/IVault.sol";
 
-/**
- * @title USDI Dripper
- *
- * The dripper contract smooths out the yield from point-in-time yield events
- * and spreads the yield out over a configurable time period. This ensures a
- * continuous per block yield to makes users happy as their next rebase
- * amount is always moving up. Also, this makes historical day to day yields
- * smooth, rather than going from a near zero day, to a large APY day, then
- * back to a near zero day again.
- *
- *
- * Design notes
- * - USDT has a smaller resolution than the number of seconds
- * in a week, which can make per block payouts have a rounding error. However
- * the total effect is not large - cents per day, and this money is
- * not lost, just distributed in the future. While we could use a higher
- * decimal precision for the drip perBlock, we chose simpler code.
- * - By calculating the changing drip rates on collects only, harvests and yield
- * events don't have to call anything on this contract or pay any extra gas.
- * Collect() is already be paying for a single write, since it has to reset
- * the lastCollect time.
- * - By having a collectAndRebase method, and having our external systems call
- * that, the USDI vault does not need any changes, not even to know the address
- * of the dripper.
- * - A rejected design was to retro-calculate the drip rate on each collect,
- * based on the balance at the time of the collect. While this would have
- * required less state, and would also have made the contract respond more quickly
- * to new income, it would break the predictability that is this contract's entire
- * purpose. If we did this, the amount of fundsAvailable() would make sharp increases
- * when funds were deposited.
- * - When the dripper recalculates the rate, it targets spending the balance over
- * the duration. This means that every time that collect is is called, if no
- * new funds have been deposited the duration is being pushed back and the
- * rate decreases. This is expected, and ends up following a smoother but
- * longer curve the more collect() is called without incoming yield.
- *
- * @author Bank of Chain Protocol Inc
- *
- */
+/// @title USDI Dripper
+/// The dripper contract smooths out the yield from point-in-time yield events
+/// and spreads the yield out over a configurable time period. This ensures a
+/// continuous per block yield to makes users happy as their next rebase
+/// amount is always moving up. Also, this makes historical day to day yields
+/// smooth, rather than going from a near zero day, to a large APY day, then
+/// back to a near zero day again.
+///
+/// Design notes
+/// - USDT has a smaller resolution than the number of seconds
+/// in a week, which can make per block payouts have a rounding error. However
+/// the total effect is not large - cents per day, and this money is
+/// not lost, just distributed in the future. While we could use a higher
+/// decimal precision for the drip perBlock, we chose simpler code.
+/// - By calculating the changing drip rates on collects only, harvests and yield
+/// events don't have to call anything on this contract or pay any extra gas.
+/// Collect() is already be paying for a single write, since it has to reset
+/// the lastCollect time.
+/// - By having a collectAndRebase method, and having our external systems call
+/// that, the USDI vault does not need any changes, not even to know the address
+/// of the dripper.
+/// - A rejected design was to retro-calculate the drip rate on each collect,
+/// based on the balance at the time of the collect. While this would have
+/// required less state, and would also have made the contract respond more quickly
+/// to new income, it would break the predictability that is this contract's entire
+/// purpose. If we did this, the amount of fundsAvailable() would make sharp increases
+/// when funds were deposited.
+/// - When the dripper recalculates the rate, it targets spending the balance over
+/// the duration. This means that every time that collect is is called, if no
+/// new funds have been deposited the duration is being pushed back and the
+/// rate decreases. This is expected, and ends up following a smoother but
+/// longer curve the more collect() is called without incoming yield.
+/// 
+/// @author Bank of Chain Protocol Inc
 contract Dripper is AccessControlMixin, Initializable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
