@@ -71,7 +71,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
      * @dev Modifier that checks that The global pause flag is "true" or not
      * @param _isPaused The new value of `isPaused`
      * Requirements: only governance role can call
-     * emit {PauseStateChanged} event
+     * Emits a {PauseStateChanged} event
      */
     function changePauseState(bool _isPaused)
         external

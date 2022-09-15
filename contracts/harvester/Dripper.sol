@@ -45,6 +45,7 @@ import "./../vault/IVault.sol";
  * new funds have been deposited the duration is being pushed back and the
  * rate decreases. This is expected, and ends up following a smoother but
  * longer curve the more collect() is called without incoming yield.
+ *
  * @author Bank of Chain Protocol Inc
  *
  */
@@ -112,9 +113,10 @@ contract Dripper is AccessControlMixin, Initializable {
         IVault(vault).rebase();
     }
 
-    /// @notice Set the new drip duration. Governor call only
+    /// @notice Sets the new drip duration.
     /// @dev Drip out the entire balance over if no collects were called during that time
     /// @param _durationSeconds the new drip duration in seconds 
+    /// Requirements: only vault manager can call
     function setDripDuration(uint256 _durationSeconds) external isVaultManager {
         require(_durationSeconds > 0, "duration must be non-zero");
         dripDuration = uint192(_durationSeconds);

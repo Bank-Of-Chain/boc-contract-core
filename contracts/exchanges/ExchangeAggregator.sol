@@ -28,7 +28,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     receive() external payable {}
 
     /// Requirements: only governance or delegate role can call
-    /// emit {ExchangeAdapterAdded} event
+    /// Emits an {ExchangeAdapterAdded} event
     /// @inheritdoc IExchangeAggregator
     function addExchangeAdapters(address[] calldata _exchangeAdapters)
         external
@@ -54,7 +54,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     }
 
     /// @dev `_platform` need be contained. `_sd.receiver` is not 0x00
-    /// if using ETH to swap, `msg.value` need GT `_sd.amount`
+    /// if using ETH to swap, `msg.value` need GTE `_sd.amount`
     /// @inheritdoc IExchangeAggregator
     function swap(
         address _platform,
@@ -130,7 +130,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
 
     /// @notice Add multi exchange adapters
     /// @param _exchangeAdapters The new exchange adapter list to add
-    /// emit {ExchangeAdapterAdded} event
+    /// Emits an {ExchangeAdapterAdded} event
     function __addExchangeAdapters(address[] memory _exchangeAdapters) private {
         for (uint256 i = 0; i < _exchangeAdapters.length; i++) {
             exchangeAdapters.add(_exchangeAdapters[i]);

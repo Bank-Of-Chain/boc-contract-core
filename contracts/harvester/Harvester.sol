@@ -95,7 +95,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         address _sellToCopy = sellTo;
         for (uint256 i = 0; i < _exchangeTokens.length; i++) {
             IExchangeAggregator.ExchangeToken memory _exchangeToken = _exchangeTokens[i];
-            require(_exchangeToken.toToken == _sellToCopy, "Rewards can Only be sold as sellTo");
+            require(_exchangeToken.toToken == _sellToCopy, "Rewards can only be sold as sellTo");
             _exchange(
                 _exchangeToken.fromToken,
                 _exchangeToken.toToken,

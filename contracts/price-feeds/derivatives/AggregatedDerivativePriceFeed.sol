@@ -78,7 +78,7 @@ contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, Access
     /// @param _derivatives The address list of multi derivatives to add
     /// @param _priceFeeds The address list of price feeds corresponding to the list of `_derivatives`
     /// Requirements: only governance or delegate role can call
-    /// emit {DerivativeAdded} event
+    /// Emits a {DerivativeAdded} event
     function addDerivatives(address[] calldata _derivatives, address[] calldata _priceFeeds)
         external
         onlyGovOrDelegate
@@ -91,7 +91,7 @@ contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, Access
     /// @notice Removes a list of derivatives
     /// @param _derivatives The derivatives to remove
     /// Requirements: only governance or delegate role can call
-    /// emit {DerivativeRemoved} event
+    /// Emits a {DerivativeRemoved} event
     function removeDerivatives(address[] calldata _derivatives) external onlyGovOrDelegate {
         require(_derivatives.length > 0, "removeDerivatives: _derivatives cannot be empty");
 
@@ -111,7 +111,7 @@ contract AggregatedDerivativePriceFeed is IAggregatedDerivativePriceFeed, Access
     /// @param _derivatives The derivatives to update
     /// @param _priceFeeds The address list of price feeds corresponding to the list of _derivatives
     /// Requirements: only governance or delegate role can call
-    /// emit {DerivativeUpdated} event
+    /// Emits a {DerivativeUpdated} event
     function updateDerivatives(address[] calldata _derivatives, address[] calldata _priceFeeds)
         external
         onlyGovOrDelegate

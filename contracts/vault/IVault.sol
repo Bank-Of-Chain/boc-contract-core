@@ -118,6 +118,7 @@ interface IVault {
 
     /// @param _shutdown The new boolean value of the emergency shutdown switch
     event SetEmergencyShutdown(bool _shutdown);
+
     event RebasePaused();
     event RebaseUnpaused();
 
@@ -219,7 +220,7 @@ interface IVault {
     /// @notice Return the Vault holds asset value directly in USD
     function valueOfTrackedTokens() external view returns (uint256 _totalValue);
 
-    /// @notice Return the asset value in USD held by vault and vault buffer  //// ????? ?????
+    /// @notice Return the asset value in USD held by vault and vault buffer
     function valueOfTrackedTokensIncludeVaultBuffer() external view returns (uint256 _totalValue);
 
     /// @notice Return the total asset value in USD held by vault
@@ -244,13 +245,13 @@ interface IVault {
     function getPegTokenPrice() external view returns (uint256);
 
     /**
-     * @dev Internal to calculate total value of all assets held in Vault.//// ?????? /////
+     * @dev Calculate total value of all assets held in Vault.
      * @return _value Total value(by chainlink price) in USD (1e18)
      */
     function totalValueInVault() external view returns (uint256 _value);
 
     /**
-     * @dev Internal to calculate total value of all assets held in Strategies.
+     * @dev Calculate total value of all assets held in Strategies.
      * @return _value Total value(by chainlink price) in USD (1e18)
      */
     function totalValueInStrategies() external view returns (uint256 _value);

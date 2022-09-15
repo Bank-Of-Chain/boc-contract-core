@@ -451,7 +451,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     /// @notice Removes a list of primitives from the feed
     /// @param _primitives The primitives to remove
     /// Requirements: only governance or delegate role can call
-    /// emit {PrimitiveRemoved} event
+    /// Emits a {PrimitiveRemoved} event
     function removePrimitives(address[] calldata _primitives) external onlyGovOrDelegate {
         require(_primitives.length > 0, "removePrimitives: _primitives cannot be empty");
 
@@ -472,7 +472,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     /// @param _primitives The primitives to update
     /// @param _aggregators The ordered aggregators corresponding to the list of _primitives
     /// Requirements: only governance or delegate role can call
-    /// emit {PrimitiveUpdated} event
+    /// Emits a {PrimitiveUpdated} event
     function updatePrimitives(
         address[] calldata _primitives,
         address[] calldata _aggregators,

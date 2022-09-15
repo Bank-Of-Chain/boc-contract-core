@@ -23,7 +23,7 @@ interface IExchangeAdapter {
     /// @param _method The method of the exchange platform
     /// @param _encodedCallArgs The encoded parameters to call
     /// @param _sd The description info of this swap
-    /// @return The expected amountIn to swap
+    /// @return The amount of token received on this swap
     function swap(
         uint8 _method,
         bytes calldata _encodedCallArgs,
