@@ -16,6 +16,9 @@ import "./../access-control/AccessControlMixin.sol";
 import "./IVault.sol";
 import "./IVaultBuffer.sol";
 
+/// @title VaultBuffer
+/// @notice The vault buffer contract receives assets from users and returns asset ticket to them
+/// @author Bank of Chain Protocol Inc
 contract VaultBuffer is
     IVaultBuffer,
     Initializable,
@@ -37,13 +40,18 @@ contract VaultBuffer is
     string private mName;
     string private mSymbol;
 
+    /// @notice The vault address
     address public vault;
+
+    /// @notice The pegToken address
     address public pegTokenAddr;
 
+    /// @inheritdoc IVaultBuffer
     bool public override isDistributing;
 
     uint256 private mDistributeLimit;
 
+    /// @dev Modifier that checks that msg.sender is the vault or not
     modifier onlyVault() {
         require(msg.sender == vault);
         _;
@@ -53,6 +61,13 @@ contract VaultBuffer is
 
     fallback() external payable {}
 
+    /// @dev Initialize contract state
+    /// @param _name The name of token ticket
+    /// @param _symbol The symbol of token ticket
+    /// @param _vault The vault contract address
+    /// @param _pegTokenAddr The pegToken address
+    /// @param _accessControlProxy The access control proxy
+    /// Requirement: only vault can call
     function initialize(
         string memory _name,
         string memory _symbol,
@@ -69,19 +84,29 @@ contract VaultBuffer is
         mDistributeLimit = 50;
     }
 
+    /// @inheritdoc IVaultBuffer
     function getDistributeLimit() external view override returns (uint256) {
         return mDistributeLimit;
     }
 
+    /// @inheritdoc IVaultBuffer
     function setDistributeLimit(uint256 _limit) external override isVaultManager {
         assert(_limit > 0);
         mDistributeLimit = _limit;
     }
 
+    /// @dev Mints `amount` tokens and assigns them to `_sender`
+    /// @param _sender the recepient assigned
+    /// @param _amount the amount to mint
+    /// Requirement: only vault can call
     function mint(address _sender, uint256 _amount) external payable override onlyVault {
         _mint(_sender, _amount);
     }
 
+    /// @dev Transfer all assets to vault, including ETH and ERC20 tokens
+    /// @param _assets The address list of multi assets to transfer
+    /// @param _amounts the amount list of `_assets` to transfer
+    /// Requirement: only vault can call
     function transferCashToVault(address[] memory _assets, uint256[] memory _amounts)
         external
         override
@@ -101,6 +126,8 @@ contract VaultBuffer is
         }
     }
 
+    /// Requirement: only vault can call
+    /// @inheritdoc IVaultBuffer
     function openDistribute() external override onlyVault {
         assert(!isDistributing);
         uint256 _pegTokenBalance = IERC20Upgradeable(pegTokenAddr).balanceOf(address(this));
@@ -111,6 +138,8 @@ contract VaultBuffer is
         }
     }
 
+    /// Requirement: only keeper can call
+    /// @inheritdoc IVaultBuffer
     function distributeWhenDistributing() external override isKeeper returns (bool) {
         assert(!IVault(vault).adjustPositionPeriod());
         bool _result = _distribute();
@@ -121,6 +150,8 @@ contract VaultBuffer is
         return _result;
     }
 
+    /// Requirement: only keeper can call
+    /// @inheritdoc IVaultBuffer
     function distributeOnce() external override isKeeper returns (bool) {
         assert(!IVault(vault).adjustPositionPeriod());
         address[] memory _assets = IVault(vault).getTrackedAssets();
@@ -167,105 +198,75 @@ contract VaultBuffer is
         return mBalances.length() != 0;
     }
 
-    /**
-     * @dev Returns the name of the token.
-     */
+    /// @dev Returns the name of the token.
     function name() public view virtual override returns (string memory) {
         return mName;
     }
 
-    /**
-     * @dev Returns the symbol of the token, usually a shorter version of the
-     * name.
-     */
+    /// @dev Returns the symbol of the token, usually a shorter version of the name.
     function symbol() public view virtual override returns (string memory) {
         return mSymbol;
     }
 
-    /**
-     * @dev Returns the number of decimals used to get its user representation.
-     * For example, if `decimals` equals `2`, a balance of `505` tokens should
-     * be displayed to a user as `5.05` (`505 / 10 ** 2`).
-     *
-     * Tokens usually opt for a value of 18, imitating the relationship between
-     * Ether and Wei. This is the value {ERC20} uses, unless this function is
-     * overridden;
-     *
-     * NOTE: This information is only used for _display_ purposes: it in
-     * no way affects any of the arithmetic of the contract, including
-     * {IERC20-balanceOf} and {IERC20-transfer}.
-     */
+    /// @dev Returns the number of decimals used to get its user representation.
+    /// For example, if `decimals` equals `2`, a balance of `505` tokens should
+    /// be displayed to a user as `5.05` (`505 / 10 ** 2`).
+    /// Tokens usually opt for a value of 18, imitating the relationship between
+    /// Ether and Wei. This is the value {ERC20} uses, unless this function is
+    /// overridden;
+    /// NOTE: This information is only used for _display_ purposes: it in
+    /// no way affects any of the arithmetic of the contract, including
+    /// {IERC20-balanceOf} and {IERC20-transfer}.
     function decimals() public view virtual override returns (uint8) {
         return 18;
     }
 
-    /**
-     * @dev See {IERC20-totalSupply}.
-     */
+    /// @dev See {IERC20-totalSupply}.
     function totalSupply() public view virtual override returns (uint256) {
         return mTotalSupply;
     }
 
-    /**
-     * @dev See {IERC20-balanceOf}.
-     */
+    /// @dev See {IERC20-balanceOf}.
     function balanceOf(address _account) public view virtual override returns (uint256) {
         return mBalances.get(_account);
     }
 
-    /**
-     * @dev See {IERC20-transfer}.
-     *
-     * Requirements:
-     *
-     * - `to` cannot be the zero address.
-     * - the caller must have a balance of at least `amount`.
-     */
+    /// @dev See {IERC20-transfer}.
+    /// Requirements:
+    /// - `to` cannot be the zero address.
+    /// - the caller must have a balance of at least `amount`.
     function transfer(address _to, uint256 _amount) public virtual override returns (bool) {
         address _owner = _msgSender();
         _transfer(_owner, _to, _amount);
         return true;
     }
 
-    /**
-     * @dev See {IERC20-allowance}.
-     */
+    /// @dev See {IERC20-allowance}.
     function allowance(address _owner, address _spender) public view virtual override returns (uint256) {
         return mAllowances[_owner][_spender];
     }
 
-    /**
-     * @dev See {IERC20-approve}.
-     *
-     * NOTE: If `amount` is the maximum `uint256`, the allowance is not updated on
-     * `transferFrom`. This is semantically equivalent to an infinite approval.
-     *
-     * Requirements:
-     *
-     * - `spender` cannot be the zero address.
-     */
+    /// @dev See {IERC20-approve}.
+    /// NOTE: If `amount` is the maximum `uint256`, the allowance is not updated on
+    /// `transferFrom`. This is semantically equivalent to an infinite approval.
+    /// Requirements:
+    /// - `spender` cannot be the zero address.
     function approve(address _spender, uint256 _amount) public virtual override returns (bool) {
         address _owner = _msgSender();
         _approve(_owner, _spender, _amount);
         return true;
     }
 
-    /**
-     * @dev See {IERC20-transferFrom}.
-     *
-     * Emits an {Approval} event indicating the updated allowance. This is not
-     * required by the EIP. See the note at the beginning of {ERC20}.
-     *
-     * NOTE: Does not update the allowance if the current allowance
-     * is the maximum `uint256`.
-     *
-     * Requirements:
-     *
-     * - `from` and `to` cannot be the zero address.
-     * - `from` must have a balance of at least `amount`.
-     * - the caller must have allowance for ``from``'s tokens of at least
-     * `amount`.
-     */
+    /// @dev See {IERC20-transferFrom}.
+    /// Emits an {Approval} event indicating the updated allowance. This is not
+    /// required by the EIP. See the note at the beginning of {ERC20}.
+    /// NOTE: Does not update the allowance if the current allowance
+    /// is the maximum `uint256`.
+    /// Requirements:
+    /// - `from` and `to` cannot be the zero address.
+    /// - `from` must have a balance of at least `amount`.
+    /// - the caller must have allowance for ``from``'s tokens of at least
+    /// `amount`.
     function transferFrom(
         address _from,
         address _to,
@@ -277,38 +278,26 @@ contract VaultBuffer is
         return true;
     }
 
-    /**
-     * @dev Atomically increases the allowance granted to `spender` by the caller.
-     *
-     * This is an alternative to {approve} that can be used as a mitigation for
-     * problems described in {IERC20-approve}.
-     *
-     * Emits an {Approval} event indicating the updated allowance.
-     *
-     * Requirements:
-     *
-     * - `spender` cannot be the zero address.
-     */
+    /// @dev Atomically increases the allowance granted to `spender` by the caller.
+    /// This is an alternative to {approve} that can be used as a mitigation for
+    /// problems described in {IERC20-approve}.
+    /// Emits an {Approval} event indicating the updated allowance.
+    /// Requirements:
+    /// - `spender` cannot be the zero address.
     function increaseAllowance(address _spender, uint256 _addedValue) public virtual returns (bool) {
         address _owner = _msgSender();
         _approve(_owner, _spender, allowance(_owner, _spender) + _addedValue);
         return true;
     }
 
-    /**
-     * @dev Atomically decreases the allowance granted to `spender` by the caller.
-     *
-     * This is an alternative to {approve} that can be used as a mitigation for
-     * problems described in {IERC20-approve}.
-     *
-     * Emits an {Approval} event indicating the updated allowance.
-     *
-     * Requirements:
-     *
-     * - `spender` cannot be the zero address.
-     * - `spender` must have allowance for the caller of at least
-     * `subtractedValue`.
-     */
+    /// @dev Atomically decreases the allowance granted to `spender` by the caller.
+    /// This is an alternative to {approve} that can be used as a mitigation for
+    /// problems described in {IERC20-approve}.
+    /// Emits an {Approval} event indicating the updated allowance.
+    /// Requirements:
+    /// - `spender` cannot be the zero address.
+    /// - `spender` must have allowance for the caller of at least
+    /// `subtractedValue`.
     function decreaseAllowance(address _spender, uint256 _subtractedValue) public virtual returns (bool) {
         address _owner = _msgSender();
         uint256 _currentAllowance = allowance(_owner, _spender);
@@ -320,20 +309,14 @@ contract VaultBuffer is
         return true;
     }
 
-    /**
-     * @dev Moves `amount` of tokens from `sender` to `recipient`.
-     *
-     * This internal function is equivalent to {transfer}, and can be used to
-     * e.g. implement automatic token fees, slashing mechanisms, etc.
-     *
-     * Emits a {Transfer} event.
-     *
-     * Requirements:
-     *
-     * - `from` cannot be the zero address.
-     * - `to` cannot be the zero address.
-     * - `from` must have a balance of at least `amount`.
-     */
+    /// @dev Moves `amount` of tokens from `sender` to `recipient`.
+    /// This internal function is equivalent to {transfer}, and can be used to
+    /// e.g. implement automatic token fees, slashing mechanisms, etc.
+    /// Emits a {Transfer} event.
+    /// Requirements:
+    /// - `from` cannot be the zero address.
+    /// - `to` cannot be the zero address.
+    /// - `from` must have a balance of at least `amount`.
     function _transfer(
         address _from,
         address _to,
@@ -361,15 +344,11 @@ contract VaultBuffer is
         _afterTokenTransfer(_from, _to, _amount);
     }
 
-    /** @dev Creates `amount` tokens and assigns them to `account`, increasing
-     * the total supply.
-     *
-     * Emits a {Transfer} event with `from` set to the zero address.
-     *
-     * Requirements:
-     *
-     * - `account` cannot be the zero address.
-     */
+    ///  @dev Creates `amount` tokens and assigns them to `account`, increasing
+    /// the total supply.
+    /// Emits a {Transfer} event with `from` set to the zero address.
+    /// Requirements:
+    /// - `account` cannot be the zero address.
     function _mint(address _account, uint256 _amount) internal virtual {
         require(_account != address(0), "ERC20: mint to the zero address");
 
@@ -382,17 +361,12 @@ contract VaultBuffer is
         _afterTokenTransfer(address(0), _account, _amount);
     }
 
-    /**
-     * @dev Destroys `amount` tokens from `account`, reducing the
-     * total supply.
-     *
-     * Emits a {Transfer} event with `to` set to the zero address.
-     *
-     * Requirements:
-     *
-     * - `account` cannot be the zero address.
-     * - `account` must have at least `amount` tokens.
-     */
+    /// @dev Destroys `amount` tokens from `account`, reducing the
+    /// total supply.
+    /// Emits a {Transfer} event with `to` set to the zero address.
+    /// Requirements:
+    /// - `account` cannot be the zero address.
+    /// - `account` must have at least `amount` tokens.
     function _burn(address _account, uint256 _amount) internal virtual {
         require(_account != address(0), "ERC20: burn from the zero address");
 
@@ -415,19 +389,13 @@ contract VaultBuffer is
         _afterTokenTransfer(_account, address(0), _amount);
     }
 
-    /**
-     * @dev Sets `amount` as the allowance of `spender` over the `owner` s tokens.
-     *
-     * This internal function is equivalent to `approve`, and can be used to
-     * e.g. set automatic allowances for certain subsystems, etc.
-     *
-     * Emits an {Approval} event.
-     *
-     * Requirements:
-     *
-     * - `owner` cannot be the zero address.
-     * - `spender` cannot be the zero address.
-     */
+    /// @dev Sets `amount` as the allowance of `spender` over the `owner` s tokens.
+    /// This internal function is equivalent to `approve`, and can be used to
+    /// e.g. set automatic allowances for certain subsystems, etc.
+    /// Emits an {Approval} event.
+    /// Requirements:
+    /// - `owner` cannot be the zero address.
+    /// - `spender` cannot be the zero address.
     function _approve(
         address _owner,
         address _spender,
@@ -440,14 +408,10 @@ contract VaultBuffer is
         emit Approval(_owner, _spender, _amount);
     }
 
-    /**
-     * @dev Updates `owner` s allowance for `spender` based on spent `amount`.
-     *
-     * Does not update the allowance amount in case of infinite allowance.
-     * Revert if not enough allowance is available.
-     *
-     * Might emit an {Approval} event.
-     */
+    /// @dev Updates `owner` s allowance for `spender` based on spent `amount`.
+    /// Does not update the allowance amount in case of infinite allowance.
+    /// Revert if not enough allowance is available.
+    /// Might emit an {Approval} event.
     function _spendAllowance(
         address _owner,
         address _spender,
@@ -462,40 +426,30 @@ contract VaultBuffer is
         }
     }
 
-        /**
-     * @dev Hook that is called before any transfer of tokens. This includes
-     * minting and burning.
-     *
-     * Calling conditions:
-     *
-     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
-     * will be transferred to `to`.
-     * - when `from` is zero, `amount` tokens will be minted for `to`.
-     * - when `to` is zero, `amount` of ``from``'s tokens will be burned.
-     * - `from` and `to` are never both zero.
-     *
-     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
-     */
+    /// @dev Hook that is called before any transfer of tokens. This includes
+    /// minting and burning.
+    /// Calling conditions:
+    /// - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
+    /// will be transferred to `to`.
+    /// - when `from` is zero, `amount` tokens will be minted for `to`.
+    /// - when `to` is zero, `amount` of ``from``'s tokens will be burned.
+    /// - `from` and `to` are never both zero.
+    /// To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
     function _beforeTokenTransfer(
         address _from,
         address _to,
         uint256 _amount
     ) internal virtual {}
 
-    /**
-     * @dev Hook that is called after any transfer of tokens. This includes
-     * minting and burning.
-     *
-     * Calling conditions:
-     *
-     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
-     * has been transferred to `to`.
-     * - when `from` is zero, `amount` tokens have been minted for `to`.
-     * - when `to` is zero, `amount` of ``from``'s tokens have been burned.
-     * - `from` and `to` are never both zero.
-     *
-     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
-     */
+    /// @dev Hook that is called after any transfer of tokens. This includes
+    /// minting and burning.
+    /// Calling conditions:
+    /// - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
+    /// has been transferred to `to`.
+    /// - when `from` is zero, `amount` tokens have been minted for `to`.
+    /// - when `to` is zero, `amount` of ``from``'s tokens have been burned.
+    /// - `from` and `to` are never both zero.
+    /// To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
     function _afterTokenTransfer(
         address _from,
         address _to,

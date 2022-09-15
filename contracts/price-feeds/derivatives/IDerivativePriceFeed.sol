@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 /// @title IDerivativePriceFeed Interface
-/// @notice Simple interface for derivative price source oracle implementations
+/// @notice Simple interface for derivative price feed oracle implementations
 interface IDerivativePriceFeed {
     function calcUnderlyingValues(address, uint256)
         external

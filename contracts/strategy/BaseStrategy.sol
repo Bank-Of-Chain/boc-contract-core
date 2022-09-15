@@ -12,18 +12,32 @@ import "../library/StableMath.sol";
 import "../price-feeds/IValueInterpreter.sol";
 import "./IStrategy.sol";
 
+/// @title BaseStrategy
+/// @author Bank of Chain Protocol Inc
 abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using StableMath for uint256;
 
+    /// @inheritdoc IStrategy
     IVault public override vault;
+
+    /// @notice The interface of valueInterpreter contract
     IValueInterpreter public valueInterpreter;
+
+    /// @inheritdoc IStrategy
     address public override harvester;
+    /// @inheritdoc IStrategy
     uint16 public override protocol;
+    /// @inheritdoc IStrategy
     string public override name;
+
+    /// @notice The list of tokens wanted by this strategy
     address[] public wants;
+
+    /// @inheritdoc IStrategy
     bool public override isWantRatioIgnorable;
 
+    /// @dev Modifier that checks that msg.sender is the vault or not
     modifier onlyVault() {
         require(msg.sender == address(vault));
         _;
@@ -51,17 +65,17 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
         wants = _wants;
     }
 
-    /// @notice Version of strategy
+    /// @inheritdoc IStrategy
     function getVersion() external pure virtual override returns (string memory);
 
-    /// @notice True means that can ignore ratios given by wants info
+    /// @inheritdoc IStrategy
     function setIsWantRatioIgnorable(bool _isWantRatioIgnorable) external override isVaultManager {
         bool _oldValue = isWantRatioIgnorable;
         isWantRatioIgnorable = _isWantRatioIgnorable;
         emit SetIsWantRatioIgnorable(_oldValue, _isWantRatioIgnorable);
     }
 
-    /// @notice Provide the strategy need underlying token and ratio
+    /// @inheritdoc IStrategy
     function getWantsInfo()
         external
         view
@@ -69,15 +83,15 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
         override
         returns (address[] memory _assets, uint256[] memory _ratios);
 
-    /// @notice Provide the strategy need underlying tokens
+    /// @inheritdoc IStrategy
     function getWants() external view override returns (address[] memory) {
         return wants;
     }
 
-    // @notice Provide the strategy output path when withdraw.
+    /// @inheritdoc IStrategy
     function getOutputsInfo() external view virtual override returns (OutputInfo[] memory _outputsInfo);
 
-    /// @notice Returns the position details of the strategy.
+    /// @inheritdoc IStrategy
     function getPositionDetail()
         public
         view
@@ -90,7 +104,7 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
             uint256 _usdValue
         );
 
-    /// @notice Total assets of strategy in USD.
+    /// @inheritdoc IStrategy
     function estimatedTotalAssets() external view virtual override returns (uint256) {
         (
             address[] memory _tokens,
@@ -109,10 +123,10 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
         }
     }
 
-    /// @notice 3rd prototcol's pool total assets in USD.
+    /// @inheritdoc IStrategy
     function get3rdPoolAssets() external view virtual override returns (uint256);
 
-    /// @notice Harvests the Strategy, recognizing any profits or losses and adjusting the Strategy's position.
+    /// @inheritdoc IStrategy
     function harvest()
         external
         virtual
@@ -122,17 +136,13 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
         vault.report(_rewardsTokens, _claimAmounts);
     }
 
-    /// @notice Strategy borrow funds from vault
-    /// @param _assets borrow token address
-    /// @param _amounts borrow token amount
+    /// @inheritdoc IStrategy
     function borrow(address[] memory _assets, uint256[] memory _amounts) external override onlyVault {
         depositTo3rdPool(_assets, _amounts);
         emit Borrow(_assets, _amounts);
     }
 
-    /// @notice Strategy repay the funds to vault
-    /// @param _repayShares Numerator
-    /// @param _totalShares Denominator
+    /// @inheritdoc IStrategy
     function repay(
         uint256 _repayShares,
         uint256 _totalShares,
@@ -161,19 +171,20 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
         emit Repay(_repayShares, _totalShares, _assets, _amounts);
     }
 
-    /// @notice Investable amount of strategy in USD
+    /// @inheritdoc IStrategy
     function poolQuota() public view virtual override returns (uint256) {
         return type(uint256).max;
     }
 
     /// @notice Strategy deposit funds to 3rd pool.
-    /// @param _assets deposit token address
-    /// @param _amounts deposit token amount
+    /// @param _assets the address list of token to deposit
+    /// @param _amounts the amount list of token to deposit
     function depositTo3rdPool(address[] memory _assets, uint256[] memory _amounts) internal virtual;
 
-    /// @notice Strategy withdraw the funds from 3rd pool.
-    /// @param _withdrawShares Numerator
-    /// @param _totalShares Denominator
+    /// @notice Strategy withdraw the funds from 3rd pool
+    /// @param _withdrawShares The amount of shares to withdraw
+    /// @param _totalShares The total amount of shares owned by this strategy
+    /// @param _outputCode The code of output
     function withdrawFrom3rdPool(
         uint256 _withdrawShares,
         uint256 _totalShares,
@@ -185,7 +196,7 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
         return IERC20Upgradeable(_tokenAddress).balanceOf(address(this));
     }
 
-    /// @notice Query the value of Token.
+    /// @notice Return the value of token in USD.
     function queryTokenValue(address _token, uint256 _amount)
         internal
         view
@@ -201,8 +212,8 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
 
     /// @notice Transfer `_assets` token from this contract to target address.
     /// @param _target The target address to receive token
-    /// @param _assets deposit token address list
-    /// @param _amounts deposit token amount list
+    /// @param _assets the address list of token to transfer
+    /// @param _amounts the amount list of token to transfer
     function transferTokensToTarget(
         address _target,
         address[] memory _assets,

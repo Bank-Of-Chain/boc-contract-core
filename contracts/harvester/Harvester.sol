@@ -12,15 +12,27 @@ import "./../library/BocRoles.sol";
 import "../vault/IVault.sol";
 import "./../strategy/IStrategy.sol";
 
+
+/// @title Harvester
+/// @notice Harvester for function used by keeper
+/// @author Bank of Chain Protocol Inc
 contract Harvester is IHarvester, AccessControlMixin, Initializable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    /// @notice The receiving address of profit
     address public profitReceiver;
+    /// @notice The manager of exchange
     address public exchangeManager;
-    /// rewards sell to token.
+    /// @notice The return token when sell rewards 
     address public sellTo;
+    /// @notice The vault address
     address public vaultAddress;
 
+    /// @notice Initialize
+    /// @param _accessControlProxy  The access control proxy address
+    /// @param _receiver The receiving address of profit
+    /// @param _sellTo The return token when sell rewards 
+    /// @param _vault The vault address
     function initialize(
         address _accessControlProxy,
         address _receiver,
@@ -37,7 +49,8 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         _initAccessControl(_accessControlProxy);
     }
 
-    /// @notice Setting profit receive address. Only governance role can call.
+    /// @dev Only governance role can call
+    /// @inheritdoc IHarvester
     function setProfitReceiver(address _receiver) external override onlyRole(BocRoles.GOV_ROLE) {
         require(_receiver != address(0), "Must be a non-zero address");
         profitReceiver = _receiver;
@@ -45,6 +58,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         emit ReceiverChanged(profitReceiver);
     }
     
+    /// @inheritdoc IHarvester
     function setSellTo(address _sellTo) external override isVaultManager {
         require(_sellTo != address(0), "Must be a non-zero address");
         sellTo = _sellTo;
@@ -52,12 +66,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         emit SellToChanged(sellTo);
     }
 
-    /**
-     * @dev Transfer token to governor. Intended for recovering tokens stuck in
-     *      contract, i.e. mistaken sends.
-     * @param _asset Address of the asset
-     * @param _amount Amount of the asset to transfer
-     */
+    /// @inheritdoc IHarvester
     function transferToken(address _asset, uint256 _amount)
         external
         override
@@ -66,11 +75,8 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         IERC20Upgradeable(_asset).safeTransfer(IVault(vaultAddress).treasury(), _amount);
     }
 
-    /**
-     * @dev Multi strategies harvest and collect all rewards to this contarct
-     * @param _strategies The strategy array in which each strategy will harvest
-     * Requirements: only Keeper can call
-     */
+    /// @dev Only Keeper can call
+    /// @inheritdoc IHarvester
     function collect(address[] calldata _strategies) external override isKeeper {
         for (uint256 i = 0; i < _strategies.length; i++) {
             address _strategy = _strategies[i];
@@ -79,12 +85,8 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         }
     }
 
-    /**
-     * @dev After collect all rewards,exchange from all reward tokens to 'sellTo' token(one stablecoin),
-     * finally send stablecoin to receiver
-     * @param _exchangeTokens The all info of exchange will be used when exchange
-     * Requirements: only Keeper can call
-     */
+    /// @dev Only Keeper can call
+    /// @inheritdoc IHarvester
     function exchangeAndSend(IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens)
         external
         override
@@ -103,15 +105,13 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         }
     }
 
-    /**
-     * @dev Exchange from all reward tokens to 'sellTo' token(one stablecoin)
-     * @param _fromToken The token swap from
-     * @param _toToken The token swap to
-     * @param _amount The amount to swap
-     * @param _exchangeParam The struct of ExchangeParam, see {ExchangeParam} struct
-     * @return _exchangeAmount The real amount to exchange
-     * Emits a {Exchange} event.
-     */
+    /// @notice Exchange from all reward tokens to 'sellTo' token(one stablecoin)
+    /// @param _fromToken The token swap from
+    /// @param _toToken The token swap to
+    /// @param _amount The amount to swap
+    /// @param _exchangeParam The struct of ExchangeParam, see {ExchangeParam} struct
+    /// @return _exchangeAmount The return amount of 'sellTo' token on this exchange
+    /// Emits a {Exchange} event.
     function _exchange(
         address _fromToken,
         address _toToken,

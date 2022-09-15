@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+/// @title IValueInterpreter interface
 interface IValueInterpreter {
 
     /// @notice Calculates the value of a given amount of one asset in terms of another asset
@@ -9,8 +10,7 @@ interface IValueInterpreter {
     /// @param _amount The amount of the _baseAsset to convert
     /// @param _quoteAsset The asset to which to convert
     /// @return _value The equivalent quantity in the _quoteAsset
-    /// @dev Does not alter protocol state,
-    /// but not a view because calls to price feeds can potentially update third party state
+    /// @dev Does not alter protocol state
     function calcCanonicalAssetValue(
         address _baseAsset,
         uint256 _amount,
@@ -22,8 +22,7 @@ interface IValueInterpreter {
     /// @param _amounts The amounts of the _baseAssets to convert
     /// @param _quoteAsset The asset to which to convert
     /// @return _value The sum value of _baseAssets, denominated in the _quoteAsset
-    /// @dev Does not alter protocol state,
-    /// but not a view because calls to price feeds can potentially update third party state.
+    /// @dev Does not alter protocol state.
     /// Does not handle a derivative quote asset.
     function calcCanonicalAssetsTotalValue(
         address[] calldata _baseAssets,

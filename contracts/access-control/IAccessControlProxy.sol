@@ -2,6 +2,7 @@
 
 pragma solidity >=0.6.0 <0.9.0;
 
+/// @title IAccessControlProxy interface
 interface IAccessControlProxy {
     function isGovOrDelegate(address _account) external view returns (bool);
 
