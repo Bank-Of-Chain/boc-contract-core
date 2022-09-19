@@ -107,13 +107,13 @@ contract Vault is VaultStorage {
         return _totalValueInVault() + totalValueInStrategies();
     }
 
-    /// @dev Internal to calculate total value of all assets held in Vault.
+    /// @dev Calculate total value of all assets held in Vault.
     /// @return Total value(by chainlink price) in USD (1e18)
     function totalValueInVault() external view returns (uint256) {
         return _totalValueInVault();
     }
 
-    /// @dev Internal to calculate total value of all assets held in Strategies.
+    /// @dev Calculate total value of all assets held in Strategies.
     /// @return _value Total value(by chainlink price) in USD (1e18)
     function totalValueInStrategies() public view returns (uint256 _value) {
         uint256 _strategyLength = strategySet.length();
@@ -157,7 +157,7 @@ contract Vault is VaultStorage {
         return _pegTokenPrice;
     }
 
-    /// @notice All strategies
+    /// @notice Return all strategies
     function getStrategies() external view returns (address[] memory) {
         return strategySet.values();
     }
@@ -167,11 +167,11 @@ contract Vault is VaultStorage {
         require(strategySet.contains(_strategy), "strategy not exist");
     }
 
-    /// @notice estimate Minting pending share
+    /// @notice Estimate the pending share amount that can be minted
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
     /// @dev Support single asset or multi-assets
-    /// @return _pending Share Amount
+    /// @return The share Amount estimated
     function estimateMint(address[] memory _assets, uint256[] memory _amounts)
         public
         view
@@ -363,6 +363,11 @@ contract Vault is VaultStorage {
         _rebase(_totalAssets);
     }
 
+    /// @dev Report the current asset of strategy caller
+    /// @param _rewardTokens The reward token list
+    /// @param _claimAmounts The claim amount list
+    /// Requirement: only the strategy caller is active
+    /// Emits a {StrategyReported} event.
     function report(address[] memory _rewardTokens, uint256[] memory _claimAmounts)
         external
         isActiveStrategy(msg.sender)
@@ -805,7 +810,7 @@ contract Vault is VaultStorage {
     /// @param _assetDecimals array of asset decimal
     /// @param _assetIndex index of the asset in trackedAssets array
     /// @param _trackedAsset address of the asset
-    /// @return shareAmount
+    /// @return The share amount
     function _calculateAssetValue(
         uint256[] memory _assetPrices,
         uint256[] memory _assetDecimals,

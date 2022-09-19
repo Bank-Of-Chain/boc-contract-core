@@ -44,12 +44,15 @@ interface IStrategy {
     function harvester() external view returns (address);
 
     /// @notice Return the underlying token list and ratio list needed by the strategy
+    /// @return _assets the address list of token to deposit
+    /// @return _ratios the ratios list of `_assets`. 
+    ///     The ratio is the proportion of each asset to total assets
     function getWantsInfo() external view returns (address[] memory _assets, uint256[] memory _ratios);
 
     /// @notice Return the underlying token list needed by the strategy
     function getWants() external view returns (address[] memory _wants);
 
-    // @notice Return the output path list of the strategy when withdraw.
+    /// @notice Return the output path list of the strategy when withdraw.
     function getOutputsInfo() external view returns (OutputInfo[] memory _outputsInfo);
 
     /// @notice Sets the flag of `isWantRatioIgnorable` 
@@ -75,7 +78,7 @@ interface IStrategy {
     /// @notice Return the total assets of strategy in USD.
     function estimatedTotalAssets() external view returns (uint256);
 
-    /// @notice Return the 3rd protocol's pool total assets in USD.
+    /// @notice Return the third party protocol's pool total assets in USD.
     function get3rdPoolAssets() external view returns (uint256);
 
     /// @notice Harvests the Strategy, 
