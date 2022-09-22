@@ -62,7 +62,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
 
     /// @param _account The minter
     /// @param _assets The address list of the assets depositing
-    /// @param _amounts The amount of the asset depositing
+    /// @param _amounts The amount list of the asset depositing
     /// @param _mintAmount The amount of the asset minting
     event Mint(
         address _account, 
