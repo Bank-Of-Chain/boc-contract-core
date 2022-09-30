@@ -2,24 +2,43 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/access/AccessControlEnumerable.sol';
-import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-//治理者代理，部署后owner会转移给多签账户
+/// @title AccessControlProxy
+/// @dev AccessControlProxy contract that allows children to implement role-based access control mechanisms.
+/// @notice The ownership will transfer to multi-signature account after deployment
+/// @author Bank of Chain Protocol Inc
 contract AccessControlProxy is Initializable, AccessControlEnumerable {
+    /// @notice The privileges of `DELEGATE_ROLE` same as `gov_role`
+    bytes32 public constant DELEGATE_ROLE = keccak256("DELEGATE_ROLE");
+    /// @notice The configuring options within the vault contract
+    bytes32 public constant VAULT_ROLE = keccak256("VAULT_ROLE");
+    /// @notice The `KEEPER_ROLE` can `rebalance` the vault via the strategy contract
+    bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
 
-    /// same privileges as `gov_role`
-    bytes32 public constant DELEGATE_ROLE = keccak256('DELEGATE_ROLE');
-    /// configuring options within the vault contract
-    bytes32 public constant VAULT_ROLE = keccak256('VAULT_ROLE');
-    /// can `rebalance` the vault via the strategy contract
-    bytes32 public constant KEEPER_ROLE = keccak256('KEEPER_ROLE');
+    /// @notice Initialize the contract
+    /// @param _governance The only gov role
+    /// @param _delegate The delegate role
+    /// @param _vault The vault role
+    /// @param _keeper The keeper role
+    function initialize(
+        address _governance,
+        address _delegate,
+        address _vault,
+        address _keeper
+    ) public initializer {
+        require(
+            !(_governance == address(0) ||
+                _delegate == address(0) ||
+                _vault == address(0) ||
+                _keeper == address(0))
+        );
 
-    function initialize(address _governance, address _delegate, address _vault, address _keeper) public initializer {
-        require(!(_governance == address(0) || _delegate == address(0) || _vault == address(0) || _keeper == address(0)));
-
-        _setupRole(DEFAULT_ADMIN_ROLE, _governance);
-        _setupRole(DELEGATE_ROLE, _delegate);
+        _grantRole(DEFAULT_ADMIN_ROLE, _governance);
+        _grantRole(DELEGATE_ROLE, _delegate);
+        _grantRole(VAULT_ROLE, _vault);
+        _grantRole(KEEPER_ROLE, _keeper);
 
         // gov is its own admin
         _setRoleAdmin(DEFAULT_ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
@@ -27,64 +46,71 @@ contract AccessControlProxy is Initializable, AccessControlEnumerable {
         _setRoleAdmin(VAULT_ROLE, DELEGATE_ROLE);
         _setRoleAdmin(KEEPER_ROLE, DELEGATE_ROLE);
 
-        grantRole(VAULT_ROLE, _vault);
-        grantRole(KEEPER_ROLE, _keeper);
     }
 
-    function addRole(bytes32 role, bytes32 roleAdmin) external {
+    /// @dev Sets `_roleAdmin` as ``_role``'s admin role.
+    function addRole(bytes32 _role, bytes32 _roleAdmin) external {
         require(isGovOrDelegate(msg.sender));
-        require(getRoleAdmin(role) == bytes32(0) && getRoleMemberCount(role) == 0);
-        _setRoleAdmin(role, roleAdmin);
+        require(getRoleAdmin(_role) == bytes32(0) && getRoleMemberCount(_role) == 0);
+        _setRoleAdmin(_role, _roleAdmin);
     }
 
-    function isGovOrDelegate(address account) public view returns (bool) {
-        return hasRole(DELEGATE_ROLE, account) || hasRole(DEFAULT_ADMIN_ROLE, account);
+    
+    /// @dev Returns `true` if `_account` is gov role or delegate role.
+    function isGovOrDelegate(address _account) public view returns (bool) {
+        return hasRole(DELEGATE_ROLE, _account) || hasRole(DEFAULT_ADMIN_ROLE, _account);
     }
 
-    function isVaultOrGov(address account) public view returns (bool) {
-        return hasRole(VAULT_ROLE, account) || isGovOrDelegate(account);
+    /// @dev Returns `true` if `_account` is vault role, gov role or delegate role.
+    function isVaultOrGov(address _account) public view returns (bool) {
+        return hasRole(VAULT_ROLE, _account) || isGovOrDelegate(_account);
     }
 
-    function isKeeperOrVaultOrGov(address account) public view returns (bool) {
-        return hasRole(KEEPER_ROLE, account) || isVaultOrGov(account);
+    /// @dev Returns `true` if `_account` is keeper role, vault role or gov role.
+    function isKeeperOrVaultOrGov(address _account) public view returns (bool) {
+        return hasRole(KEEPER_ROLE, _account) || isVaultOrGov(_account);
     }
 
-    function checkRole(bytes32 role, address account) external view {
-        _checkRole(role, account);
+    /// @dev Revert with a standard message if `_account` is missing `_role`.
+    function checkRole(bytes32 _role, address _account) external view {
+        _checkRole(_role, _account);
     }
 
-    function checkGovOrDelegate(address account) public view {
-        if (!isGovOrDelegate(account)) {
-            revert(
-                encodeErrorMsg(account, "governance")
-            );
+    /// @dev Revert with a standard message if `_account` is not gov role or delegate role.
+    function checkGovOrDelegate(address _account) public view {
+        if (!isGovOrDelegate(_account)) {
+            revert(encodeErrorMsg(_account, "governance"));
         }
     }
 
-    function checkVaultOrGov(address account) public view {
-        if (!isVaultOrGov(account)) {
-            revert(
-                encodeErrorMsg(account, "vault manager")
-            );
+    /// @dev Revert with a standard message if `_account` is not vault role or gov role.
+    function checkVaultOrGov(address _account) public view {
+        if (!isVaultOrGov(_account)) {
+            revert(encodeErrorMsg(_account, "vault manager"));
         }
     }
 
-    function checkKeeperOrVaultOrGov(address account) public view {
-        if (!isKeeperOrVaultOrGov(account)) {
-            revert(
-                encodeErrorMsg(account, "keeper")
-            );
+    /// @dev Revert with a standard message if `_account` is not keeper role, vault role or gov role.
+    function checkKeeperOrVaultOrGov(address _account) public view {
+        if (!isKeeperOrVaultOrGov(_account)) {
+            revert(encodeErrorMsg(_account, "keeper"));
         }
     }
 
-    function encodeErrorMsg(address account, string memory roleName) internal pure returns (string memory){
-        return string(
-            abi.encodePacked(
-                "AccessControl: account ",
-                Strings.toHexString(uint160(account), 20),
-                " at least role ",
-                roleName
-            )
-        );
+    /// @dev Revert with a standard message with `_account` and `_roleName`.
+    function encodeErrorMsg(address _account, string memory _roleName)
+        internal
+        pure
+        returns (string memory)
+    {
+        return
+            string(
+                abi.encodePacked(
+                    "AccessControl: account ",
+                    Strings.toHexString(uint160(_account), 20),
+                    " at least role ",
+                    _roleName
+                )
+            );
     }
 }

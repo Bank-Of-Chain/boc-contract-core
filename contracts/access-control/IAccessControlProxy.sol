@@ -2,20 +2,21 @@
 
 pragma solidity >=0.6.0 <0.9.0;
 
+/// @title IAccessControlProxy interface
 interface IAccessControlProxy {
-    function isGovOrDelegate(address account) external view returns (bool);
+    function isGovOrDelegate(address _account) external view returns (bool);
 
-    function isVaultOrGov(address account) external view returns (bool);
+    function isVaultOrGov(address _account) external view returns (bool);
 
-    function isKeeperOrVaultOrGov(address account) external view returns (bool);
+    function isKeeperOrVaultOrGov(address _account) external view returns (bool);
 
-    function hasRole(bytes32 role, address account) external view returns (bool);
+    function hasRole(bytes32 _role, address _account) external view returns (bool);
 
-    function checkRole(bytes32 role, address account) external view;
+    function checkRole(bytes32 _role, address _account) external view;
 
-    function checkGovOrDelegate(address account) external view;
+    function checkGovOrDelegate(address _account) external view;
 
-    function checkVaultOrGov(address account) external view;
+    function checkVaultOrGov(address _account) external view;
 
-    function checkKeeperOrVaultOrGov(address account) external;
+    function checkKeeperOrVaultOrGov(address _account) external;
 }

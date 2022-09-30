@@ -137,7 +137,7 @@ describe('Strategy test',function(){
         expect(Number(estimatedTotalAssets)).to.eq(Number(sharePrice * lpAmount));
         
         await mock3rdPool.mock.withdraw.returns([USDT],[0]);
-        await mockVault.redeem(mockStrategy.address,estimatedTotalAssets);
+        await mockVault.redeem(mockStrategy.address,estimatedTotalAssets,0);
         const tokenUSDT = await ERC20.at(USDT);
         let vaultUSDTBalance = await tokenUSDT.balanceOf(mockVault.address);
         console.log('vault usdt balance:%d',vaultUSDTBalance);
