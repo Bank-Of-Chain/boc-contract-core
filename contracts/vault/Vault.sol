@@ -319,32 +319,35 @@ contract Vault is VaultStorage {
             }
         }
 
-        uint256 _minAmount = _toAmounts[_minProductIndex];
-        uint256 _minAspect = _ratios[_minProductIndex];
         uint256 _lendValue;
-        for (uint256 i = 0; i < _toAmounts.length; i++) {
-            uint256 _actualAmount = _toAmounts[i];
-            if (_actualAmount > 0) {
-                address _want = _wants[i];
+        {
+            uint256 _minAmount = _toAmounts[_minProductIndex];
+            uint256 _minAspect = _ratios[_minProductIndex];
+            for (uint256 i = 0; i < _toAmounts.length; i++) {
+                uint256 _actualAmount = _toAmounts[i];
+                if (_actualAmount > 0) {
+                    address _want = _wants[i];
 
-                if (!_isWantRatioIgnorable && _ratios[i] > 0) {
-                    _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
-                    _toAmounts[i] = _actualAmount;
-                }
-                _lendValue =
+                    if (!_isWantRatioIgnorable && _ratios[i] > 0) {
+                        _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
+                        _toAmounts[i] = _actualAmount;
+                    }
+                    _lendValue =
                     _lendValue +
                     IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(
                         _want,
                         _actualAmount
                     );
-                IERC20Upgradeable(_want).safeTransfer(_strategyAddr, _actualAmount);
+                    IERC20Upgradeable(_want).safeTransfer(_strategyAddr, _actualAmount);
+                }
             }
         }
-        IStrategy _strategy = IStrategy(_strategyAddr);
-        _strategy.borrow(_wants, _toAmounts);
-        address[] memory _rewardTokens;
-        uint256[] memory _claimAmounts;
-        _report(_strategyAddr, _rewardTokens, _claimAmounts, _lendValue);
+        {
+            IStrategy(_strategyAddr).borrow(_wants, _toAmounts);
+            address[] memory _rewardTokens;
+            uint256[] memory _claimAmounts;
+            _report(_strategyAddr, _rewardTokens, _claimAmounts, _lendValue, 1);
+        }
         emit LendToStrategy(_strategyAddr, _wants, _toAmounts, _lendValue);
     }
 
@@ -364,6 +367,28 @@ contract Vault is VaultStorage {
     }
 
     /// @dev Report the current asset of strategy caller
+    /// @param _strategies The address list of strategies to report
+    /// Requirement: only keeper call
+    /// Emits a {StrategyReported} event.
+    function reportByKeeper(address[] memory _strategies) external isKeeper {
+        address[] memory _rewardTokens;
+        uint256[] memory _claimAmounts;
+        uint256 _strategiesLength = _strategies.length;
+        for (uint256 i = 0; i < _strategiesLength; i++) {
+            _report(_strategies[i], _rewardTokens, _claimAmounts, 0, 2);
+        }
+    }
+
+    /// @dev Report the current asset of strategy caller
+    /// Requirement: only the strategy caller is active
+    /// Emits a {StrategyReported} event.
+    function reportWithoutClaim() external isActiveStrategy(msg.sender) {
+        address[] memory _rewardTokens;
+        uint256[] memory _claimAmounts;
+        _report(msg.sender, _rewardTokens, _claimAmounts, 0, 2);
+    }
+
+    /// @dev Report the current asset of strategy caller
     /// @param _rewardTokens The reward token list
     /// @param _claimAmounts The claim amount list
     /// Requirement: only the strategy caller is active
@@ -372,7 +397,7 @@ contract Vault is VaultStorage {
         external
         isActiveStrategy(msg.sender)
     {
-        _report(msg.sender, _rewardTokens, _claimAmounts, 0);
+        _report(msg.sender, _rewardTokens, _claimAmounts, 0, 0);
     }
 
     /// @notice start  Adjust  Position
@@ -1090,11 +1115,17 @@ contract Vault is VaultStorage {
         emit Exchange(_exchangeParam.platform, _fromToken, _amount, _toToken, _exchangeAmount);
     }
 
+    /// @notice Report the current asset of strategy
+    /// @param _strategy The strategy address
+    /// @param _rewardTokens The reward token list
+    /// @param _claimAmounts The claim amount list
+    /// @param _type 0-harvest(claim); 1-lend; 2-report(without claim);
     function _report(
         address _strategy,
         address[] memory _rewardTokens,
         uint256[] memory _claimAmounts,
-        uint256 _lendValue
+        uint256 _lendValue,
+        uint256 _type
     ) private {
         StrategyParams memory _strategyParam = strategies[_strategy];
         uint256 _lastStrategyTotalDebt = _strategyParam.totalDebt + _lendValue;
@@ -1135,9 +1166,8 @@ contract Vault is VaultStorage {
         totalDebt = totalDebt + _nowStrategyTotalDebt + _lendValue - _lastStrategyTotalDebt;
 
         strategies[_strategy].lastReport = block.timestamp;
-        uint256 _type = 0;
-        if (_lendValue > 0) {
-            _type = 1;
+        if (_type == 0) {
+            strategies[_strategy].lastClaim = block.timestamp;
         }
         emit StrategyReported(
             _strategy,
@@ -1206,6 +1236,8 @@ contract Vault is VaultStorage {
             require(_amounts[i] > 0, "Amount must be gt 0");
         }
     }
+
+    receive() external payable {}
 
     /// @dev Falldown to the admin implementation
     /// @notice This is a catch all for all functions not declared in core
