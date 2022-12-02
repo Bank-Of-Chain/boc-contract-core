@@ -275,7 +275,8 @@ contract VaultAdmin is VaultStorage {
             totalDebt: 0,
             profitLimitRatio: _profitLimitRatio,
             lossLimitRatio: _lossLimitRatio,
-            enforceChangeLimit: true
+            enforceChangeLimit: true,
+            lastClaim: block.timestamp
         });
         strategySet.add(_strategy);
     }
