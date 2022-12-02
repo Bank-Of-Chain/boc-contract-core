@@ -28,12 +28,14 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     /// @param profitLimitRatio The limited ratio of profit
     /// @param lossLimitRatio The limited ratio for loss
     /// @param enforceChangeLimit The switch of enforce change Limit
+    /// @param lastClaim The last claim timestamp
     struct StrategyParams {
         uint256 lastReport;
         uint256 totalDebt;
         uint256 profitLimitRatio;
         uint256 lossLimitRatio;
         bool enforceChangeLimit;
+        uint256 lastClaim;
     }
 
     /// @param strategy The new strategy to add
