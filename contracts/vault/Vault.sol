@@ -538,6 +538,7 @@ contract Vault is VaultStorage {
         }
 
         {
+            totalDebtOfBeforeAdjustPosition = 0;
             for (uint256 i = 0; i < _trackedAssetsLength; i++) {
                 address _trackedAsset = _trackedAssets[i];
                 redeemAssetsMap[_trackedAsset] = 0;
