@@ -94,6 +94,10 @@ contract MockS3CoinStrategy is BaseStrategy {
         _claimAmounts = new uint256[](0);
     }
 
+    function reportWithoutClaim() external {
+        vault.reportWithoutClaim();
+    }
+
     function depositTo3rdPool(address[] memory _assets, uint256[] memory _amounts)
         internal
         virtual
