@@ -69,28 +69,10 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         bytes calldata _data,
         IExchangeAdapter.SwapDescription calldata _sd
     ) public payable override returns (uint256) {
-        require(exchangeAdapters.contains(_platform), "error swap platform");
-        require(_sd.receiver != address(0), "error receiver");
-        uint256 _exchangeAmount;
         if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
-            uint256 _ethValue = _sd.amount;
-            require(_ethValue <= msg.value, "ETH not enough");
-            _exchangeAmount = IExchangeAdapter(_platform).swap{value: _ethValue}(_method, _data, _sd);
-        } else {
-            IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
-            _exchangeAmount = IExchangeAdapter(_platform).swap(_method, _data, _sd);
+            require(_sd.amount == msg.value, "amount invalid");
         }
-
-        emit Swap(
-            _platform,
-            _sd.amount,
-            _sd.srcToken,
-            _sd.dstToken,
-            _exchangeAmount,
-            _sd.receiver,
-            msg.sender
-        );
-        return _exchangeAmount;
+        return _swap(_platform,_method,_data,_sd);
     }
 
     /// @inheritdoc IExchangeAggregator
@@ -108,8 +90,8 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
             if (_swapParam.swapDescription.srcToken == NativeToken.NATIVE_TOKEN) {
                 _ethValue = _ethValue + _swapParam.swapDescription.amount;
             }
-            require(_ethValue <= msg.value, "ETH not enough");
-            _amounts[i] = swap(
+            require(_ethValue == msg.value, "amount invalid");
+            _amounts[i] = _swap(
                 _swapParam.platform,
                 _swapParam.method,
                 _swapParam.data,
@@ -143,5 +125,39 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
             exchangeAdapters.add(_exchangeAdapters[i]);
         }
         emit ExchangeAdapterAdded(_exchangeAdapters);
+    }
+    /// @notice Swap from ETHs or tokens to tokens or ETHs
+    /// @dev Swap with `_sd` data by using `_method` and `_data` on `_platform`.
+    /// @param _platform Called exchange platforms
+    /// @param _method The method of the exchange platform
+    /// @param _data The encoded parameters to call
+    /// @param _sd The description info of this swap
+    /// @return The return amount of this swap
+    function _swap(
+        address _platform,
+        uint8 _method,
+        bytes calldata _data,
+        IExchangeAdapter.SwapDescription calldata _sd
+    ) private returns (uint256) {
+        require(exchangeAdapters.contains(_platform), "error swap platform");
+        require(_sd.receiver != address(0), "error receiver");
+        uint256 _exchangeAmount = 0;
+        if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
+            _exchangeAmount = IExchangeAdapter(_platform).swap{value: _sd.amount}(_method, _data, _sd);
+        } else {
+            IERC20(_sd.srcToken).safeTransferFrom(msg.sender, _platform, _sd.amount);
+            _exchangeAmount = IExchangeAdapter(_platform).swap(_method, _data, _sd);
+        }
+
+        emit Swap(
+            _platform,
+            _sd.amount,
+            _sd.srcToken,
+            _sd.dstToken,
+            _exchangeAmount,
+            _sd.receiver,
+            msg.sender
+        );
+        return _exchangeAmount;
     }
 }

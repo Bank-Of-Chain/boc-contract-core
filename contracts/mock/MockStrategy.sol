@@ -75,6 +75,10 @@ contract MockStrategy is BaseStrategy {
         return (_totalSupply * _sharePrice) / 10**_decimals;
     }
 
+    function reportWithoutClaim() external {
+        vault.reportWithoutClaim();
+    }
+
     function getPendingRewards()
         public
         view
