@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 
 /// @title IWhitelist interface
 interface IWhitelist {
-    event WhitelistRemoval(address indexed _account);
-    event WhitelistAddition(address indexed _account);
+    event WhitelistRemoval(address[] _accounts);
+    event WhitelistAddition(address[] _accounts);
 
     /// @dev Returns Whitelists.
     /// @return List of whitelist addresses.

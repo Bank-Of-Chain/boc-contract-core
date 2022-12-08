@@ -45,9 +45,9 @@ contract Whitelist is IWhitelist, AccessControlMixin, Initializable {
             address _account = _accounts[i];
             if (!whitelistSet.contains(_account)) {
                 whitelistSet.add(_account);
-                emit WhitelistAddition(_account);
             }
         }
+        emit WhitelistAddition(_accounts);
     }
 
     /// @dev remove addresses from the whitelist
@@ -58,8 +58,8 @@ contract Whitelist is IWhitelist, AccessControlMixin, Initializable {
             address _account = _accounts[i];
             if (whitelistSet.contains(_account)) {
                 whitelistSet.remove(_account);
-                emit WhitelistRemoval(_account);
             }
         }
+        emit WhitelistRemoval(_accounts);
     }
 }
