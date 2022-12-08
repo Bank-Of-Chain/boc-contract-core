@@ -303,7 +303,8 @@ contract Vault is VaultStorage {
     {
         (address[] memory _wants, uint256[] memory _ratios) = IStrategy(_strategyAddr).getWantsInfo();
         uint256 _wantsLength = _wants.length;
-        require(_wantsLength > 0 && _amounts.length == _wantsLength, "ASI");//_amounts invalid
+        require(_amounts.length == _wantsLength, "ASI");//_amounts invalid
+        require(_tokens.length == _wantsLength, "TSI");//_tokens invalid
         {
             for (uint256 i = 0; i < _wantsLength; i++) {
                 require(_tokens[i] == _wants[i], "TSI");//tokens invalid

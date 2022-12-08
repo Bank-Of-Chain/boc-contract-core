@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "./IWhitelist.sol";
 import "./../access-control/AccessControlMixin.sol";
-import "./../library/BocRoles.sol";
 
 /// @title Whitelist
 /// @notice The Whitelist contract has a whitelist of addresses, and provides basic authorization control functions.
@@ -21,7 +20,7 @@ contract Whitelist is IWhitelist, AccessControlMixin, Initializable {
     EnumerableSet.AddressSet internal whitelistSet;
 
     /// @notice Initialize
-    /// @param _accessControlProxy  The access control proxy address
+    /// @param _accessControlProxy The access control proxy address
     function initialize(address _accessControlProxy) external initializer {
         _initAccessControl(_accessControlProxy);
     }
@@ -33,74 +32,33 @@ contract Whitelist is IWhitelist, AccessControlMixin, Initializable {
     }
 
     /// @dev getter to determine if address is in whitelist
-    function isWhitelisted(address _whitelist) external view override returns (bool _found) {
-        _found = whitelistSet.contains(_whitelist);
+    function isWhitelisted(address _account) external view override returns (bool _found) {
+        _found = whitelistSet.contains(_account);
         return _found;
     }
 
-    /// @dev Allows to add a new owner. Transaction has to be sent by wallet.
-    /// @param _whitelist Address of new whitelist address.
-    /// @return _success true if the address was added to the whitelist, false if the address was already in the whitelist
-    function addAddressToWhitelist(address _whitelist)
-        public
-        override
-        isVaultManager
-        returns (bool _success)
-    {
-        if (!whitelistSet.contains(_whitelist)) {
-            whitelistSet.add(_whitelist);
-            emit WhitelistAddition(_whitelist);
-            _success = true;
-        }
-    }
-
     /// @dev add addresses to the whitelist
-    /// @param _whitelists addresses
-    /// @return _success true if at least one address was added to the whitelist,
-    ///  false if all addresses were already in the whitelist
-    function addAddressesToWhitelist(address[] memory _whitelists)
-        external
-        override
-        isVaultManager
-        returns (bool _success)
-    {
-        for (uint256 i = 0; i < _whitelists.length; i++) {
-            if (addAddressToWhitelist(_whitelists[i])) {
-                _success = true;
+    /// @param _accounts address list of the whitelist addresses.
+    function addAddressesToWhitelist(address[] memory _accounts) external override isVaultManager {
+        uint256 _accountsLength = _accounts.length;
+        for (uint256 i = 0; i < _accountsLength; i++) {
+            address _account = _accounts[i];
+            if (!whitelistSet.contains(_account)) {
+                whitelistSet.add(_account);
+                emit WhitelistAddition(_account);
             }
         }
     }
 
-    /// @dev remove an address from the whitelist
-    /// @param _whitelist address
-    /// @return _success true if the address was removed from the whitelist,
-    /// false if the address wasn't in the whitelist in the first place
-    function removeAddressFromWhitelist(address _whitelist)
-        public
-        override
-        isVaultManager
-        returns (bool _success)
-    {
-        if (whitelistSet.contains(_whitelist)) {
-            whitelistSet.remove(_whitelist);
-            emit WhitelistRemoval(_whitelist);
-            _success = true;
-        }
-    }
-
     /// @dev remove addresses from the whitelist
-    /// @param _whitelists addresses
-    /// @return _success true if at least one address was removed from the whitelist,
-    /// false if all addresses weren't in the whitelist in the first place
-    function removeAddressesFromWhitelist(address[] memory _whitelists)
-        external
-        override
-        isVaultManager
-        returns (bool _success)
-    {
-        for (uint256 i = 0; i < _whitelists.length; i++) {
-            if (removeAddressFromWhitelist(_whitelists[i])) {
-                _success = true;
+    /// @param _accounts address list of the whitelist addresses.
+    function removeAddressesFromWhitelist(address[] memory _accounts) external override isVaultManager {
+        uint256 _accountsLength = _accounts.length;
+        for (uint256 i = 0; i < _accountsLength; i++) {
+            address _account = _accounts[i];
+            if (whitelistSet.contains(_account)) {
+                whitelistSet.remove(_account);
+                emit WhitelistRemoval(_account);
             }
         }
     }

@@ -66,23 +66,6 @@ describe("Whitelist", function () {
         Utils.assertBNEq(whitelistsLength, 0);
     });
 
-    it('Verify: Whitelist can add and remove', async function () {
-        await whitelist.addAddressToWhitelist(keeper, {from: vaultManager});
-        let whitelists = await whitelist.getWhitelists({from: farmer});
-        console.log("whitelists=",whitelists)
-        let whitelistsLength = whitelists.length;
-        console.log("after added whitelistsLength=",whitelistsLength);
-        Utils.assertBNGt(whitelistsLength, 0);
-        console.log("after added isWhitelisted(keeper)=",(await whitelist.isWhitelisted(keeper, {from: keeper})).toString());
-
-        await whitelist.removeAddressFromWhitelist(keeper, {from: vaultManager});
-        console.log("after removed isWhitelisted(keeper)=",(await whitelist.isWhitelisted(keeper, {from: keeper})).toString());
-        whitelists = await whitelist.getWhitelists({from: farmer});
-        whitelistsLength = whitelists.length;
-        console.log("after removed whitelistsLength=",whitelistsLength);
-        Utils.assertBNEq(whitelistsLength, 0);
-    });
-
     it('Verify: Whitelist can batch add and remove', async function () {
         await whitelist.addAddressesToWhitelist([keeper,farmer], {from: vaultManager});
         let whitelists = await whitelist.getWhitelists({from: farmer});
@@ -119,13 +102,7 @@ describe("Whitelist", function () {
 
     it('Verify: Whitelist can check permission', async function () {
         await expect(
-            whitelist.addAddressToWhitelist(keeper, {from: keeper})
-        ).to.be.revertedWith("vault manager");
-        await expect(
             whitelist.addAddressesToWhitelist([keeper,farmer], {from: keeper})
-        ).to.be.revertedWith("vault manager");
-        await expect(
-            whitelist.removeAddressFromWhitelist(keeper, {from: keeper})
         ).to.be.revertedWith("vault manager");
         await expect(
             whitelist.removeAddressesFromWhitelist([keeper,farmer], {from: keeper})
