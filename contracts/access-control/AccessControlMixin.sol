@@ -44,7 +44,7 @@ abstract contract AccessControlMixin {
     }
 
     /// @dev Modifier that checks that msg.sender has a keeper role or vault role or default admin role, or DELEGATE_ROLE
-    modifier isKeeperOrVaultOrGovOrDelegate() {// isKeeper 改成isKeeperOrVaultOrGovOrDelegate，其他的方法的isKeeper修饰也需要修改
+    modifier isKeeperOrVaultOrGovOrDelegate() {
         accessControlProxy.checkKeeperOrVaultOrGov(msg.sender);
         _;
     }
