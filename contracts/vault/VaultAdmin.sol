@@ -185,7 +185,7 @@ contract VaultAdmin is VaultStorage {
     ///      Vault may invest funds into the strategy,
     ///      and the strategy will invest the funds in the 3rd protocol
     /// Requirements: only vault manager can call
-    function addStrategy(StrategyAdd[] memory _strategyAdds) external isVaultManager {
+    function addStrategies(StrategyAdd[] memory _strategyAdds) external isVaultManager {
         address[] memory _strategies = new address[](_strategyAdds.length);
         for (uint256 i = 0; i < _strategyAdds.length; i++) {
             StrategyAdd memory _strategyAdd = _strategyAdds[i];
