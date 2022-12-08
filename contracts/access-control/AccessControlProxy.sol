@@ -62,13 +62,13 @@ contract AccessControlProxy is Initializable, AccessControlEnumerable {
     }
 
     /// @dev Returns `true` if `_account` is vault role, gov role or delegate role.
-    function isVaultOrGov(address _account) public view returns (bool) {
+    function isVaultOrGovOrDelegate(address _account) public view returns (bool) {
         return hasRole(VAULT_ROLE, _account) || isGovOrDelegate(_account);
     }
 
     /// @dev Returns `true` if `_account` is keeper role, vault role or gov role.
     function isKeeperOrVaultOrGov(address _account) public view returns (bool) {
-        return hasRole(KEEPER_ROLE, _account) || isVaultOrGov(_account);
+        return hasRole(KEEPER_ROLE, _account) || isVaultOrGovOrDelegate(_account);
     }
 
     /// @dev Revert with a standard message if `_account` is missing `_role`.
@@ -85,7 +85,7 @@ contract AccessControlProxy is Initializable, AccessControlEnumerable {
 
     /// @dev Revert with a standard message if `_account` is not vault role or gov role.
     function checkVaultOrGov(address _account) public view {
-        if (!isVaultOrGov(_account)) {
+        if (!isVaultOrGovOrDelegate(_account)) {
             revert(encodeErrorMsg(_account, "vault manager"));
         }
     }

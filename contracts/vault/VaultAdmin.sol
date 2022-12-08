@@ -26,7 +26,7 @@ contract VaultAdmin is VaultStorage {
     /// @dev Sets adjustPositionPeriod true when adjust position occurs, 
     ///   cannot remove add asset/strategy and cannot mint/burn.
     /// Requirements: only keeper can call
-    function setAdjustPositionPeriod(bool _adjustPositionPeriod) external isKeeper {
+    function setAdjustPositionPeriod(bool _adjustPositionPeriod) external isKeeperOrVaultOrGovOrDelegate {
         adjustPositionPeriod = _adjustPositionPeriod;
         emit SetAdjustPositionPeriod(_adjustPositionPeriod);
     }
@@ -218,7 +218,7 @@ contract VaultAdmin is VaultStorage {
     /// @dev Sets `withdrawQueue` and add `_queues` to the front of the `withdrawQueue`
     /// @param _queues The advance queue
     /// Requirements: only keeper can call
-    function setWithdrawalQueue(address[] memory _queues) external isKeeper {
+    function setWithdrawalQueue(address[] memory _queues) external isKeeperOrVaultOrGovOrDelegate {
         for (uint256 i = 0; i < _queues.length; i++) {
             address _strategy = _queues[i];
             require(strategySet.contains(_strategy), "strategy not exist");
@@ -238,7 +238,7 @@ contract VaultAdmin is VaultStorage {
     /// @dev Remove multi strategies from the withdrawal queue
     /// @param _strategies multi strategies to remove
     /// Requirements: only keeper can call
-    function removeStrategyFromQueue(address[] memory _strategies) external isKeeper {
+    function removeStrategyFromQueue(address[] memory _strategies) external isKeeperOrVaultOrGovOrDelegate {
         for (uint256 i = 0; i < _strategies.length; i++) {
             _removeStrategyFromQueue(_strategies[i]);
         }

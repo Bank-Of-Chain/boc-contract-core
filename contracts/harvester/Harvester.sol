@@ -77,7 +77,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
 
     /// @dev Only Keeper can call
     /// @inheritdoc IHarvester
-    function collect(address[] calldata _strategies) external override isKeeper {
+    function collect(address[] calldata _strategies) external override isKeeperOrVaultOrGovOrDelegate {
         for (uint256 i = 0; i < _strategies.length; i++) {
             address _strategy = _strategies[i];
             IVault(vaultAddress).checkActiveStrategy(_strategy);
@@ -90,7 +90,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
     function exchangeAndSend(IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens)
         external
         override
-        isKeeper
+        isKeeperOrVaultOrGovOrDelegate
     {
         address _sellToCopy = sellTo;
         for (uint256 i = 0; i < _exchangeTokens.length; i++) {

@@ -261,7 +261,7 @@ contract Vault is VaultStorage {
         address _strategy,
         uint256 _amount,
         uint256 _outputCode
-    ) external isKeeper isActiveStrategy(_strategy) nonReentrant {
+    ) external isKeeperOrVaultOrGovOrDelegate isActiveStrategy(_strategy) nonReentrant {
         uint256 _strategyAssetValue = strategies[_strategy].totalDebt;
         require(_amount <= _strategyAssetValue);
 
@@ -289,7 +289,7 @@ contract Vault is VaultStorage {
     /// @notice Allocate funds in Vault to strategies.
     function lend(address _strategyAddr, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens)
         external
-        isKeeper
+        isKeeperOrVaultOrGovOrDelegate
         whenNotEmergency
         isActiveStrategy(_strategyAddr)
         nonReentrant
@@ -355,7 +355,7 @@ contract Vault is VaultStorage {
         address _toToken,
         uint256 _amount,
         IExchangeAggregator.ExchangeParam memory _exchangeParam
-    ) external isKeeper nonReentrant returns (uint256) {
+    ) external isKeeperOrVaultOrGovOrDelegate nonReentrant returns (uint256) {
         return _exchange(_fromToken, _toToken, _amount, _exchangeParam);
     }
 
@@ -369,7 +369,7 @@ contract Vault is VaultStorage {
     /// @param _strategies The address list of strategies to report
     /// Requirement: only keeper call
     /// Emits a {StrategyReported} event.
-    function reportByKeeper(address[] memory _strategies) external isKeeper {
+    function reportByKeeper(address[] memory _strategies) external isKeeperOrVaultOrGovOrDelegate {
         address[] memory _rewardTokens;
         uint256[] memory _claimAmounts;
         uint256 _strategiesLength = _strategies.length;
@@ -400,7 +400,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice start  Adjust  Position
-    function startAdjustPosition() external isKeeper whenNotAdjustPosition whenNotEmergency nonReentrant {
+    function startAdjustPosition() external isKeeperOrVaultOrGovOrDelegate whenNotAdjustPosition whenNotEmergency nonReentrant {
         adjustPositionPeriod = true;
         address[] memory _trackedAssets = _getTrackedAssets();
 
@@ -442,7 +442,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice end  Adjust Position
-    function endAdjustPosition() external isKeeper nonReentrant {
+    function endAdjustPosition() external isKeeperOrVaultOrGovOrDelegate nonReentrant {
         require(adjustPositionPeriod, "AD OVER");
         address[] memory _trackedAssets = _getTrackedAssets();
         uint256 _trackedAssetsLength = _trackedAssets.length;
