@@ -11,6 +11,8 @@ abstract contract AccessControlMixin {
     IAccessControlProxy public accessControlProxy;
 
     function _initAccessControl(address _accessControlProxy) internal {
+        //The error message "NNA" represents "The input address need be non-zero address"
+        require(_accessControlProxy != address(0),"NNA");
         accessControlProxy = IAccessControlProxy(_accessControlProxy);
     }
 

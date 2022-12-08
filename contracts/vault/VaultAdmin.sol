@@ -79,6 +79,8 @@ contract VaultAdmin is VaultStorage {
     ///      Setting to the zero address disables this feature.
     /// Requirements: only governance role can call
     function setTreasuryAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
+        //The error message "NNA" represents "The input address need be non-zero address"
+        require(_address != address(0),"NNA");
         treasury = _address;
         emit TreasuryAddressChanged(_address);
     }

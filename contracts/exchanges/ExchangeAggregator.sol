@@ -21,6 +21,13 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     /// @param _exchangeAdapters The exchange adapter list
     /// @param _accessControlProxy  The access control proxy
     constructor(address[] memory _exchangeAdapters, address _accessControlProxy) {
+        require(_exchangeAdapters.length > 0,"The length must GT 0");
+        for (uint256 i = 0; i < _exchangeAdapters.length; i++) {
+            //The error message "NNA" represents "The input address need be non-zero address"
+            require(_exchangeAdapters[i] != address(0),"NNA");
+        }
+        
+        // '_accessControlProxy' will be verified in function _initAccessControl
         _initAccessControl(_accessControlProxy);
         __addExchangeAdapters(_exchangeAdapters);
     }
