@@ -141,7 +141,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     ) private returns (uint256) {
         require(exchangeAdapters.contains(_platform), "error swap platform");
         require(_sd.receiver != address(0), "error receiver");
-        uint256 _exchangeAmount = 0;
+        uint256 _exchangeAmount;
         if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
             _exchangeAmount = IExchangeAdapter(_platform).swap{value: _sd.amount}(_method, _data, _sd);
         } else {
