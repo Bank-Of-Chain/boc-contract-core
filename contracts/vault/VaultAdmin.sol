@@ -249,7 +249,7 @@ contract VaultAdmin is VaultStorage {
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
     /// @param _strategies The address list of strategies to remove
     /// Requirements: only vault manager can call
-    function removeStrategy(address[] memory _strategies) external isVaultManager {
+    function removeStrategies(address[] memory _strategies) external isVaultManager {
         for (uint256 i = 0; i < _strategies.length; i++) {
             require(strategySet.contains(_strategies[i]), "Strategy not exist");
             _removeStrategy(_strategies[i], false);
