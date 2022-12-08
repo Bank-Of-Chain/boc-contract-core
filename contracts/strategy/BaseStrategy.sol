@@ -115,7 +115,7 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
         if (_isUsd) {
             return _usdValue;
         } else {
-            uint256 _totalUsdValue = 0;
+            uint256 _totalUsdValue;
             for (uint256 i = 0; i < _tokens.length; i++) {
                 _totalUsdValue += queryTokenValue(_tokens[i], _amounts[i]);
             }

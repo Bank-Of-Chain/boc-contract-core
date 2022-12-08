@@ -329,7 +329,7 @@ contract VaultAdmin is VaultStorage {
     }
 
     function _organizeWithdrawalQueue() internal {
-        uint256 _offset = 0;
+        uint256 _offset;
         for (uint256 i = 0; i < withdrawQueue.length; i++) {
             address _strategy = withdrawQueue[i];
             if (_strategy == ZERO_ADDRESS) {

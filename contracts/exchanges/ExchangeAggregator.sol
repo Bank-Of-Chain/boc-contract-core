@@ -26,7 +26,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
             //The error message "NNA" represents "The input address need be non-zero address"
             require(_exchangeAdapters[i] != address(0),"NNA");
         }
-        
+
         // '_accessControlProxy' will be verified in function _initAccessControl
         _initAccessControl(_accessControlProxy);
         __addExchangeAdapters(_exchangeAdapters);
@@ -71,7 +71,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     ) public payable override returns (uint256) {
         require(exchangeAdapters.contains(_platform), "error swap platform");
         require(_sd.receiver != address(0), "error receiver");
-        uint256 _exchangeAmount = 0;
+        uint256 _exchangeAmount;
         if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
             uint256 _ethValue = _sd.amount;
             require(_ethValue <= msg.value, "ETH not enough");
@@ -102,7 +102,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     {
         uint256 _platformsLength = _swapParams.length;
         uint256[] memory _amounts = new uint256[](_platformsLength);
-        uint256 _ethValue = 0;
+        uint256 _ethValue;
         for (uint256 i = 0; i < _platformsLength; i++) {
             SwapParam calldata _swapParam = _swapParams[i];
             if (_swapParam.swapDescription.srcToken == NativeToken.NATIVE_TOKEN) {
