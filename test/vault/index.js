@@ -253,7 +253,15 @@ describe("Vault", function () {
         let strategyAddresses = await iVault.getStrategies();
         console.log('Number of policies before adding=', strategyAddresses.length);
         await iVault.removeStrategies(strategyAddresses, {from: governance});
-        const length = (await iVault.getStrategies()).length;
+        let length = (await iVault.getStrategies()).length;
+        console.log('Number of policies after removal=', length);
+        Utils.assertBNEq(length, 0);
+
+        await iVault.addStrategies(addToVaultStrategies, {from: governance});
+        strategyAddresses = await iVault.getStrategies();
+        console.log('Number of policies before adding=', strategyAddresses.length);
+        await iVault.forceRemoveStrategy(mockS3CoinStrategy.address, {from: governance});
+        length = (await iVault.getStrategies()).length;
         console.log('Number of policies after removal=', length);
         Utils.assertBNEq(length, 0);
     });
