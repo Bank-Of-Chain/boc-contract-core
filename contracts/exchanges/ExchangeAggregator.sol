@@ -21,10 +21,10 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     /// @param _exchangeAdapters The exchange adapter list
     /// @param _accessControlProxy  The access control proxy
     constructor(address[] memory _exchangeAdapters, address _accessControlProxy) {
-        require(_exchangeAdapters.length > 0,"The length must GT 0");
+        require(_exchangeAdapters.length > 0, "The length must GT 0");
         for (uint256 i = 0; i < _exchangeAdapters.length; i++) {
             //The error message "NNA" represents "The input address need be non-zero address"
-            require(_exchangeAdapters[i] != address(0),"NNA");
+            require(_exchangeAdapters[i] != address(0), "NNA");
         }
 
         // '_accessControlProxy' will be verified in function _initAccessControl
@@ -72,15 +72,15 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
             require(_sd.amount == msg.value, "amount invalid");
         }
-        return _swap(_platform,_method,_data,_sd);
+        return _swap(_platform, _method, _data, _sd);
     }
 
     /// @inheritdoc IExchangeAggregator
     function batchSwap(SwapParam[] calldata _swapParams)
-    external
-    payable
-    override
-    returns (uint256[] memory)
+        external
+        payable
+        override
+        returns (uint256[] memory)
     {
         uint256 _platformsLength = _swapParams.length;
         uint256[] memory _amounts = new uint256[](_platformsLength);
@@ -131,6 +131,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
         }
         emit ExchangeAdapterAdded(_exchangeAdapters);
     }
+
     /// @notice Swap from ETHs or tokens to tokens or ETHs
     /// @dev Swap with `_sd` data by using `_method` and `_data` on `_platform`.
     /// @param _platform Called exchange platforms

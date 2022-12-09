@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
+
 import "../IExchangeAdapter.sol";
 import "../../library/NativeToken.sol";
 import "../../price-feeds/IValueInterpreter.sol";
@@ -20,6 +21,7 @@ contract TestAdapter is IExchangeAdapter {
     }
 
     receive() external payable {}
+
     fallback() external payable {}
 
     /// @inheritdoc IExchangeAdapter
@@ -41,13 +43,13 @@ contract TestAdapter is IExchangeAdapter {
                 _sd.amount,
                 _sd.dstToken
             );
-        }else if (_sd.dstToken == NativeToken.NATIVE_TOKEN) {
+        } else if (_sd.dstToken == NativeToken.NATIVE_TOKEN) {
             _amount = IValueInterpreter(valueInterpreter).calcCanonicalAssetValue(
                 _sd.srcToken,
                 _sd.amount,
                 W_ETH
             );
-        }else{
+        } else {
             _amount = IValueInterpreter(valueInterpreter).calcCanonicalAssetValue(
                 _sd.srcToken,
                 _sd.amount,
