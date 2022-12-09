@@ -20,6 +20,8 @@ contract WrappedPegToken is ERC20Permit {
         string memory _name,
         string memory _symbol
     ) ERC20Permit(_name) ERC20(_name, _symbol) {
+        //The error message "NNA" represents "The input address need be non-zero address"
+        require(address(_pegToken) != address(0),"NNA");
         pegToken = _pegToken;
     }
 

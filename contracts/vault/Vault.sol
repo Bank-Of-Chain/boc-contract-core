@@ -31,8 +31,7 @@ contract Vault is VaultStorage {
         valueInterpreter = _valueInterpreter;
 
         rebasePaused = false;
-        // Initial redeem fee of 0 basis points
-        redeemFeeBps = 0;
+        
         // 1 / 1000e4
         rebaseThreshold = 1;
         // one week
@@ -140,8 +139,8 @@ contract Vault is VaultStorage {
             uint256 _trackedAssetsLength = _trackedAssets.length;
             uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
             uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
-            uint256 _totalValueInVault = 0;
-            uint256 _totalTransferValue = 0;
+            uint256 _totalValueInVault;
+            uint256 _totalTransferValue;
             for (uint256 i = 0; i < _trackedAssetsLength; i++) {
                 address _trackedAsset = _trackedAssets[i];
                 uint256 _balance = _balanceOfToken(_trackedAsset, address(this));
@@ -236,7 +235,7 @@ contract Vault is VaultStorage {
             _assetDecimals
         );
 
-        uint256 _actuallyReceivedAmount = 0;
+        uint256 _actuallyReceivedAmount;
         (_assets, _amounts, _actuallyReceivedAmount) = _calculateAndTransfer(
             _actualAsset,
             _trackedAssets,
@@ -268,7 +267,7 @@ contract Vault is VaultStorage {
         address _strategy,
         uint256 _amount,
         uint256 _outputCode
-    ) external isKeeper isActiveStrategy(_strategy) nonReentrant {
+    ) external isKeeperOrVaultOrGovOrDelegate isActiveStrategy(_strategy) nonReentrant {
         uint256 _strategyAssetValue = strategies[_strategy].totalDebt;
         require(_amount <= _strategyAssetValue, 'AI');//amount invalid
 
@@ -296,7 +295,7 @@ contract Vault is VaultStorage {
     /// @notice Allocate funds in Vault to strategies.
     function lend(address _strategyAddr, address[] memory _tokens, uint256[] memory _amounts)
         external
-        isKeeper
+        isKeeperOrVaultOrGovOrDelegate
         whenNotEmergency
         isActiveStrategy(_strategyAddr)
         nonReentrant
@@ -311,7 +310,7 @@ contract Vault is VaultStorage {
             }
         }
         //Definition rule 0 means unconstrained, currencies that do not participate are not in the returned wants
-        uint256 _minProductIndex = 0;
+        uint256 _minProductIndex;
         bool _isWantRatioIgnorable = IStrategy(_strategyAddr).isWantRatioIgnorable();
         if (!_isWantRatioIgnorable && _wantsLength > 1) {
             for (uint256 i = 1; i < _ratios.length; i++) {
@@ -366,7 +365,7 @@ contract Vault is VaultStorage {
         address _toToken,
         uint256 _amount,
         IExchangeAggregator.ExchangeParam memory _exchangeParam
-    ) external isKeeper nonReentrant returns (uint256) {
+    ) external isKeeperOrVaultOrGovOrDelegate nonReentrant returns (uint256) {
         return _exchange(_fromToken, _toToken, _amount, _exchangeParam);
     }
 
@@ -382,7 +381,7 @@ contract Vault is VaultStorage {
     /// @param _strategies The address list of strategies to report
     /// Requirement: only keeper call
     /// Emits a {StrategyReported} event.
-    function reportByKeeper(address[] memory _strategies) external isKeeper {
+    function reportByKeeper(address[] memory _strategies) external isKeeperOrVaultOrGovOrDelegate {
         address[] memory _rewardTokens;
         uint256[] memory _claimAmounts;
         uint256 _strategiesLength = _strategies.length;
@@ -413,7 +412,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice start  Adjust  Position
-    function startAdjustPosition() external isKeeper whenNotAdjustPosition whenNotEmergency nonReentrant {
+    function startAdjustPosition() external isKeeperOrVaultOrGovOrDelegate whenNotAdjustPosition whenNotEmergency nonReentrant {
         adjustPositionPeriod = true;
         address[] memory _trackedAssets = _getTrackedAssets();
 
@@ -427,7 +426,7 @@ contract Vault is VaultStorage {
             uint256 _trackedAssetsLength = _trackedAssets.length;
             uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
             uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
-            uint256 _totalValueInVault = 0;
+            uint256 _totalValueInVault;
             for (uint256 i = 0; i < _trackedAssetsLength; i++) {
                 address _trackedAsset = _trackedAssets[i];
                 uint256 _amount = _vaultAmounts[i];
@@ -455,7 +454,7 @@ contract Vault is VaultStorage {
     }
 
     /// @notice end  Adjust Position
-    function endAdjustPosition() external isKeeper nonReentrant {
+    function endAdjustPosition() external isKeeperOrVaultOrGovOrDelegate nonReentrant {
         require(adjustPositionPeriod, "ADO");//AdjustPosition overed
         address[] memory _trackedAssets = _getTrackedAssets();
         uint256 _trackedAssetsLength = _trackedAssets.length;
@@ -464,10 +463,10 @@ contract Vault is VaultStorage {
 
         (uint256[] memory _vaultAmounts, , ) = _calculateVault(_trackedAssets, false);
 
-        uint256 _transferValue = 0;
-        uint256 _redeemValue = 0;
-        uint256 _vaultValueOfNow = 0;
-        uint256 _vaultValueOfBefore = 0;
+        uint256 _transferValue;
+        uint256 _redeemValue;
+        uint256 _vaultValueOfNow;
+        uint256 _vaultValueOfBefore;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
             _transferValue =
@@ -509,8 +508,8 @@ contract Vault is VaultStorage {
         uint256 _totalValueOfBefore = _totalDebtOfBefore + _vaultValueOfBefore;
 
         {
-            uint256 _transferAssets = 0;
-            uint256 _old2LendAssets = 0;
+            uint256 _transferAssets;
+            uint256 _old2LendAssets;
             if (_vaultValueOfNow + _transferValue < _vaultValueOfBefore) {
                 _old2LendAssets = _vaultValueOfBefore - _vaultValueOfNow - _transferValue;
             }
@@ -587,7 +586,7 @@ contract Vault is VaultStorage {
         bool _vaultBufferAboveZero = false;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
-            uint256 _balance = 0;
+            uint256 _balance;
             if (_dealVaultBuffer && assetSet.contains(_trackedAsset)) {
                 _balance = _balanceOfToken(_trackedAsset, vaultBufferAddress);
                 if (_balance > 0) {
@@ -642,7 +641,7 @@ contract Vault is VaultStorage {
 
     function _totalAssetInVaultAndVaultBuffer() internal view returns (uint256) {
         address[] memory _trackedAssets = _getTrackedAssets();
-        uint256 _totalAssetInVaultAndVaultBuffer = 0;
+        uint256 _totalAssetInVaultAndVaultBuffer;
         //price in vault
         for (uint256 i = 0; i < _trackedAssets.length; i++) {
             address _trackedAsset = _trackedAssets[i];
@@ -665,7 +664,7 @@ contract Vault is VaultStorage {
         returns (uint256)
     {
         _checkMintAssets(_assets, _amounts);
-        uint256 _mintAmount = 0;
+        uint256 _mintAmount;
         for (uint256 i = 0; i < _assets.length; i++) {
             address _asset = _assets[i];
             uint256 _assetPrice = IValueInterpreter(valueInterpreter).price(_asset);
@@ -790,7 +789,7 @@ contract Vault is VaultStorage {
         uint256 _totalAssets,
         uint256 _totalShares
     ) internal view returns (uint256) {
-        uint256 _shareAmount = 0;
+        uint256 _shareAmount;
         if (_totalAssets > 0 && _totalShares > 0) {
             _shareAmount = (_amount * _totalShares) / _totalAssets;
         }
@@ -1086,8 +1085,8 @@ contract Vault is VaultStorage {
         StrategyParams memory _strategyParam = strategies[_strategy];
         uint256 _lastStrategyTotalDebt = _strategyParam.totalDebt + _lendValue;
         uint256 _nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();
-        uint256 _gain = 0;
-        uint256 _loss = 0;
+        uint256 _gain;
+        uint256 _loss;
 
         if (_nowStrategyTotalDebt > _lastStrategyTotalDebt) {
             _gain = _nowStrategyTotalDebt - _lastStrategyTotalDebt;

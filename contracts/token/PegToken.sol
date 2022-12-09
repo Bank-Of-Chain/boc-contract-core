@@ -77,10 +77,14 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         address _vault,
         address _accessControlProxy
     ) external initializer {
+        //The error message "NNA" represents "The input address need be non-zero address"
+        require(_vault != address(0),"NNA");
+
         mName = _nameArg;
         mSymbol = _symbolArg;
         mDecimals = _decimalsArg;
         vaultAddr = _vault;
+        // '_accessControlProxy' will be verified in function _initAccessControl
         _initAccessControl(_accessControlProxy);
     }
 
@@ -231,6 +235,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         override
         returns (uint256)
     {
+        // underlyingUnitsPerShare = 
         return (_sharesAmount * IVault(vaultAddr).underlyingUnitsPerShare()) / 1e27;
     }
 

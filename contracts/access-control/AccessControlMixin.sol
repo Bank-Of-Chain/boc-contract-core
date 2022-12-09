@@ -11,6 +11,8 @@ abstract contract AccessControlMixin {
     IAccessControlProxy public accessControlProxy;
 
     function _initAccessControl(address _accessControlProxy) internal {
+        //The error message "NNA" represents "The input address need be non-zero address"
+        require(_accessControlProxy != address(0),"NNA");
         accessControlProxy = IAccessControlProxy(_accessControlProxy);
     }
 
@@ -41,8 +43,8 @@ abstract contract AccessControlMixin {
         _;
     }
 
-    /// @dev Modifier that checks that msg.sender has a keeper role or not
-    modifier isKeeper() {
+    /// @dev Modifier that checks that msg.sender has a keeper role or vault role or default admin role, or DELEGATE_ROLE
+    modifier isKeeperOrVaultOrGovOrDelegate() {
         accessControlProxy.checkKeeperOrVaultOrGov(msg.sender);
         _;
     }

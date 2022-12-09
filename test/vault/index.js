@@ -80,6 +80,7 @@ describe("Vault", function () {
     let exchangePlatformAdapters;
 
     before(async function () {
+        this.timeout(600000);
         usdiDecimals = 18;
         vaultBufferDecimals = 18;
         underlyingAddress = MFC.USDT_ADDRESS;
@@ -99,6 +100,7 @@ describe("Vault", function () {
             farmer1 = accounts[1].address;
             farmer2 = accounts[2].address;
             keeper = accounts[19].address;
+            dripper = accounts[18];
         });
         await tranferBackUsdt(farmer1);
         await topUpUsdtByAddress(depositAmount, farmer1);
@@ -247,10 +249,10 @@ describe("Vault", function () {
             lossLimitRatio: 100
         });
 
-        await iVault.addStrategy(addToVaultStrategies, {from: governance});
+        await iVault.addStrategies(addToVaultStrategies, {from: governance});
         let strategyAddresses = await iVault.getStrategies();
         console.log('Number of policies before adding=', strategyAddresses.length);
-        await iVault.removeStrategy(strategyAddresses, {from: governance});
+        await iVault.removeStrategies(strategyAddresses, {from: governance});
         const length = (await iVault.getStrategies()).length;
         console.log('Number of policies after removal=', length);
         Utils.assertBNEq(length, 0);
@@ -363,7 +365,7 @@ describe("Vault", function () {
             lossLimitRatio: 100
         });
         withdrawQueque.push(mockS3CoinStrategy.address);
-        await iVault.addStrategy(addToVaultStrategies, {from: governance});
+        await iVault.addStrategies(addToVaultStrategies, {from: governance});
         await iVault.setWithdrawalQueue(withdrawQueque, {from: governance});
 
         const beforeUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
