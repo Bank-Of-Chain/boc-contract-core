@@ -1,6 +1,8 @@
 const { default: BigNumber } = require("bignumber.js");
 const { expect } = require("chai");
 const { send } = require("@openzeppelin/test-helpers");
+const hre = require("hardhat");
+const { ethers } = hre;
 
 const AccessControlProxy = hre.artifacts.require("AccessControlProxy");
 const PegToken = hre.artifacts.require("PegToken");

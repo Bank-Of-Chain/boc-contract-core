@@ -2,6 +2,8 @@ const { default: BigNumber } = require("bignumber.js");
 const { expect } = require("chai");
 const { send } = require("@openzeppelin/test-helpers");
 const { deployMockContract } = require('@ethereum-waffle/mock-contract');
+const hre = require("hardhat");
+const { ethers } = hre;
 
 const AccessControlProxy = hre.artifacts.require("AccessControlProxy");
 const Harvester = hre.artifacts.require("Harvester");
