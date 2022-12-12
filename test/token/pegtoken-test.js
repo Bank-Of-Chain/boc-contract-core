@@ -2,11 +2,10 @@ const { default: BigNumber } = require("bignumber.js");
 const { expect } = require("chai");
 const { send } = require("@openzeppelin/test-helpers");
 const hre = require("hardhat");
-const { ethers } = hre;
 
 const AccessControlProxy = hre.artifacts.require("AccessControlProxy");
 const PegToken = hre.artifacts.require("PegToken");
-const MockVault = hre.artifacts.require('MockVault');
+const MockVault = hre.artifacts.require("MockVault");
 
 describe("PegToken Test", function () {
     const TOKEN_NAME = "USD Peg Token";
@@ -22,7 +21,7 @@ describe("PegToken Test", function () {
     let accessControlProxy;
 
     before("Init", async function () {
-        accounts = await ethers.getSigners();
+        accounts = await hre.ethers.getSigners();
         governance = accounts[19].address;
         user1 = accounts[1].address;
         user2 = accounts[2].address;

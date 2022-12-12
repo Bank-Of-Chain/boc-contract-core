@@ -3,7 +3,6 @@ const { expect } = require("chai");
 const { send } = require("@openzeppelin/test-helpers");
 const { deployMockContract } = require('@ethereum-waffle/mock-contract');
 const hre = require("hardhat");
-const { ethers } = hre;
 
 const AccessControlProxy = hre.artifacts.require("AccessControlProxy");
 const Harvester = hre.artifacts.require("Harvester");
@@ -25,7 +24,7 @@ describe("Harvester Test", function () {
     let accessControlProxy;
 
     before("Init", async function () {
-        accounts = await ethers.getSigners();
+        accounts = await hre.ethers.getSigners();
         governance = accounts[19].address;
         user1 = accounts[1].address;
         user2 = accounts[2].address;
