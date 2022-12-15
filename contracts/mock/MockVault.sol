@@ -14,6 +14,22 @@ contract MockVault is AccessControlMixin {
         _initAccessControl(_accessControlProxy);
     }
 
+    function underlyingUnitsPerShare() external view returns(uint256) {
+        return 10 ** 18;
+    }
+
+    function exchangeManager() external view returns(address) {
+        return address(0);
+    }
+    
+    function valueInterpreter() external view returns(address) {
+        return address(0);
+    }
+
+    function checkActiveStrategy(address _strategy) external returns (bool) {
+        return true;
+    }
+
     function burn(uint256 _amount) external {}
 
     function lend(
@@ -48,4 +64,8 @@ contract MockVault is AccessControlMixin {
     function report(uint256 _strategyAsset) external {}
 
     function rebase() external {}
+
+    receive() external payable {}
+
+    fallback() external payable {}
 }

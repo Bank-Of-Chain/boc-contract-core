@@ -84,18 +84,12 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     {
         uint256 _platformsLength = _swapParams.length;
         uint256[] memory _amounts = new uint256[](_platformsLength);
-        {
-            uint256 _ethValue;
-            for (uint256 i = 0; i < _platformsLength; i++) {
-                SwapParam calldata _swapParam = _swapParams[i];
-                if (_swapParam.swapDescription.srcToken == NativeToken.NATIVE_TOKEN) {
-                    _ethValue = _ethValue + _swapParam.swapDescription.amount;
-                }
-            }
-            require(_ethValue == msg.value, "amount invalid");
-        }
+        uint256 _ethValue;
         for (uint256 i = 0; i < _platformsLength; i++) {
             SwapParam calldata _swapParam = _swapParams[i];
+            if (_swapParam.swapDescription.srcToken == NativeToken.NATIVE_TOKEN) {
+                _ethValue = _ethValue + _swapParam.swapDescription.amount;
+            }
             _amounts[i] = _swap(
                 _swapParam.platform,
                 _swapParam.method,
@@ -103,6 +97,7 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
                 _swapParam.swapDescription
             );
         }
+        require(_ethValue == msg.value, "amount invalid");
         return _amounts;
     }
 
