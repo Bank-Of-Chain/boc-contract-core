@@ -253,6 +253,10 @@ contract VaultBuffer is
     /// - `spender` cannot be the zero address.
     function approve(address _spender, uint256 _amount) public virtual override returns (bool) {
         address _owner = _msgSender();
+        require(
+            (_amount == 0) || (allowance(_owner, _spender) == 0),
+            "approve from non-zero to non-zero allowance"
+        );
         _approve(_owner, _spender, _amount);
         return true;
     }

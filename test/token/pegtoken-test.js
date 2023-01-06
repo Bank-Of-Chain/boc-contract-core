@@ -85,8 +85,16 @@ describe("PegToken Test", function () {
         // approve
         const approveToUser2Amount = new BigNumber(20 * 10 ** 18);
         await pegToken.approve(user2, approveToUser2Amount, { from: user1 });
+        // revert if approve again when allowance is greater than 0
+        await expect(pegToken.approve(user2, approveToUser2Amount, { from: user1 }))
+        .to.be.revertedWith("approve from non-zero to non-zero allowance");
+
+        await pegToken.approve(user2, 0, { from: user1 });
+        await pegToken.approve(user2, approveToUser2Amount, { from: user1 });
+
         let user2Allowance = new BigNumber(await pegToken.allowance(user1, user2));
         expect(user2Allowance.toFixed()).to.equals(approveToUser2Amount.toFixed());
+
         // transfer
         const transferToUser2Amount = new BigNumber(10 * 10 ** 18);
         await pegToken.transferFrom(user1, user2, transferToUser2Amount, { from: user2 });
