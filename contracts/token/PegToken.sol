@@ -161,6 +161,10 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         override
         returns (bool)
     {
+        require(
+            (_amount == 0) || (allowance(msg.sender, _spender) == 0),
+            "approve from non-zero to non-zero allowance"
+        );
         _approve(msg.sender, _spender, _amount);
         return true;
     }
