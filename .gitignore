@@ -10,3 +10,4 @@ yarn.lock
 #Hardhat files
 cache
 artifacts
+forge-out/

@@ -19,24 +19,24 @@ import "./IValueInterpreter.sol";
 /// @author Bank of Chain Protocol Inc
 contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
 
-    /// @param _primitivePriceFeed The address of the new primitive price feed contract
-    event UpdatePrimitivePriceFeed(address _primitivePriceFeed);
+    /// @param _chainlinkPriceFeed The address of the new primitive price feed contract
+    event UpdateChainPriceFeed(address _chainlinkPriceFeed);
 
-    /// @param _aggregatedDerivativePriceFeed The price feed address of the new aggregated derivative
-    event UpdateAggregatedDerivativePriceFeed(
-        address _aggregatedDerivativePriceFeed
+    /// @param _uniswapV3PriceFeed The price feed address of the new aggregated derivative
+    event UniswapV3PriceFeed(
+        address _uniswapV3PriceFeed
     );
 
-    address private aggregatedDerivativePriceFeed;
-    address private primitivePriceFeed;
+    address private chainlinkPriceFeed;
+    address private uniswapV3PriceFeed;
 
     constructor(
-        address _primitivePriceFeed,
-        address _aggregatedDerivativePriceFeed,
+        address _chainlinkPriceFeed,
+        address _uniswapV3PriceFeed,
         address _accessControlProxy
     ) {
-        aggregatedDerivativePriceFeed = _aggregatedDerivativePriceFeed;
-        primitivePriceFeed = _primitivePriceFeed;
+        uniswapV3PriceFeed = _uniswapV3PriceFeed;
+        chainlinkPriceFeed = _chainlinkPriceFeed;
         _initAccessControl(_accessControlProxy);
     }
 
@@ -53,7 +53,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             "calcCanonicalAssetsTotalValue: Arrays unequal lengths"
         );
         require(
-            IPrimitivePriceFeed(primitivePriceFeed).isSupportedAsset(
+            IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(
                 _quoteAsset
             ),
             string(
@@ -112,6 +112,22 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     }
 
     /// @inheritdoc IValueInterpreter
+    function calcCanonicalAssetValueInEth(address _baseAsset, uint256 _amount)
+        external
+        view
+        override
+        returns (uint256 _value)
+    {
+        if (_amount == 0) {
+            return _amount;
+        }
+        bool _isValid;
+        (_value, _isValid) = __calcAssetValueInEth(_baseAsset, _amount);
+        require(_isValid, "Invalid rate");
+        return _value;
+    }
+
+    /// @inheritdoc IValueInterpreter
     function price(address _baseAsset)
         external
         view
@@ -120,15 +136,15 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     {
         // Handle case that asset is a primitive
         if (
-            IPrimitivePriceFeed(primitivePriceFeed).isSupportedAsset(
+            IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(
                 _baseAsset
             )
         ) {
             bool _isValid;
-            (_value, _isValid) = IPrimitivePriceFeed(primitivePriceFeed)
+            (_value, _isValid) = IPrimitivePriceFeed(chainlinkPriceFeed)
                 .calcValueInUsd(
                     _baseAsset,
-                    IPrimitivePriceFeed(primitivePriceFeed).getAssetUnit(
+                    IPrimitivePriceFeed(chainlinkPriceFeed).getAssetUnit(
                         _baseAsset
                     )
                 );
@@ -158,27 +174,74 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             return (_amount, true);
         }
 
-        // Handle case that asset is a primitive
+        // Handle case that asset with chainlink
         if (
-            IPrimitivePriceFeed(primitivePriceFeed).isSupportedAsset(
+            IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(
                 _baseAsset
             )
         ) {
             return
-                IPrimitivePriceFeed(primitivePriceFeed).calcValueInUsd(
+                IPrimitivePriceFeed(chainlinkPriceFeed).calcValueInUsd(
                     _baseAsset,
                     _amount
                 );
         }
 
-        // Handle case that asset is a derivative
-        address _derivativePriceFeed = IAggregatedDerivativePriceFeed(
-            aggregatedDerivativePriceFeed
-        ).getPriceFeedForDerivative(_baseAsset);
-        if (_derivativePriceFeed != address(0)) {
+        // Handle case that asset with uniswapV3
+        if (
+            IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(
+                _baseAsset
+            )
+        ) {
             return
-                __calcDerivativeValueInUsd(
-                    _derivativePriceFeed,
+                IPrimitivePriceFeed(uniswapV3PriceFeed).calcValueInUsd(
+                    _baseAsset,
+                    _amount
+                );
+        }
+
+        revert(
+            string(
+                abi.encodePacked(
+                    "__calcAssetValue: Unsupported _baseAsset ",
+                    Strings.toHexString(uint160(_baseAsset), 20)
+                )
+            )
+        );
+    }
+
+        /// @dev Helper to differentially calculate an asset value
+    /// based on if it is a primitive or derivative asset.
+    function __calcAssetValueInEth(address _baseAsset, uint256 _amount)
+        private
+        view
+        returns (uint256 _value, bool _isValid)
+    {
+        if (_amount == 0) {
+            return (_amount, true);
+        }
+
+        // Handle case that asset with chainlink
+        if (
+            IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(
+                _baseAsset
+            )
+        ) {
+            return
+                IPrimitivePriceFeed(chainlinkPriceFeed).calcValueInEth(
+                    _baseAsset,
+                    _amount
+                );
+        }
+
+        // Handle case that asset with uniswapV3
+        if (
+            IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(
+                _baseAsset
+            )
+        ) {
+            return
+                IPrimitivePriceFeed(uniswapV3PriceFeed).calcValueInEth(
                     _baseAsset,
                     _amount
                 );
@@ -205,31 +268,34 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             return (_amount, true);
         }
 
-        // Handle case that asset is a primitive
+        // Handle case that asset with chainlink
         if (
-            IPrimitivePriceFeed(primitivePriceFeed).isSupportedAsset(
+            IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(
                 _baseAsset
             ) &&
-            IPrimitivePriceFeed(primitivePriceFeed).isSupportedAsset(
+            IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(
                 _quoteAsset
             )
         ) {
             return
-                IPrimitivePriceFeed(primitivePriceFeed).calcCanonicalValue(
+                IPrimitivePriceFeed(chainlinkPriceFeed).calcCanonicalValue(
                     _baseAsset,
                     _amount,
                     _quoteAsset
                 );
         }
 
-        // Handle case that asset is a derivative
-        address _derivativePriceFeed = IAggregatedDerivativePriceFeed(
-            aggregatedDerivativePriceFeed
-        ).getPriceFeedForDerivative(_baseAsset);
-        if (_derivativePriceFeed != address(0)) {
+        // Handle case that asset with uniswapV3
+        if (
+            IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(
+                _baseAsset
+            ) &&
+            IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(
+                _quoteAsset
+            )
+        ) {
             return
-                __calcDerivativeValue(
-                    _derivativePriceFeed,
+                IPrimitivePriceFeed(uniswapV3PriceFeed).calcCanonicalValue(
                     _baseAsset,
                     _amount,
                     _quoteAsset
@@ -289,70 +355,70 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     /// @dev Helper to calculate the value of a derivative in an arbitrary asset.
     /// Handles multiple underlying assets (e.g., Uniswap and Balancer pool tokens).
     /// Handles underlying assets that are also derivatives (e.g., a cDAI-ETH LP)
-    function __calcDerivativeValue(
-        address _derivativePriceFeed,
-        address _derivative,
-        uint256 _amount,
-        address _quoteAsset
-    ) private view returns (uint256 _value, bool _isValid) {
-        (
-            address[] memory _underlyings,
-            uint256[] memory _underlyingAmounts
-        ) = IDerivativePriceFeed(_derivativePriceFeed).calcUnderlyingValues(
-                _derivative,
-                _amount
-            );
+    // function __calcDerivativeValue(
+    //     address _derivativePriceFeed,
+    //     address _derivative,
+    //     uint256 _amount,
+    //     address _quoteAsset
+    // ) private view returns (uint256 _value, bool _isValid) {
+    //     (
+    //         address[] memory _underlyings,
+    //         uint256[] memory _underlyingAmounts
+    //     ) = IDerivativePriceFeed(_derivativePriceFeed).calcUnderlyingValues(
+    //             _derivative,
+    //             _amount
+    //         );
 
-        require(
-            _underlyings.length > 0,
-            "__calcDerivativeValue: No underlyings"
-        );
-        require(
-            _underlyings.length ==_underlyingAmounts.length,
-            "__calcDerivativeValue: Arrays unequal lengths"
-        );
+    //     require(
+    //         _underlyings.length > 0,
+    //         "__calcDerivativeValue: No underlyings"
+    //     );
+    //     require(
+    //         _underlyings.length ==_underlyingAmounts.length,
+    //         "__calcDerivativeValue: Arrays unequal lengths"
+    //     );
 
-        // Let validity be negated if any of the underlying value calculations are invalid
-        _isValid = true;
-        for (uint256 i = 0; i < _underlyings.length; i++) {
-            (
-                uint256 _underlyingValue,
-                bool _underlyingValueIsValid
-            ) = __calcAssetValue(
-                    _underlyings[i],
-                    _underlyingAmounts[i],
-                    _quoteAsset
-                );
+    //     // Let validity be negated if any of the underlying value calculations are invalid
+    //     _isValid = true;
+    //     for (uint256 i = 0; i < _underlyings.length; i++) {
+    //         (
+    //             uint256 _underlyingValue,
+    //             bool _underlyingValueIsValid
+    //         ) = __calcAssetValue(
+    //                 _underlyings[i],
+    //                 _underlyingAmounts[i],
+    //                 _quoteAsset
+    //             );
 
-            if (!_underlyingValueIsValid) {
-                _isValid = false;
-            }
-            _value = _value + _underlyingValue;
-        }
-    }
+    //         if (!_underlyingValueIsValid) {
+    //             _isValid = false;
+    //         }
+    //         _value = _value + _underlyingValue;
+    //     }
+    // }
 
     ///////////////////
     // STATE GETTERS //
     ///////////////////
 
     /// @notice Gets the `aggregatedDerivativePriceFeed` variable
-    /// @return _aggregatedDerivativePriceFeed The `aggregatedDerivativePriceFeed` variable value
-    function getAggregatedDerivativePriceFeed()
+    /// @return _uniswapV3PriceFeed The `aggregatedDerivativePriceFeed` variable value
+    function getUniswapV3PriceFeed()
         external
         view
         returns (address)
     {
-        return aggregatedDerivativePriceFeed;
+        return uniswapV3PriceFeed;
     }
 
     /// @notice Gets the `primitivePriceFeed` variable
-    /// @return _primitivePriceFeed The `primitivePriceFeed` variable value
-    function getPrimitivePriceFeed()
+    /// @return _chainlinkPriceFeed The `primitivePriceFeed` variable value
+    function getChainlinkPriceFeed()
         external
         view
         returns (address)
     {
-        return primitivePriceFeed;
+        return chainlinkPriceFeed;
     }
 
     ///////////////////
@@ -360,23 +426,23 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     ///////////////////
 
     /// @notice Set the primitive price feed. Only governance or delegate role can call.
-    /// @param _primitivePriceFeed The address of the new primitive price feed contract
-    function setPrimitivePriceFeed(address _primitivePriceFeed)
+    /// @param _chainlinkPriceFeed The address of the new primitive price feed contract
+    function setChainlinkPriceFeed(address _chainlinkPriceFeed)
         external
         onlyGovOrDelegate
     {
-        primitivePriceFeed = _primitivePriceFeed;
-        emit UpdatePrimitivePriceFeed(_primitivePriceFeed);
+        chainlinkPriceFeed = _chainlinkPriceFeed;
+        emit UpdateChainPriceFeed(_chainlinkPriceFeed);
     }
 
     /// @notice Set the aggregated derivative price feed. Only governance or delegate role can call.
-    /// @param _aggregatedDerivativePriceFeed The price feed address of the new aggregated derivative
-    function setAggregatedDerivativePriceFeed(
-        address _aggregatedDerivativePriceFeed
+    /// @param _uniswapV3PriceFeed The price feed address of the new aggregated derivative
+    function setUniswapV3PriceFeed(
+        address _uniswapV3PriceFeed
     ) external onlyGovOrDelegate {
-        aggregatedDerivativePriceFeed = _aggregatedDerivativePriceFeed;
-        emit UpdateAggregatedDerivativePriceFeed(
-            _aggregatedDerivativePriceFeed
+        uniswapV3PriceFeed = _uniswapV3PriceFeed;
+        emit UniswapV3PriceFeed(
+            _uniswapV3PriceFeed
         );
     }
 }

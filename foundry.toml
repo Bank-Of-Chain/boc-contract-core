@@ -1,0 +1,33 @@
+[profile.default]
+evm_version = 'london'
+src = 'contracts'
+libs = ['lib']
+out = 'forge-out'
+cache = true
+cache_path = 'cache'
+
+optimizer = true
+optimizer_runs = 1000
+
+sender = '0x00a329c0648769a73afac7f9381e08fb43dbea72'
+tx_origin = '0x00a329c0648769a73afac7f9381e08fb43dbea72'
+gas_reports = ["*"]
+
+
+
+remappings = [
+    '@chainlink/=node_modules/@chainlink/',
+    '@ensdomains/=node_modules/@ensdomains/',
+    '@openzeppelin/=node_modules/@openzeppelin/',
+    '@uniswap/=node_modules/@uniswap/',
+    'base64-sol/=node_modules/base64-sol/',
+    'boc-contract-core/=node_modules/boc-contract-core/',
+    'eth-gas-reporter/=node_modules/eth-gas-reporter/',
+    'hardhat/=node_modules/hardhat/',
+    'brain-forge-std/=node_modules/brain-forge-std/'
+]
+
+eth-rpc-url = "https://eth-mainnet.alchemyapi.io/v2/LkaC5kaCGk8i5CIzO1kkuJrw3186Nkza"
+fork_block_number = 16359753
+
+# See more config options https://github.com/foundry-rs/foundry/tree/master/config
