@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -115,7 +115,7 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
         if (_isUsd) {
             return _usdValue;
         } else {
-            uint256 _totalUsdValue = 0;
+            uint256 _totalUsdValue;
             for (uint256 i = 0; i < _tokens.length; i++) {
                 _totalUsdValue += queryTokenValue(_tokens[i], _amounts[i]);
             }

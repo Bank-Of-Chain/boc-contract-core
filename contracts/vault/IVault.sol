@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 import "../exchanges/IExchangeAggregator.sol";
@@ -282,19 +282,23 @@ interface IVault {
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
     /// @param _minimumAmount Minimum usd to receive in return
+    /// @param _redeemFeeBps Redemption fee in basis points
+    /// @param _trusteeFeeBps Amount of yield collected in basis points
     /// @param _assets The address list of assets to receive
     /// @param _amounts The amount list of assets to receive
-    function burn(uint256 _amount, uint256 _minimumAmount)
+    function burn(uint256 _amount, uint256 _minimumAmount, uint256 _redeemFeeBps, uint256 _trusteeFeeBps)
         external
         returns (address[] memory _assets, uint256[] memory _amounts);
 
     /// @notice Change USDi supply with Vault total assets.
-    function rebase() external;
+    /// @param _trusteeFeeBps Amount of yield collected in basis points
+    function rebase(uint256 _trusteeFeeBps) external;
 
     /// @notice Allocate funds in Vault to strategies.
     /// @param  _strategy The specified strategy to lend
-    /// @param _exchangeTokens All exchange info
-    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens)
+    /// @param _tokens The address list of token wanted
+    /// @param _amounts The amount list of token wanted
+    function lend(address _strategy, address[] memory _tokens, uint256[] memory _amounts)
         external;
 
     /// @notice Withdraw the funds from specified strategy.
@@ -393,11 +397,11 @@ interface IVault {
     /// @dev The strategy added to the strategy list,
     ///      Vault may invest funds into the strategy,
     ///      and the strategy will invest the funds in the 3rd protocol
-    function addStrategy(StrategyAdd[] memory _strategyAdds) external;
+    function addStrategies(StrategyAdd[] memory _strategyAdds) external;
 
     /// @notice Remove multi strategies from strategy list
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
-    function removeStrategy(address[] memory _strategies) external;
+    function removeStrategies(address[] memory _strategies) external;
 
     /// @notice Forced to remove the '_strategy' 
     function forceRemoveStrategy(address _strategy) external;

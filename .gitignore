@@ -7,7 +7,7 @@ coverage.json
 typechain
 package-lock.json
 yarn.lock
-dev-keys.json
 #Hardhat files
 cache
 artifacts
+forge-out/

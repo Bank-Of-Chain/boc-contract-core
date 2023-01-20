@@ -41,7 +41,6 @@ const IVaultBuffer = hre.artifacts.require('IVaultBuffer');
 const IExchangeAdapter = hre.artifacts.require('IExchangeAdapter');
 const VaultAdmin = hre.artifacts.require('VaultAdmin');
 const Harvester = hre.artifacts.require('Harvester');
-const Dripper = hre.artifacts.require('Dripper');
 const PegToken = hre.artifacts.require('PegToken');
 const MockS3CoinStrategy = hre.artifacts.require('MockS3CoinStrategy');
 
@@ -81,6 +80,7 @@ describe("Vault", function () {
     let exchangePlatformAdapters;
 
     before(async function () {
+        this.timeout(600000);
         usdiDecimals = 18;
         vaultBufferDecimals = 18;
         underlyingAddress = MFC.USDT_ADDRESS;
@@ -100,6 +100,7 @@ describe("Vault", function () {
             farmer1 = accounts[1].address;
             farmer2 = accounts[2].address;
             keeper = accounts[19].address;
+            dripper = accounts[18];
         });
         await tranferBackUsdt(farmer1);
         await topUpUsdtByAddress(depositAmount, farmer1);
@@ -185,9 +186,6 @@ describe("Vault", function () {
         vaultBuffer = await VaultBuffer.new();
         await vaultBuffer.initialize('USD Peg Token Ticket', 'tUSDi', vault.address, pegToken.address,accessControlProxy.address);
 
-        const dripper = await Dripper.new();
-        await dripper.initialize(accessControlProxy.address, vault.address, MFC.USDT_ADDRESS);
-
         console.log('deploy Treasury');
         // treasury
         treasury = await Treasury.new();
@@ -198,7 +196,7 @@ describe("Vault", function () {
         await vault.setAdminImpl(vaultAdmin.address, {from: governance});
 
         const harvester = await Harvester.new();
-        await harvester.initialize(accessControlProxy.address, dripper.address, MFC.USDT_ADDRESS, vault.address);
+        await harvester.initialize(accessControlProxy.address, vault.address, MFC.USDT_ADDRESS, vault.address);
 
         console.log("USDT_PRICE:", new BigNumber(await valueInterpreter.price(MFC.USDT_ADDRESS)).toFixed());
         console.log("USDT_CALC:", new BigNumber(await valueInterpreter.calcCanonicalAssetValueInUsd(MFC.USDT_ADDRESS, 10 ** 6)).toFixed());
@@ -215,7 +213,15 @@ describe("Vault", function () {
         iVault = await IVault.at(vault.address);
         // await iVault.setUSDiAddress(usdi.address);
         await iVault.setVaultBufferAddress(vaultBuffer.address);
+
+        await expect(
+            iVault.setVaultBufferAddress(vaultBuffer.address)
+        ).to.be.revertedWith("VaultBuffer ad has been set");
         await iVault.setPegTokenAddress(pegToken.address);
+
+        await expect(
+            iVault.setPegTokenAddress(pegToken.address)
+        ).to.be.revertedWith("PegToken ad has been set");
         // await iVault.setRebaseThreshold(1);
         // await iVault.setUnderlyingUnitsPerShare(new BigNumber(10).pow(18).toFixed());
         // await iVault.setMaxTimestampBetweenTwoReported(604800, {from: governance});
@@ -243,11 +249,19 @@ describe("Vault", function () {
             lossLimitRatio: 100
         });
 
-        await iVault.addStrategy(addToVaultStrategies, {from: governance});
+        await iVault.addStrategies(addToVaultStrategies, {from: governance});
         let strategyAddresses = await iVault.getStrategies();
         console.log('Number of policies before adding=', strategyAddresses.length);
-        await iVault.removeStrategy(strategyAddresses, {from: governance});
-        const length = (await iVault.getStrategies()).length;
+        await iVault.removeStrategies(strategyAddresses, {from: governance});
+        let length = (await iVault.getStrategies()).length;
+        console.log('Number of policies after removal=', length);
+        Utils.assertBNEq(length, 0);
+
+        await iVault.addStrategies(addToVaultStrategies, {from: governance});
+        strategyAddresses = await iVault.getStrategies();
+        console.log('Number of policies before adding=', strategyAddresses.length);
+        await iVault.forceRemoveStrategy(mockS3CoinStrategy.address, {from: governance});
+        length = (await iVault.getStrategies()).length;
         console.log('Number of policies after removal=', length);
         Utils.assertBNEq(length, 0);
     });
@@ -359,7 +373,7 @@ describe("Vault", function () {
             lossLimitRatio: 100
         });
         withdrawQueque.push(mockS3CoinStrategy.address);
-        await iVault.addStrategy(addToVaultStrategies, {from: governance});
+        await iVault.addStrategies(addToVaultStrategies, {from: governance});
         await iVault.setWithdrawalQueue(withdrawQueque, {from: governance});
 
         const beforeUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
@@ -369,25 +383,8 @@ describe("Vault", function () {
         console.log("(usdt,usdc,dai)=(%s,%s,%s)", depositAmount.toFixed(), usdcDepositAmount.toFixed(), daiDepositAmount.toFixed());
         let tokens = [MFC.USDT_ADDRESS, MFC.USDC_ADDRESS, MFC.DAI_ADDRESS];
         let amounts = [depositAmount.toFixed(), usdcDepositAmount.toFixed(), daiDepositAmount.toFixed()];
-        let exchangeArray = await Promise.all(
-            map(tokens, async (tokenItem, index) => {
-                const exchangeAmounts = amounts[index].toString();
-                return {
-                    fromToken: tokenItem,
-                    toToken: tokenItem,
-                    fromAmount: exchangeAmounts,
-                    exchangeParam: {
-                        platform: exchangePlatformAdapters.testAdapter,
-                        method: 0,
-                        encodeExchangeArgs: '0x',
-                        slippage: 0,
-                        oracleAdditionalSlippage: 0
-                    }
-                }
-            })
-        );
 
-        await iVault.lend(mockS3CoinStrategy.address, exchangeArray);
+        await iVault.lend(mockS3CoinStrategy.address, tokens, amounts);
 
         console.log("totalAssets after lend:%s,totalValue：%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
         console.log("totalDebt after lend:%s,totalValueInStrategies：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
@@ -420,7 +417,9 @@ describe("Vault", function () {
 
         const beforeBalance = new BigNumber(await usdcToken.balanceOf(farmer1)).toFixed();
 
-        await iVault.burn(_amount, 0, {from: farmer1});
+        let _redeemFeeBps = await iVault.redeemFeeBps();
+        let _trusteeFeeBps = await iVault.trusteeFeeBps();
+        await iVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps, {from: farmer1});
 
         const afterBalance = new BigNumber(await usdcToken.balanceOf(farmer1)).toFixed();
 
@@ -533,25 +532,8 @@ describe("Vault", function () {
         console.log("(usdt,usdc,dai)=(%s,%s,%s)", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed(), new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed(), new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
         let tokens = [MFC.USDT_ADDRESS, MFC.USDC_ADDRESS, MFC.DAI_ADDRESS];
         let amounts = [new BigNumber(await underlying.balanceOf(iVault.address)).toFixed(), new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed(), new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed()];
-        let exchangeArray = await Promise.all(
-            map(tokens, async (tokenItem, index) => {
-                const exchangeAmounts = amounts[index].toString();
-                return {
-                    fromToken: tokenItem,
-                    toToken: tokenItem,
-                    fromAmount: exchangeAmounts,
-                    exchangeParam: {
-                        platform: exchangePlatformAdapters.testAdapter,
-                        method: 0,
-                        encodeExchangeArgs: '0x',
-                        slippage: 0,
-                        oracleAdditionalSlippage: 0
-                    }
-                }
-            })
-        );
 
-        await iVault.lend(mockS3CoinStrategy.address, exchangeArray);
+        await iVault.lend(mockS3CoinStrategy.address, tokens, amounts);
 
         console.log("totalAssets after lend:%s,totalValue：%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
         console.log("totalDebt after lend:%s,totalValueInStrategies：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
@@ -578,19 +560,48 @@ describe("Vault", function () {
         console.log("valueOfTrackedTokensIncludeVaultBuffer after end adjust position:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
     });
 
+    it('Verify：report by strategy and keeper', async function (){
+       const usdcIEREC20Mint = await IEREC20Mint.at(MFC.USDC_ADDRESS);
+       let estimatedTotalAssets = await mockS3CoinStrategy.estimatedTotalAssets();
+       let strategyParams =  await iVault.strategies(mockS3CoinStrategy.address);
+       const firstTotalDebt = strategyParams.totalDebt;
+       console.log("before reportWithoutClaim",estimatedTotalAssets.toString(),strategyParams.totalDebt.toString());
+        await usdcIEREC20Mint.transfer(mockS3CoinStrategy.address, new BigNumber(1000).toFixed(), {
+            from: farmer1,
+        });
+       await mockS3CoinStrategy.reportWithoutClaim();
+       estimatedTotalAssets = await mockS3CoinStrategy.estimatedTotalAssets();
+       strategyParams =  await iVault.strategies(mockS3CoinStrategy.address);
+       const secondTotalDebt = strategyParams.totalDebt;
+       console.log("after reportWithoutClaim",estimatedTotalAssets.toString(),strategyParams.totalDebt.toString());
+       await usdcIEREC20Mint.transfer(mockS3CoinStrategy.address, new BigNumber(1000).toFixed(), {
+            from: farmer1,
+        });
+        await iVault.reportByKeeper([mockS3CoinStrategy.address]);
+        estimatedTotalAssets = await mockS3CoinStrategy.estimatedTotalAssets();
+        strategyParams =  await iVault.strategies(mockS3CoinStrategy.address);
+        const thirdTotalDebt = strategyParams.totalDebt;
+        console.log("after reportByKeeper",estimatedTotalAssets.toString(),strategyParams.totalDebt.toString());
+        Utils.assertBNGt(secondTotalDebt, firstTotalDebt);
+        Utils.assertBNGt(thirdTotalDebt, secondTotalDebt);
+    });
+
     it('Verify：burn from strategy', async function (){
         console.log("before rebase PegTokenPrice:%s", new BigNumber(await iVault.getPegTokenPrice()).toFixed());
-        await iVault.rebase();
+        let _trusteeFeeBps = await iVault.trusteeFeeBps();
+        await iVault.rebase(_trusteeFeeBps);
         console.log("after rebase PegTokenPrice:%s", new BigNumber(await iVault.getPegTokenPrice()).toFixed());
         console.log("totalValueInStrategies before withdraw: %s",new BigNumber(await iVault.totalValueInStrategies()).toFixed());
         console.log("totalAssets before withdraw: %s",new BigNumber(await iVault.totalAssets()).toFixed());
         console.log("Balance of usdi of farmer1 before withdraw: %s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
         console.log("Balance of usdi of farmer2 before withdraw: %s", new BigNumber(await pegToken.balanceOf(farmer2)).toFixed());
         let _amount =  new BigNumber(await pegToken.balanceOf(farmer1)).toFixed();
-        await iVault.burn(_amount, 0, {from: farmer1});
+
+        let _redeemFeeBps = await iVault.redeemFeeBps();
+        await iVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps, {from: farmer1});
         console.log("totalValueInStrategies after farmer1 withdraw: %s",new BigNumber(await iVault.totalValueInStrategies()).toFixed());
         _amount =  new BigNumber(await pegToken.balanceOf(farmer2)).minus(new BigNumber(10).pow(18)).toFixed();
-        await iVault.burn(_amount, 0, {from: farmer2});
+        await iVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps, {from: farmer2});
         const totalValueInStrategies = new BigNumber(await iVault.totalValueInStrategies()).toFixed();
         console.log("totalValueInStrategies after withdraw: %s",totalValueInStrategies);
         console.log("totalAssets after withdraw: %s",new BigNumber(await iVault.totalAssets()).toFixed());
@@ -599,15 +610,4 @@ describe("Vault", function () {
 
         Utils.assertBNEq(totalValueInStrategies, 0);
     });
-
-    // it('Verify：multicall', async function (){
-    //     await iVault.multicall([
-    //         iVault.contract.methods.setMaxTimestampBetweenTwoReported(1000).encodeABI(),
-    //         iVault.contract.methods.setRedeemFeeBps(1000).encodeABI(),
-    //         iVault.contract.methods.setMinimumInvestmentAmount(10000000000000).encodeABI()
-    //     ],{from:governance});
-    //     console.log(new BigNumber(await iVault.maxTimestampBetweenTwoReported()).toFixed());
-    //     console.log(new BigNumber(await iVault.minimumInvestmentAmount()).toFixed());
-    //     Utils.assertBNEq(new BigNumber(await iVault.maxTimestampBetweenTwoReported()).toFixed(), 1000);
-    // });
 });

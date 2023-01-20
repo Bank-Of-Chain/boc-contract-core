@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -92,6 +92,10 @@ contract MockS3CoinStrategy is BaseStrategy {
     {
         _rewardsTokens = new address[](0);
         _claimAmounts = new uint256[](0);
+    }
+
+    function reportWithoutClaim() external {
+        vault.reportWithoutClaim();
     }
 
     function depositTo3rdPool(address[] memory _assets, uint256[] memory _amounts)
