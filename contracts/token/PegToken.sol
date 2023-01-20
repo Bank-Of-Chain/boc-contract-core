@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../access-control/AccessControlMixin.sol";
@@ -77,10 +77,14 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         address _vault,
         address _accessControlProxy
     ) external initializer {
+        //The error message "NNA" represents "The input address need be non-zero address"
+        require(_vault != address(0),"NNA");
+
         mName = _nameArg;
         mSymbol = _symbolArg;
         mDecimals = _decimalsArg;
         vaultAddr = _vault;
+        // '_accessControlProxy' will be verified in function _initAccessControl
         _initAccessControl(_accessControlProxy);
     }
 
@@ -231,6 +235,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
         override
         returns (uint256)
     {
+        // underlyingUnitsPerShare = 
         return (_sharesAmount * IVault(vaultAddr).underlyingUnitsPerShare()) / 1e27;
     }
 

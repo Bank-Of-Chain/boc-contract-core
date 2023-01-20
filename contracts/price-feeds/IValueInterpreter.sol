@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.17;
 
 /// @title IValueInterpreter interface
 interface IValueInterpreter {
@@ -36,6 +36,15 @@ interface IValueInterpreter {
     /// @param _amount The amount of source token
     /// @return usd(1e18)
     function calcCanonicalAssetValueInUsd(
+        address _baseAsset,
+        uint256 _amount
+    ) external view returns (uint256);
+
+    /// @dev Calculate the usd value of a specified number of assets
+    /// @param _baseAsset Source token address
+    /// @param _amount The amount of source token
+    /// @return eth(1e18)
+    function calcCanonicalAssetValueInEth(
         address _baseAsset,
         uint256 _amount
     ) external view returns (uint256);

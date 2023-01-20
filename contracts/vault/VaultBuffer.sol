@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -140,7 +140,7 @@ contract VaultBuffer is
 
     /// Requirement: only keeper can call
     /// @inheritdoc IVaultBuffer
-    function distributeWhenDistributing() external override isKeeper returns (bool) {
+    function distributeWhenDistributing() external override isKeeperOrVaultOrGovOrDelegate returns (bool) {
         assert(!IVault(vault).adjustPositionPeriod());
         bool _result = _distribute();
         if (!_result) {
@@ -152,7 +152,7 @@ contract VaultBuffer is
 
     /// Requirement: only keeper can call
     /// @inheritdoc IVaultBuffer
-    function distributeOnce() external override isKeeper returns (bool) {
+    function distributeOnce() external override isKeeperOrVaultOrGovOrDelegate returns (bool) {
         assert(!IVault(vault).adjustPositionPeriod());
         address[] memory _assets = IVault(vault).getTrackedAssets();
         for (uint256 i = 0; i < _assets.length; i++) {

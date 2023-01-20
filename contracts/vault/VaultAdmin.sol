@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "./VaultStorage.sol";
@@ -26,7 +26,7 @@ contract VaultAdmin is VaultStorage {
     /// @dev Sets adjustPositionPeriod true when adjust position occurs, 
     ///   cannot remove add asset/strategy and cannot mint/burn.
     /// Requirements: only keeper can call
-    function setAdjustPositionPeriod(bool _adjustPositionPeriod) external isKeeper {
+    function setAdjustPositionPeriod(bool _adjustPositionPeriod) external isKeeperOrVaultOrGovOrDelegate {
         adjustPositionPeriod = _adjustPositionPeriod;
         emit SetAdjustPositionPeriod(_adjustPositionPeriod);
     }
@@ -79,6 +79,8 @@ contract VaultAdmin is VaultStorage {
     ///      Setting to the zero address disables this feature.
     /// Requirements: only governance role can call
     function setTreasuryAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
+        //The error message "NNA" represents "The input address need be non-zero address"
+        require(_address != address(0),"NNA");
         treasury = _address;
         emit TreasuryAddressChanged(_address);
     }
@@ -95,13 +97,15 @@ contract VaultAdmin is VaultStorage {
     /// Requirements: only governance role can call
     function setVaultBufferAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
         require(_address != address(0), "vaultBuffer ad is 0");
+        require(vaultBufferAddress == address(0), "VaultBuffer ad has been set");
         vaultBufferAddress = _address;
     }
 
     /// @dev Sets `_address` to `pegTokenAddress`
     /// Requirements: only governance role can call
     function setPegTokenAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
-        require(_address != address(0), "PegTokenAddress ad is 0");
+        require(_address != address(0), "PegToken ad is 0");
+        require(pegTokenAddress == address(0), "PegToken ad has been set");
         pegTokenAddress = _address;
     }
 
@@ -183,7 +187,7 @@ contract VaultAdmin is VaultStorage {
     ///      Vault may invest funds into the strategy,
     ///      and the strategy will invest the funds in the 3rd protocol
     /// Requirements: only vault manager can call
-    function addStrategy(StrategyAdd[] memory _strategyAdds) external isVaultManager {
+    function addStrategies(StrategyAdd[] memory _strategyAdds) external isVaultManager {
         address[] memory _strategies = new address[](_strategyAdds.length);
         for (uint256 i = 0; i < _strategyAdds.length; i++) {
             StrategyAdd memory _strategyAdd = _strategyAdds[i];
@@ -216,7 +220,7 @@ contract VaultAdmin is VaultStorage {
     /// @dev Sets `withdrawQueue` and add `_queues` to the front of the `withdrawQueue`
     /// @param _queues The advance queue
     /// Requirements: only keeper can call
-    function setWithdrawalQueue(address[] memory _queues) external isKeeper {
+    function setWithdrawalQueue(address[] memory _queues) external isKeeperOrVaultOrGovOrDelegate {
         for (uint256 i = 0; i < _queues.length; i++) {
             address _strategy = _queues[i];
             require(strategySet.contains(_strategy), "strategy not exist");
@@ -236,7 +240,7 @@ contract VaultAdmin is VaultStorage {
     /// @dev Remove multi strategies from the withdrawal queue
     /// @param _strategies multi strategies to remove
     /// Requirements: only keeper can call
-    function removeStrategyFromQueue(address[] memory _strategies) external isKeeper {
+    function removeStrategyFromQueue(address[] memory _strategies) external isKeeperOrVaultOrGovOrDelegate {
         for (uint256 i = 0; i < _strategies.length; i++) {
             _removeStrategyFromQueue(_strategies[i]);
         }
@@ -247,7 +251,7 @@ contract VaultAdmin is VaultStorage {
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
     /// @param _strategies The address list of strategies to remove
     /// Requirements: only vault manager can call
-    function removeStrategy(address[] memory _strategies) external isVaultManager {
+    function removeStrategies(address[] memory _strategies) external isVaultManager {
         for (uint256 i = 0; i < _strategies.length; i++) {
             require(strategySet.contains(_strategies[i]), "Strategy not exist");
             _removeStrategy(_strategies[i], false);
@@ -327,7 +331,7 @@ contract VaultAdmin is VaultStorage {
     }
 
     function _organizeWithdrawalQueue() internal {
-        uint256 _offset = 0;
+        uint256 _offset;
         for (uint256 i = 0; i < withdrawQueue.length; i++) {
             address _strategy = withdrawQueue[i];
             if (_strategy == ZERO_ADDRESS) {

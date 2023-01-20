@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.17;
 
 import "../strategy/BaseStrategy.sol";
 import "./Mock3rdPool.sol";
@@ -73,6 +73,10 @@ contract MockStrategy is BaseStrategy {
         uint256 _decimals = mock3rdPool.decimals();
 
         return (_totalSupply * _sharePrice) / 10**_decimals;
+    }
+
+    function reportWithoutClaim() external {
+        vault.reportWithoutClaim();
     }
 
     function getPendingRewards()

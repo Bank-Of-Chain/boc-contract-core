@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -9,12 +9,11 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import "./IPrimitivePriceFeed.sol";
 import "./../../access-control/AccessControlMixin.sol";
-
+import "brain-forge-std/Test.sol";
 /// @title ChainlinkPriceFeed
 /// @notice The price feed is from the chainlink
 /// @author Bank of Chain Protocol Inc
 contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
-
     /// @param _prevEthUsdAggregator The address of the previous eth / usd aggregator contract
     /// @param _prevEthUsdHeartbeat The previous value of `ethUsdHeartbeat` state variable
     /// @param _nextEthUsdAggregator The address of the  new eth / usd aggregator contract
@@ -62,10 +61,10 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
 
     enum RateAsset {
         ETH, // ETH as asset unit
-        USD  // USD as asset unit
+        USD // USD as asset unit
     }
 
-    /// @param aggregator The aggregator address 
+    /// @param aggregator The aggregator address
     /// @param heartbeat The heartbeat value for `aggregator`
     /// @param rateAsset The `RateAsset` enum value for one primitive asset
     struct AggregatorInfo {
@@ -74,7 +73,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         RateAsset rateAsset;
     }
 
-    /// @param aggregator The aggregator address 
+    /// @param aggregator The aggregator address
     /// @param heartbeat The heartbeat value for `aggregator`
     /// @param rateAsset The `RateAsset` enum value for one pegged token
     struct BasePeggedInfo {
@@ -83,9 +82,9 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         RateAsset rateAsset;
     }
 
-    uint256 private constant ETH_UNIT = 10**18;
-    uint256 private constant BASIC_UNIT = 10**18;
-    uint256 private constant USD_UNIT = 10**8;
+    uint256 private constant ETH_UNIT = 10 ** 18;
+    uint256 private constant BASIC_UNIT = 10 ** 18;
+    uint256 private constant USD_UNIT = 10 ** 8;
     uint256 private ethUsdHeartbeat;
     address private ethUsdAggregator;
     mapping(address => AggregatorInfo) private primitiveToAggregatorInfo;
@@ -150,12 +149,10 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     }
 
     /// @inheritdoc IPrimitivePriceFeed
-    function calcValueInUsd(address _baseAsset, uint256 _baseAssetAmount)
-        external
-        view
-        override
-        returns (uint256 _quoteAssetAmount, bool _isValid)
-    {
+    function calcValueInUsd(
+        address _baseAsset,
+        uint256 _baseAssetAmount
+    ) external view override returns (uint256 _quoteAssetAmount, bool _isValid) {
         // Case where _baseAsset == _quoteAsset is handled by ValueInterpreter
 
         int256 baseAssetRate = __getLatestRateData(_baseAsset);
@@ -164,6 +161,27 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         }
 
         (_quoteAssetAmount, _isValid) = __calcConversionAmountInUsd(
+            _baseAsset,
+            _baseAssetAmount,
+            uint256(baseAssetRate)
+        );
+
+        return (_quoteAssetAmount, _isValid);
+    }
+
+    /// @inheritdoc IPrimitivePriceFeed
+    function calcValueInEth(
+        address _baseAsset,
+        uint256 _baseAssetAmount
+    ) external view returns (uint256 _quoteAssetAmount, bool _isValid) {
+        // Case where _baseAsset == _quoteAsset is handled by ValueInterpreter
+
+        int256 baseAssetRate = __getLatestRateData(_baseAsset);
+        if (baseAssetRate <= 0) {
+            return (0, false);
+        }
+
+        (_quoteAssetAmount, _isValid) = __calcConversionAmountInEth(
             _baseAsset,
             _baseAssetAmount,
             uint256(baseAssetRate)
@@ -187,10 +205,10 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     /// @notice Sets the `ethUsdAggregator` variable value
     /// @param _nextEthUsdAggregator The `ethUsdAggregator` value to set
     /// Requirements: only governance or delegate role can call
-    function setEthUsdAggregator(address _nextEthUsdAggregator, uint256 _nextEthUsdHeartbeat)
-        external
-        onlyGovOrDelegate
-    {
+    function setEthUsdAggregator(
+        address _nextEthUsdAggregator,
+        uint256 _nextEthUsdHeartbeat
+    ) external onlyGovOrDelegate {
         __setEthUsdAggregator(_nextEthUsdAggregator, _nextEthUsdHeartbeat);
     }
 
@@ -308,6 +326,54 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         );
     }
 
+    /// @dev Helper to convert an amount from a _baseAsset to a _ethAsset
+    function __calcConversionAmountInEth(
+        address _baseAsset,
+        uint256 _baseAssetAmount,
+        uint256 _baseAssetRate
+    ) private view returns (uint256 _ethAssetAmountbool, bool _isValid) {
+        RateAsset _baseAssetRateAsset = getRateAssetForPrimitive(_baseAsset);
+
+        uint256 _baseAssetUnit = getUnitForPrimitive(_baseAsset);
+        uint256 _quoteAssetUnit = BASIC_UNIT;
+        uint256 _quoteAssetRate = ETH_UNIT;
+
+        // If base asset rates are in ETH
+        if (_baseAssetRateAsset == RateAsset.ETH) {
+            return (
+                __calcConversionAmountSameRateAsset(
+                    _baseAssetAmount,
+                    _baseAssetUnit,
+                    _baseAssetRate,
+                    _quoteAssetUnit,
+                    _quoteAssetRate
+                ),
+                true
+            );
+        }
+
+        (, int256 _ethPerUsdRate, , uint256 _ethPerUsdRateLastUpdatedAt, ) = AggregatorV3Interface(
+            ethUsdAggregator
+        ).latestRoundData();
+        if (_ethPerUsdRate <= 0) {
+            return (0, false);
+        }
+        __validateRateIsNotStale(ethUsdAggregator, _ethPerUsdRateLastUpdatedAt, ethUsdHeartbeat);
+
+        // If _baseAsset's rate is in USD
+        return (
+            __calcConversionAmountUsdRateAssetToEthRateAsset(
+                _baseAssetAmount,
+                _baseAssetUnit,
+                _baseAssetRate,
+                _quoteAssetUnit,
+                _quoteAssetRate,
+                uint256(_ethPerUsdRate)
+            ),
+            true
+        );
+    }
+
     /// @dev Helper to convert amounts where the base asset has an ETH rate and the quote asset has a USD rate
     function __calcConversionAmountEthRateAssetToUsdRateAsset(
         uint256 _baseAssetAmount,
@@ -404,10 +470,10 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
 
     /// @notice Adds a list of `_peggedTokens` and  `_rateAssets` into `basePeggedInfos` state
     /// Requirements: only governance or delegate role can call
-    function addBasePeggedInfos(address[] calldata _peggedTokens, RateAsset[] calldata _rateAssets)
-        external
-        onlyGovOrDelegate
-    {
+    function addBasePeggedInfos(
+        address[] calldata _peggedTokens,
+        RateAsset[] calldata _rateAssets
+    ) external onlyGovOrDelegate {
         require(_peggedTokens.length > 0, "addBasePeggedInfos: _peggedTokens cannot be empty");
 
         __addBasePeggedInfos(_peggedTokens, _rateAssets);
@@ -495,12 +561,15 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         }
     }
 
+    
+
     /// @dev Helper to validate whether the rate is stale or not
     function __validateRateIsNotStale(
         address _aggregator,
         uint256 _latestUpdatedAt,
         uint256 _heartbeat
     ) private view {
+        console2.log('__validateRateIsNotStale _latestUpdatedAt:%s,block.timestamp:%s,_heartbeat:%s',_latestUpdatedAt,block.timestamp,_heartbeat);
         require(
             _latestUpdatedAt >= block.timestamp - _heartbeat,
             string(
@@ -513,16 +582,17 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     }
 
     /// @dev Helper to add base Pegged token to the feed
-    function __addBasePeggedInfos(address[] memory _peggedTokens, RateAsset[] memory _rateAssets)
-        private
-    {
+    function __addBasePeggedInfos(
+        address[] memory _peggedTokens,
+        RateAsset[] memory _rateAssets
+    ) private {
         require(
             _peggedTokens.length == _rateAssets.length,
             "__addBasePeggedInfos: Unequal _peggedTokens and _rateAssets array lengths"
         );
 
         for (uint256 i = 0; i < _peggedTokens.length; i++) {
-            uint256 _tokenUnit = 10**uint256(ERC20(_peggedTokens[i]).decimals());
+            uint256 _tokenUnit = 10 ** uint256(ERC20(_peggedTokens[i]).decimals());
 
             basePeggedInfos[_peggedTokens[i]] = BasePeggedInfo({
                 isBasePegged: true,
@@ -569,7 +639,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
             });
 
             // Store the amount that makes up 1 unit given the asset's decimals
-            uint256 _unit = 10**uint256(ERC20(_primitives[i]).decimals());
+            uint256 _unit = 10 ** uint256(ERC20(_primitives[i]).decimals());
             primitiveToUnit[_primitives[i]] = _unit;
 
             emit PrimitiveAdded(_primitives[i], _aggregators[i], _heartbeats[i], _rateAssets[i], _unit);
@@ -590,11 +660,9 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     /// @notice Gets the aggregatorInfo variable value for a primitive
     /// @param _primitive The primitive asset for which to get the aggregatorInfo value
     /// @return _aggregatorInfo The aggregatorInfo value
-    function getAggregatorInfoForPrimitive(address _primitive)
-        external
-        view
-        returns (AggregatorInfo memory _aggregatorInfo)
-    {
+    function getAggregatorInfoForPrimitive(
+        address _primitive
+    ) external view returns (AggregatorInfo memory _aggregatorInfo) {
         return primitiveToAggregatorInfo[_primitive];
     }
 
@@ -605,7 +673,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     }
 
     /// @notice Gets the rateAsset variable value for a primitive
-    /// @param _primitive The primitive asset for which to get the value of the field `rateAsset` 
+    /// @param _primitive The primitive asset for which to get the value of the field `rateAsset`
     /// @return _rateAsset The rateAsset variable value
     /// @dev This isn't strictly necessary as WETH_TOKEN will be undefined and thus
     /// the RateAsset will be the 0-position of the enum (i.e. ETH), but it makes the
@@ -619,7 +687,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     }
 
     /// @notice Gets the unit variable value for a primitive
-    /// @param _primitive The primitive asset for which to get the value of the field `tokenUnit` 
+    /// @param _primitive The primitive asset for which to get the value of the field `tokenUnit`
     /// @return _unit The unit variable value
     function getUnitForPrimitive(address _primitive) public view returns (uint256 _unit) {
         if (basePeggedInfos[_primitive].isBasePegged) {

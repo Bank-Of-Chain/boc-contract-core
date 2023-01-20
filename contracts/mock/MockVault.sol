@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -12,6 +12,22 @@ contract MockVault is AccessControlMixin {
 
     constructor(address _accessControlProxy) {
         _initAccessControl(_accessControlProxy);
+    }
+
+    function underlyingUnitsPerShare() external view returns(uint256) {
+        return 10 ** 18;
+    }
+
+    function exchangeManager() external view returns(address) {
+        return address(0);
+    }
+    
+    function valueInterpreter() external view returns(address) {
+        return address(0);
+    }
+
+    function checkActiveStrategy(address _strategy) external returns (bool) {
+        return true;
     }
 
     function burn(uint256 _amount) external {}
@@ -48,4 +64,8 @@ contract MockVault is AccessControlMixin {
     function report(uint256 _strategyAsset) external {}
 
     function rebase() external {}
+
+    receive() external payable {}
+
+    fallback() external payable {}
 }
