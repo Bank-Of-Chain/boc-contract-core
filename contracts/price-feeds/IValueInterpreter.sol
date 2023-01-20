@@ -45,4 +45,9 @@ interface IValueInterpreter {
     /// @param _baseAsset The ssset token address
     /// @return usd(1e18)
     function price(address _baseAsset) external view returns (uint256);
+
+    /// @dev Calculate the usd value of baseUnit volume assets
+    /// @param _baseAsset The ssset token address
+    /// @return eth(1e18)
+    function priceInEth(address _baseAsset) external view returns (uint256);
 }
