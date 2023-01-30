@@ -7,18 +7,12 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import "../strategy/BaseStrategy.sol";
 
-contract MockS3CoinStrategy is BaseStrategy {
+contract Mock3CoinStrategy is BaseStrategy {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    function initialize(address _vault, address _harvester) public initializer {
-        address[] memory _wants = new address[](3);
-        // USDT
-        _wants[0] = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
-        // USDC
-        _wants[1] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-        // DAI
-        _wants[2] = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-        super._initialize(_vault, _harvester, "MockS3CoinStrategy", 23, _wants);
+    function initialize(address _vault, address _harvester, address[] memory _wants) public initializer {
+        require(_wants.length == 3,"wants length must be 3");
+        super._initialize(_vault, _harvester, "Mock3CoinStrategy", 23, _wants);
     }
 
     function getVersion() external pure virtual override returns (string memory) {
@@ -35,19 +29,9 @@ contract MockS3CoinStrategy is BaseStrategy {
         _assets = wants;
 
         _ratios = new uint256[](3);
-        _ratios[0] = 10**IERC20MetadataUpgradeable(wants[0]).decimals() * 1;
-        _ratios[1] = 10**IERC20MetadataUpgradeable(wants[1]).decimals() * 2;
-        _ratios[2] = 10**IERC20MetadataUpgradeable(wants[2]).decimals() * 4;
-    }
-
-    function getOutputsInfo() external view virtual override returns (OutputInfo[] memory _outputsInfo) {
-        _outputsInfo = new OutputInfo[](1);
-        OutputInfo memory _info = _outputsInfo[0];
-        _info.outputCode = 0;
-        _info.outputTokens = new address[](3);
-        _info.outputTokens[0] = wants[0];
-        _info.outputTokens[1] = wants[1];
-        _info.outputTokens[2] = wants[2];
+        _ratios[0] = 10**_getDecimals(wants[0]) * 1;
+        _ratios[1] = 10**_getDecimals(wants[1]) * 2;
+        _ratios[2] = 10**_getDecimals(wants[2]) * 4;
     }
 
     /// @notice Returns the position details of the strategy.
@@ -59,17 +43,18 @@ contract MockS3CoinStrategy is BaseStrategy {
         returns (
             address[] memory _tokens,
             uint256[] memory _amounts,
-            bool isUsd,
-            uint256 usdValue
+            bool isUsdOrEth,
+            uint256 usdOrEthValue
         )
     {
         _tokens = new address[](wants.length);
         _amounts = new uint256[](_tokens.length);
         for (uint256 i = 0; i < _tokens.length; i++) {
             _tokens[i] = wants[i];
-            _amounts[i] = IERC20Upgradeable(_tokens[i]).balanceOf(address(this));
+            _amounts[i] = _balanceOfToken(_tokens[i], address(this));
         }
     }
+
 
     function get3rdPoolAssets() external view virtual override returns (uint256) {
         return type(uint256).max;
@@ -103,12 +88,6 @@ contract MockS3CoinStrategy is BaseStrategy {
         virtual
         override
     {
-        for (uint256 i = 0; i < _assets.length; i++) {
-            uint256 _amount = _amounts[i] / 1000;
-            if (_amount > 0) {
-                IERC20Upgradeable(_assets[i]).safeTransfer(harvester, _amount);
-            }
-        }
     }
 
     function withdrawFrom3rdPool(
@@ -116,4 +95,50 @@ contract MockS3CoinStrategy is BaseStrategy {
         uint256 _totalShares,
         uint256 _outputCode
     ) internal virtual override {}
+
+    /// @notice Transfer `_asset` token from this contract to target address.
+    /// @param _target The target address to receive token
+    /// @param _asset the  address of the token to transfer
+    /// @param _amount the amount of the token to transfer
+    function transferToken(
+        address _target,
+        address _asset,
+        uint256 _amount
+    ) external isVaultManager {
+        if (_asset == NativeToken.NATIVE_TOKEN) {
+            payable(_target).transfer(_amount);
+        }else{
+            IERC20Upgradeable(_asset).safeTransfer(address(_target), _amount);
+        }
+    }
+
+    /// @notice Fetch the `decimals()` from an ERC20 token
+    /// @dev Grabs the `decimals()` from a contract and fails if
+    ///     the decimal value does not live within a certain range
+    /// @param _token Address of the ERC20 token
+    /// @return uint256 Decimals of the ERC20 token
+    function _getDecimals(address _token) private view returns (uint256) {
+        uint256 _decimals;
+        if (_token == NativeToken.NATIVE_TOKEN) {
+            _decimals = 18;
+        } else {
+            _decimals = IERC20MetadataUpgradeable(_token).decimals();
+        }
+        require(_decimals > 0, "Token must have sufficient decimal places");
+        return _decimals;
+    }
+
+    function _balanceOfToken(address _trackedAsset, address _owner)
+    internal
+    view
+    returns (uint256)
+    {
+        uint256 _balance;
+        if (_trackedAsset == NativeToken.NATIVE_TOKEN) {
+            _balance = _owner.balance;
+        } else {
+            _balance = IERC20Upgradeable(_trackedAsset).balanceOf(_owner);
+        }
+        return _balance;
+    }
 }

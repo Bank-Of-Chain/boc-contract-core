@@ -42,7 +42,7 @@ const IExchangeAdapter = hre.artifacts.require('IExchangeAdapter');
 const VaultAdmin = hre.artifacts.require('VaultAdmin');
 const Harvester = hre.artifacts.require('Harvester');
 const PegToken = hre.artifacts.require('PegToken');
-const MockS3CoinStrategy = hre.artifacts.require('MockS3CoinStrategy');
+const Mock3CoinStrategy = hre.artifacts.require('Mock3CoinStrategy');
 
 
 describe("Vault", function () {
@@ -154,14 +154,45 @@ describe("Vault", function () {
             accessControlProxy.address
         );
 
-        console.log('deploy AggregatedDerivativePriceFeed');
-        let derivatives = new Array();
-        const priceFeeds = new Array();
-        const aggregatedDerivativePriceFeed = await AggregatedDerivativePriceFeed.new(derivatives, priceFeeds, accessControlProxy.address);
+        const primitives2 = new Array();
+        primitives2.push(MFC.rocketPoolETH_ADDRESS);
+        primitives2.push(MFC.sETH2_ADDRESS);
+        const pools = new Array();
+        pools.push(ROCKET_ETH_WETH_POOL_ADDRESS);
+        pools.push(SETH2_WETH_POOL_ADDRESS);
+        const durations = new Array();
+        durations.push(ROCKET_ETH_DURATION);
+        durations.push(SETH2_DURATION);
+        const uniswapV3PriceFeed = await UniswapV3PriceFeed.new(
+            accessControlProxy.address,
+            MFC.CHAINLINK.ETH_USD_AGGREGATOR,
+            primitives2,
+            pools,
+            durations
+        );
 
+        const customWstEthPriceFeed = new CustomWstEthPriceFeed.new();
+
+        const customEthPriceFeed = new CustomEthPriceFeed.new();
+
+        const customFakePriceFeed = new CustomFakePriceFeed.new();
+
+        const baseAssets = new Array();
+        baseAssets.push(MFC.wstETH_ADDRESS);
+        baseAssets.push(MFC.ETH_ADDRESS);
+        baseAssets.push(MFC.sETH_ADDRESS);
+        address[] memory _customPriceFeeds = new address[](3);
+        _customPriceFeeds[0] = address(customWstEthPriceFeed);
+        _customPriceFeeds[1] = address(customEthPriceFeed);
+        _customPriceFeeds[2] = address(customFakePriceFeed);
+        customPriceFeedAggregator = new CustomPriceFeedAggregator(
+            _baseAssets,
+            _customPriceFeeds,
+            address(accessControlProxy)
+        );
 
         console.log('deploy ValueInterpreter');
-        valueInterpreter = await ValueInterpreter.new(chainlinkPriceFeed.address, aggregatedDerivativePriceFeed.address, accessControlProxy.address);
+        valueInterpreter = await ValueInterpreter.new(chainlinkPriceFeed.address, uniswapV3PriceFeed.address, accessControlProxy.address);
 
         console.log('deploy TestAdapter');
         testAdapter = await TestAdapter.new(valueInterpreter.address);
@@ -191,7 +222,7 @@ describe("Vault", function () {
         treasury = await Treasury.new();
         await treasury.initialize(accessControlProxy.address);
 
-        await vault.initialize(accessControlProxy.address, treasury.address, exchangeAggregator.address, valueInterpreter.address);
+        await vault.initialize(accessControlProxy.address, treasury.address, exchangeAggregator.address, valueInterpreter.address, 0);
         vaultAdmin = await VaultAdmin.new();
         await vault.setAdminImpl(vaultAdmin.address, {from: governance});
 
@@ -207,8 +238,8 @@ describe("Vault", function () {
         console.log("DAI_CALC(2):", new BigNumber(await valueInterpreter.calcCanonicalAssetValueInUsd(MFC.DAI_ADDRESS, new BigNumber(2))).toFixed());
         console.log('mockS3CoinStrategy USDi');
         // Strategy
-        mockS3CoinStrategy = await MockS3CoinStrategy.new();
-        await mockS3CoinStrategy.initialize(vault.address, harvester.address);
+        mockS3CoinStrategy = await Mock3CoinStrategy.new();
+        await mock3CoinStrategy.initialize(vault.address, harvester.address);
 
         iVault = await IVault.at(vault.address);
         // await iVault.setUSDiAddress(usdi.address);
@@ -244,7 +275,7 @@ describe("Vault", function () {
     it('Verify: Vault can add and remove all policies normally', async function () {
         let addToVaultStrategies = new Array();
         addToVaultStrategies.push({
-            strategy: mockS3CoinStrategy.address,
+            strategy: mock3CoinStrategy.address,
             profitLimitRatio: 100,
             lossLimitRatio: 100
         });
@@ -260,7 +291,7 @@ describe("Vault", function () {
         await iVault.addStrategies(addToVaultStrategies, {from: governance});
         strategyAddresses = await iVault.getStrategies();
         console.log('Number of policies before adding=', strategyAddresses.length);
-        await iVault.forceRemoveStrategy(mockS3CoinStrategy.address, {from: governance});
+        await iVault.forceRemoveStrategy(mock3CoinStrategy.address, {from: governance});
         length = (await iVault.getStrategies()).length;
         console.log('Number of policies after removal=', length);
         Utils.assertBNEq(length, 0);
@@ -368,11 +399,11 @@ describe("Vault", function () {
         let addToVaultStrategies = new Array();
         let withdrawQueque = new Array();
         addToVaultStrategies.push({
-            strategy: mockS3CoinStrategy.address,
+            strategy: mock3CoinStrategy.address,
             profitLimitRatio: 100,
             lossLimitRatio: 100
         });
-        withdrawQueque.push(mockS3CoinStrategy.address);
+        withdrawQueque.push(mock3CoinStrategy.address);
         await iVault.addStrategies(addToVaultStrategies, {from: governance});
         await iVault.setWithdrawalQueue(withdrawQueque, {from: governance});
 
@@ -384,7 +415,7 @@ describe("Vault", function () {
         let tokens = [MFC.USDT_ADDRESS, MFC.USDC_ADDRESS, MFC.DAI_ADDRESS];
         let amounts = [depositAmount.toFixed(), usdcDepositAmount.toFixed(), daiDepositAmount.toFixed()];
 
-        await iVault.lend(mockS3CoinStrategy.address, tokens, amounts);
+        await iVault.lend(mock3CoinStrategy.address, tokens, amounts);
 
         console.log("totalAssets after lend:%s,totalValue：%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
         console.log("totalDebt after lend:%s,totalValueInStrategies：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
@@ -436,7 +467,7 @@ describe("Vault", function () {
 
         console.log("valueOfTrackedTokensIncludeVaultBuffer after withdraw:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
         const usdcIEREC20Mint = await IEREC20Mint.at(MFC.USDC_ADDRESS);
-        await usdcIEREC20Mint.transfer(mockS3CoinStrategy.address, new BigNumber(await usdcToken.balanceOf(farmer1)).div(1000).toFixed(), {
+        await usdcIEREC20Mint.transfer(mock3CoinStrategy.address, new BigNumber(await usdcToken.balanceOf(farmer1)).div(1000).toFixed(), {
             from: farmer1,
         });
         console.log("valueOfTrackedTokensIncludeVaultBuffer after transfer usdc to vault:%s,totalAssetsIncludeVaultBuffer：%s", new BigNumber(await iVault.valueOfTrackedTokensIncludeVaultBuffer()).toFixed(), new BigNumber(await iVault.totalAssetsIncludeVaultBuffer()).toFixed());
@@ -512,7 +543,7 @@ describe("Vault", function () {
         console.log("(amount,totalDebt)=(%s,%s)", new BigNumber(await iVault.totalDebt()).div(5).toFixed(),new BigNumber(await iVault.totalDebt()).toFixed());
         let beforeUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
         console.log("redeem amount: %s",new BigNumber(await iVault.totalDebt()).div(5).toFixed())
-        tx =  await iVault.redeem(mockS3CoinStrategy.address, new BigNumber(await iVault.totalDebt()).div(5).toFixed(), 0);
+        tx =  await iVault.redeem(mock3CoinStrategy.address, new BigNumber(await iVault.totalDebt()).div(5).toFixed(), 0);
         gasUsed = tx.receipt.gasUsed;
         console.log('redeem gasUsed: %d', gasUsed);
         let afterUsdt = new BigNumber(await underlying.balanceOf(iVault.address)).toFixed();
@@ -533,7 +564,7 @@ describe("Vault", function () {
         let tokens = [MFC.USDT_ADDRESS, MFC.USDC_ADDRESS, MFC.DAI_ADDRESS];
         let amounts = [new BigNumber(await underlying.balanceOf(iVault.address)).toFixed(), new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed(), new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed()];
 
-        await iVault.lend(mockS3CoinStrategy.address, tokens, amounts);
+        await iVault.lend(mock3CoinStrategy.address, tokens, amounts);
 
         console.log("totalAssets after lend:%s,totalValue：%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
         console.log("totalDebt after lend:%s,totalValueInStrategies：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
@@ -562,24 +593,24 @@ describe("Vault", function () {
 
     it('Verify：report by strategy and keeper', async function (){
        const usdcIEREC20Mint = await IEREC20Mint.at(MFC.USDC_ADDRESS);
-       let estimatedTotalAssets = await mockS3CoinStrategy.estimatedTotalAssets();
-       let strategyParams =  await iVault.strategies(mockS3CoinStrategy.address);
+       let estimatedTotalAssets = await mock3CoinStrategy.estimatedTotalAssets();
+       let strategyParams =  await iVault.strategies(mock3CoinStrategy.address);
        const firstTotalDebt = strategyParams.totalDebt;
        console.log("before reportWithoutClaim",estimatedTotalAssets.toString(),strategyParams.totalDebt.toString());
-        await usdcIEREC20Mint.transfer(mockS3CoinStrategy.address, new BigNumber(1000).toFixed(), {
+        await usdcIEREC20Mint.transfer(mock3CoinStrategy.address, new BigNumber(1000).toFixed(), {
             from: farmer1,
         });
-       await mockS3CoinStrategy.reportWithoutClaim();
-       estimatedTotalAssets = await mockS3CoinStrategy.estimatedTotalAssets();
-       strategyParams =  await iVault.strategies(mockS3CoinStrategy.address);
+       await mock3CoinStrategy.reportWithoutClaim();
+       estimatedTotalAssets = await mock3CoinStrategy.estimatedTotalAssets();
+       strategyParams =  await iVault.strategies(mock3CoinStrategy.address);
        const secondTotalDebt = strategyParams.totalDebt;
        console.log("after reportWithoutClaim",estimatedTotalAssets.toString(),strategyParams.totalDebt.toString());
-       await usdcIEREC20Mint.transfer(mockS3CoinStrategy.address, new BigNumber(1000).toFixed(), {
+       await usdcIEREC20Mint.transfer(mock3CoinStrategy.address, new BigNumber(1000).toFixed(), {
             from: farmer1,
         });
-        await iVault.reportByKeeper([mockS3CoinStrategy.address]);
-        estimatedTotalAssets = await mockS3CoinStrategy.estimatedTotalAssets();
-        strategyParams =  await iVault.strategies(mockS3CoinStrategy.address);
+        await iVault.reportByKeeper([mock3CoinStrategy.address]);
+        estimatedTotalAssets = await mock3CoinStrategy.estimatedTotalAssets();
+        strategyParams =  await iVault.strategies(mock3CoinStrategy.address);
         const thirdTotalDebt = strategyParams.totalDebt;
         console.log("after reportByKeeper",estimatedTotalAssets.toString(),strategyParams.totalDebt.toString());
         Utils.assertBNGt(secondTotalDebt, firstTotalDebt);
@@ -602,12 +633,15 @@ describe("Vault", function () {
         console.log("totalValueInStrategies after farmer1 withdraw: %s",new BigNumber(await iVault.totalValueInStrategies()).toFixed());
         _amount =  new BigNumber(await pegToken.balanceOf(farmer2)).minus(new BigNumber(10).pow(18)).toFixed();
         await iVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps, {from: farmer2});
-        const totalValueInStrategies = new BigNumber(await iVault.totalValueInStrategies()).toFixed();
+        let totalValueInStrategies = new BigNumber(await iVault.totalValueInStrategies()).toFixed();
         console.log("totalValueInStrategies after withdraw: %s",totalValueInStrategies);
         console.log("totalAssets after withdraw: %s",new BigNumber(await iVault.totalAssets()).toFixed());
         console.log("Balance of usdi of farmer1 after withdraw: %s", new BigNumber(await pegToken.balanceOf(farmer1)).toFixed());
         console.log("Balance of usdi of farmer2 after withdraw: %s", new BigNumber(await pegToken.balanceOf(farmer2)).toFixed());
 
+        Utils.assertBNGt(totalValueInStrategies, 0);
+        await iVault.burn(new BigNumber(await pegToken.balanceOf(farmer2)), 0, _redeemFeeBps, _trusteeFeeBps, {from: farmer2});;
+        totalValueInStrategies = new BigNumber(await iVault.totalValueInStrategies()).toFixed();
         Utils.assertBNEq(totalValueInStrategies, 0);
     });
 });

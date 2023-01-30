@@ -1,0 +1,1034 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.17;
+
+import "brain-forge-std/Test.sol";
+
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "../../access-control/AccessControlProxy.sol";
+import "../../price-feeds/ValueInterpreter.sol";
+import "../../price-feeds/primitives/ChainlinkPriceFeed.sol";
+import "../../price-feeds/primitives/UniswapV3PriceFeed.sol";
+import "../../price-feeds/custom/CustomWstEthPriceFeed.sol";
+import "../../price-feeds/custom/CustomEthPriceFeed.sol";
+import "../../price-feeds/custom/CustomFakePriceFeed.sol";
+import "../../price-feeds/custom/CustomPriceFeedAggregator.sol";
+
+import "../../treasury/Treasury.sol";
+import "../../vault/Vault.sol";
+import "../../vault/IVault.sol";
+import "../../vault/VaultAdmin.sol";
+import "../../vault/VaultBuffer.sol";
+import "../../exchanges/ExchangeAggregator.sol";
+import "../../exchanges/adapters/TestAdapter.sol";
+import "../../token/PegToken.sol";
+import "../../mock/Mock3CoinStrategy.sol";
+import "../../harvester/Harvester.sol";
+import "../../library/NativeToken.sol";
+import "../../mock/IEREC20Mint.sol";
+
+import "../Constants.sol";
+
+contract VaultTest is Test {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+
+    address constant ETH_USD_AGGREGATOR = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address constant STETH_ADDRESS = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+    address constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant STETH_AGGREAGTOR_ADDRESS = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
+    address constant ROCKET_ETH_ADDRESS = 0xae78736Cd615f374D3085123A210448E74Fc6393;
+    address constant ROCKET_ETH_WETH_POOL_ADDRESS = 0xa4e0faA58465A2D369aa21B3e42d43374c6F9613;
+
+    address constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address constant USDC_AGGREAGTOR_ADDRESS = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+    address constant USDT_ADDRESS = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    address constant USDT_AGGREAGTOR_ADDRESS = 0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
+    address constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address constant DAI_AGGREAGTOR_ADDRESS = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
+    address constant WSTETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
+    address constant SETH2_ADDRESS = 0xFe2e637202056d30016725477c5da089Ab0A043A;
+    address constant SETH2_WETH_POOL_ADDRESS = 0x7379e81228514a1D2a6Cf7559203998E20598346;
+
+    address constant NATIVE_TOKEN_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address constant FAKE_TOKEN_ADDRESS = 0x3F9F6ca28f711B82421A45d3e8a3B73Bd295922B;
+    // address constant SETH2_WETH_POOL_ADDRESS = 0xDADcF64BAbfb566785f1e9DFC4889C5e593DDdC7;
+
+    uint256 constant HOURS_OF_24_HEARTBEAT = 24 hours;
+    uint256 constant HOURS_OF_1_HEARTBEAT = 1 hours;
+    uint32 constant ROCKET_ETH_DURATION = 1 hours;
+    uint32 constant SETH2_DURATION = 1 hours;
+    ChainlinkPriceFeed.RateAsset constant STETH_RATE_ASSET = ChainlinkPriceFeed.RateAsset.ETH; //eth
+
+    AccessControlProxy accessControlProxy;
+    ValueInterpreter valueInterpreter;
+    ChainlinkPriceFeed chainlinkPriceFeed;
+    UniswapV3PriceFeed uniswapV3PriceFeed;
+    CustomPriceFeedAggregator customPriceFeedAggregator;
+    CustomWstEthPriceFeed customWstEthPriceFeed;
+    CustomEthPriceFeed customEthPriceFeed;
+    CustomFakePriceFeed customFakePriceFeed;
+    Treasury treasury;
+    TestAdapter testAdapter;
+    ExchangeAggregator exchangeAggregator;
+    Vault vault;
+    Vault ethVault;
+    IVault iETHVault;
+    IVault iVault;
+    VaultAdmin vaultAdmin;
+    VaultAdmin ethVaultAdmin;
+    VaultBuffer vaultBuffer;
+    VaultBuffer ethVaultBuffer;
+    PegToken pegToken;
+    PegToken ethPegToken;
+    Harvester harvester;
+    Harvester ethHarvester;
+    Mock3CoinStrategy mock3CoinStrategy;
+    Mock3CoinStrategy ethMock3CoinStrategy;
+
+    uint256[] public arr2 = [1, 2, 3];
+
+    function setUp() public {
+        console2.log("========VaultTest========");
+
+        accessControlProxy = new AccessControlProxy();
+        accessControlProxy.initialize(GOVERNANOR, DEGEGATOR, VAULT_MANAGER, KEEPER);
+
+        vm.startPrank(GOVERNANOR);
+        address[] memory _primitives = new address[](4);
+        _primitives[0] = STETH_ADDRESS;
+        _primitives[1] = USDC_ADDRESS;
+        _primitives[2] = USDT_ADDRESS;
+        _primitives[3] = DAI_ADDRESS;
+        address[] memory _aggregators = new address[](4);
+        _aggregators[0] = STETH_AGGREAGTOR_ADDRESS;
+        _aggregators[1] = USDC_AGGREAGTOR_ADDRESS;
+        _aggregators[2] = USDT_AGGREAGTOR_ADDRESS;
+        _aggregators[3] = DAI_AGGREAGTOR_ADDRESS;
+        uint256[] memory _heartbeats = new uint256[](4);
+        _heartbeats[0] = HOURS_OF_24_HEARTBEAT;
+        _heartbeats[1] = HOURS_OF_24_HEARTBEAT;
+        _heartbeats[2] = HOURS_OF_24_HEARTBEAT;
+        _heartbeats[3] = HOURS_OF_1_HEARTBEAT;
+        ChainlinkPriceFeed.RateAsset[] memory _rateAssets = new ChainlinkPriceFeed.RateAsset[](4);
+        _rateAssets[0] = STETH_RATE_ASSET;
+        _rateAssets[1] = ChainlinkPriceFeed.RateAsset.USD;
+        _rateAssets[2] = ChainlinkPriceFeed.RateAsset.USD;
+        _rateAssets[3] = ChainlinkPriceFeed.RateAsset.USD;
+        address[] memory _basePeggeds = new address[](1);
+        _basePeggeds[0] = WETH_ADDRESS;
+        ChainlinkPriceFeed.RateAsset[] memory _peggedRateAssets = new ChainlinkPriceFeed.RateAsset[](1);
+        _peggedRateAssets[0] = STETH_RATE_ASSET;
+
+        chainlinkPriceFeed = new ChainlinkPriceFeed(
+            ETH_USD_AGGREGATOR,
+            HOURS_OF_24_HEARTBEAT,
+            _primitives,
+            _aggregators,
+            _heartbeats,
+            _rateAssets,
+            _basePeggeds,
+            _peggedRateAssets,
+            address(accessControlProxy)
+        );
+
+        vm.label(address(chainlinkPriceFeed), "chainlinkPriceFeed");
+
+        address[] memory _primitives2 = new address[](2);
+        _primitives2[0] = ROCKET_ETH_ADDRESS;
+        _primitives2[1] = SETH2_ADDRESS;
+        address[] memory _pools = new address[](2);
+        _pools[0] = ROCKET_ETH_WETH_POOL_ADDRESS;
+        _pools[1] = SETH2_WETH_POOL_ADDRESS;
+        uint32[] memory _durations = new uint32[](2);
+        _durations[0] = ROCKET_ETH_DURATION;
+        _durations[1] = SETH2_DURATION;
+        uniswapV3PriceFeed = new UniswapV3PriceFeed(
+            address(accessControlProxy),
+            ETH_USD_AGGREGATOR,
+            _primitives2,
+            _pools,
+            _durations
+        );
+        vm.label(address(uniswapV3PriceFeed), "uniswapV3PriceFeed");
+
+        customWstEthPriceFeed = new CustomWstEthPriceFeed();
+        vm.label(address(customWstEthPriceFeed), "customWstEthPriceFeed");
+        customEthPriceFeed = new CustomEthPriceFeed();
+        vm.label(address(customEthPriceFeed), "customEthPriceFeed");
+        customFakePriceFeed = new CustomFakePriceFeed();
+        vm.label(address(customFakePriceFeed), "customFakePriceFeed");
+
+        address[] memory _baseAssets = new address[](3);
+        _baseAssets[0] = WSTETH;
+        _baseAssets[1] = NATIVE_TOKEN_ADDRESS;
+        _baseAssets[2] = FAKE_TOKEN_ADDRESS;
+        address[] memory _customPriceFeeds = new address[](3);
+        _customPriceFeeds[0] = address(customWstEthPriceFeed);
+        _customPriceFeeds[1] = address(customEthPriceFeed);
+        _customPriceFeeds[2] = address(customFakePriceFeed);
+        customPriceFeedAggregator = new CustomPriceFeedAggregator(
+            _baseAssets,
+            _customPriceFeeds,
+            address(accessControlProxy)
+        );
+
+        valueInterpreter = new ValueInterpreter(
+            address(chainlinkPriceFeed),
+            address(uniswapV3PriceFeed),
+            address(customPriceFeedAggregator),
+            address(accessControlProxy)
+        );
+        vm.label(address(valueInterpreter), "valueInterpreter");
+
+        treasury = new Treasury();
+        treasury.initialize(address(accessControlProxy));
+        vm.label(address(treasury), "treasury");
+
+        testAdapter = new TestAdapter(address(accessControlProxy));
+        vm.label(address(testAdapter), "testAdapter");
+        address[] memory _exchangeAdapters = new address[](1);
+        _exchangeAdapters[0] = address(testAdapter);
+
+        exchangeAggregator = new ExchangeAggregator(_exchangeAdapters, address(accessControlProxy));
+        vm.label(address(exchangeAggregator), "exchangeAggregator");
+
+        // init USDi Vault
+        vaultAdmin = new VaultAdmin();
+        vm.label(address(vaultAdmin), "vaultAdmin");
+        vault = new Vault();
+        vault.initialize(
+            address(accessControlProxy),
+            address(treasury),
+            address(exchangeAggregator),
+            address(valueInterpreter),
+            uint256(0)
+        );
+
+        vault.setAdminImpl(address(vaultAdmin));
+
+        vm.label(address(vault), "vault");
+
+        pegToken = new PegToken();
+        pegToken.initialize(
+            "USD Peg Token",
+            "USDi",
+            uint8(18),
+            address(vault),
+            address(accessControlProxy)
+        );
+        vm.label(address(pegToken), "pegToken");
+
+        vaultBuffer = new VaultBuffer();
+        vaultBuffer.initialize(
+            "USD Peg Token Ticket",
+            "tUSDi",
+            address(vault),
+            address(pegToken),
+            address(accessControlProxy)
+        );
+        vm.label(address(vaultBuffer), "vaultBuffer");
+
+        iVault = IVault(address(vault));
+
+        iVault.setPegTokenAddress(address(pegToken));
+        iVault.setVaultBufferAddress(address(vaultBuffer));
+
+        harvester = new Harvester();
+        harvester.initialize(address(accessControlProxy), address(vault), USDC_ADDRESS, address(vault));
+        vm.label(address(harvester), "harvester");
+
+        mock3CoinStrategy = new Mock3CoinStrategy();
+        address[] memory _wants = new address[](3);
+        // USDT
+        _wants[0] = USDT_ADDRESS;
+        // USDC
+        _wants[1] = USDC_ADDRESS;
+        // DAI
+        _wants[2] = DAI_ADDRESS;
+        mock3CoinStrategy.initialize(address(vault), address(harvester), _wants);
+        vm.label(address(mock3CoinStrategy), "mock3CoinStrategy");
+
+        // init ETHi Vault
+        ethVaultAdmin = new VaultAdmin();
+        vm.label(address(ethVaultAdmin), "ethVaultAdmin");
+        ethVault = new Vault();
+        ethVault.initialize(
+            address(accessControlProxy),
+            address(treasury),
+            address(exchangeAggregator),
+            address(valueInterpreter),
+            uint256(1)
+        );
+
+        ethVault.setAdminImpl(address(ethVaultAdmin));
+
+        vm.label(address(ethVault), "ethVault");
+
+        ethPegToken = new PegToken();
+        ethPegToken.initialize(
+            "ETH Peg Token",
+            "ETHi",
+            uint8(18),
+            address(ethVault),
+            address(accessControlProxy)
+        );
+        vm.label(address(ethPegToken), "ethPegToken");
+
+        ethVaultBuffer = new VaultBuffer();
+        ethVaultBuffer.initialize(
+            "ETH Peg Token Ticket",
+            "tETHi",
+            address(ethVault),
+            address(ethPegToken),
+            address(accessControlProxy)
+        );
+        vm.label(address(ethVaultBuffer), "ethVaultBuffer");
+
+        iETHVault = IVault(address(ethVault));
+
+        iETHVault.setPegTokenAddress(address(ethPegToken));
+        iETHVault.setVaultBufferAddress(address(ethVaultBuffer));
+
+        ethHarvester = new Harvester();
+        ethHarvester.initialize(
+            address(accessControlProxy),
+            address(ethVault),
+            WETH_ADDRESS,
+            address(ethVault)
+        );
+        vm.label(address(ethHarvester), "ethHarvester");
+
+        ethMock3CoinStrategy = new Mock3CoinStrategy();
+        address[] memory _ethWants = new address[](3);
+        // ETH
+        _ethWants[0] = NativeToken.NATIVE_TOKEN;
+        // stETH
+        _ethWants[1] = STETH_ADDRESS;
+        // WETH
+        _ethWants[2] = WETH_ADDRESS;
+        ethMock3CoinStrategy.initialize(address(ethVault), address(ethHarvester), _ethWants);
+        vm.label(address(ethMock3CoinStrategy), "ethMock3CoinStrategy");
+
+        vm.stopPrank();
+    }
+
+    function testAddAndRemoveAssets() public {
+        address[] memory _assets = iVault.getSupportAssets();
+        assertEq(_assets.length, 0);
+
+        vm.startPrank(GOVERNANOR);
+        iVault.addAsset(USDC_ADDRESS);
+        _assets = iVault.getSupportAssets();
+        assertEq(_assets.length, 1);
+
+        iVault.removeAsset(USDC_ADDRESS);
+        _assets = iVault.getSupportAssets();
+        assertEq(_assets.length, 0);
+
+        iVault.addAsset(USDC_ADDRESS);
+        iVault.addAsset(USDT_ADDRESS);
+        iVault.addAsset(DAI_ADDRESS);
+        _assets = iVault.getSupportAssets();
+        vm.stopPrank();
+        assertEq(_assets.length, 3);
+    }
+
+    function testAddAndRemoveAssetsWithETHi() public {
+        address[] memory _assets = iETHVault.getSupportAssets();
+        assertEq(_assets.length, 0);
+
+        vm.startPrank(GOVERNANOR);
+        iETHVault.addAsset(NativeToken.NATIVE_TOKEN);
+        _assets = iETHVault.getSupportAssets();
+        assertEq(_assets.length, 1);
+
+        iETHVault.removeAsset(NativeToken.NATIVE_TOKEN);
+        _assets = iETHVault.getSupportAssets();
+        assertEq(_assets.length, 0);
+
+        iETHVault.addAsset(NativeToken.NATIVE_TOKEN);
+        iETHVault.addAsset(STETH_ADDRESS);
+        iETHVault.addAsset(WETH_ADDRESS);
+        _assets = iETHVault.getSupportAssets();
+        vm.stopPrank();
+        assertEq(_assets.length, 3);
+    }
+
+    function testAddAndRemoveStrategies() public {
+        address[] memory _strategies = iVault.getStrategies();
+        assertEq(_strategies.length, 0);
+
+        IVault.StrategyAdd[] memory _strategyAdds = new IVault.StrategyAdd[](1);
+        _strategyAdds[0] = IVault.StrategyAdd({
+            strategy: address(mock3CoinStrategy),
+            profitLimitRatio: uint256(100),
+            lossLimitRatio: uint256(100)
+        });
+
+        vm.startPrank(GOVERNANOR);
+        iVault.addStrategies(_strategyAdds);
+        _strategies = iVault.getStrategies();
+        assertEq(_strategies.length, 1);
+
+        address[] memory _removeStrategies = new address[](1);
+        _removeStrategies[0] = address(mock3CoinStrategy);
+        iVault.removeStrategies(_removeStrategies);
+        _strategies = iVault.getStrategies();
+        assertEq(_strategies.length, 0);
+        iVault.addStrategies(_strategyAdds);
+        _strategies = iVault.getStrategies();
+        vm.stopPrank();
+        assertEq(_strategies.length, 1);
+    }
+
+    function testAddAndRemoveStrategiesWithETHi() public {
+        address[] memory _strategies = iETHVault.getStrategies();
+        assertEq(_strategies.length, 0);
+
+        IVault.StrategyAdd[] memory _strategyAdds = new IVault.StrategyAdd[](1);
+        _strategyAdds[0] = IVault.StrategyAdd({
+            strategy: address(ethMock3CoinStrategy),
+            profitLimitRatio: uint256(100),
+            lossLimitRatio: uint256(100)
+        });
+
+        vm.startPrank(GOVERNANOR);
+        iETHVault.addStrategies(_strategyAdds);
+        _strategies = iETHVault.getStrategies();
+        assertEq(_strategies.length, 1);
+
+        address[] memory _removeStrategies = new address[](1);
+        _removeStrategies[0] = address(ethMock3CoinStrategy);
+        iETHVault.removeStrategies(_removeStrategies);
+        _strategies = iETHVault.getStrategies();
+        assertEq(_strategies.length, 0);
+
+        iETHVault.addStrategies(_strategyAdds);
+        _strategies = iETHVault.getStrategies();
+        vm.stopPrank();
+        assertEq(_strategies.length, 1);
+    }
+
+    function testFailSetVaultBufferAddress() public {
+        vm.prank(GOVERNANOR);
+        iVault.setVaultBufferAddress(address(vaultBuffer));
+    }
+
+    function testFailSetVaultBufferAddressWithETHi() public {
+        vm.prank(GOVERNANOR);
+        iETHVault.setVaultBufferAddress(address(vaultBuffer));
+    }
+
+    function testFailSetPegTokenAddress() public {
+        vm.prank(GOVERNANOR);
+        iVault.setPegTokenAddress(address(pegToken));
+    }
+
+    function testFailSetPegTokenAddressWithETHi() public {
+        vm.prank(GOVERNANOR);
+        iETHVault.setPegTokenAddress(address(pegToken));
+    }
+
+    function testDeposit() public {
+        testAddAndRemoveAssets();
+        testAddAndRemoveStrategies();
+        address[] memory _assets = new address[](3);
+        _assets[0] = USDC_ADDRESS;
+        _assets[1] = USDT_ADDRESS;
+        _assets[2] = DAI_ADDRESS;
+        uint256 _usdcAmount = 10000e6;
+        uint256 _usdtAmount = 10000e6;
+        uint256 _daiAmount = 10000e18;
+        uint256[] memory _amounts = new uint256[](3);
+        _amounts[0] = _usdcAmount;
+        _amounts[1] = _usdtAmount;
+        _amounts[2] = _daiAmount;
+        uint256 _minimumAmount = 0;
+        deal(USDC_ADDRESS, USER, _usdcAmount);
+        deal(USDT_ADDRESS, USER, _usdtAmount);
+        deal(DAI_ADDRESS, USER, _daiAmount);
+
+        vm.startPrank(USER);
+        _safeApprove(USDC_ADDRESS, address(vault), _usdcAmount);
+        _safeApprove(USDT_ADDRESS, address(vault), _usdtAmount);
+        _safeApprove(DAI_ADDRESS, address(vault), _daiAmount);
+        iVault.mint(_assets, _amounts, _minimumAmount);
+        vm.stopPrank();
+        uint256 _ticketAmount = vaultBuffer.balanceOf(USER);
+        uint256 _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(USDC_ADDRESS, _usdcAmount) +
+            valueInterpreter.calcCanonicalAssetValueInUsd(USDT_ADDRESS, _usdtAmount) +
+            valueInterpreter.calcCanonicalAssetValueInUsd(DAI_ADDRESS, _daiAmount);
+
+        assertEq(_ticketAmount, _valueInUSD);
+    }
+
+    function testDepositWithETHi() public {
+        testAddAndRemoveAssetsWithETHi();
+        testAddAndRemoveStrategiesWithETHi();
+        address[] memory _assets = new address[](3);
+        _assets[0] = NativeToken.NATIVE_TOKEN;
+        _assets[1] = STETH_ADDRESS;
+        _assets[2] = WETH_ADDRESS;
+        uint256 _ethAmount = 10000e18;
+        uint256 _stETHAmount = 10000e18;
+        uint256 _wETHAmount = 10000e18;
+        uint256[] memory _amounts = new uint256[](3);
+        _amounts[0] = _ethAmount;
+        _amounts[1] = _stETHAmount;
+        _amounts[2] = _wETHAmount;
+        uint256 _minimumAmount = 0;
+        vm.startPrank(USER);
+        deal(USER, _ethAmount * 2 + _stETHAmount);
+        IEREC20Mint(STETH_ADDRESS).submit{value: _stETHAmount}(USER);
+        deal(WETH_ADDRESS, USER, _wETHAmount);
+
+        _safeApprove(STETH_ADDRESS, address(ethVault), _stETHAmount);
+        _safeApprove(WETH_ADDRESS, address(ethVault), _wETHAmount);
+        iETHVault.mint{value: _ethAmount}(_assets, _amounts, _minimumAmount);
+        vm.stopPrank();
+        uint256 _ticketAmount = ethVaultBuffer.balanceOf(USER);
+
+        uint256 _valueInETH = valueInterpreter.calcCanonicalAssetValueInEth(
+            NativeToken.NATIVE_TOKEN,
+            _ethAmount
+        ) +
+            valueInterpreter.calcCanonicalAssetValueInEth(STETH_ADDRESS, _stETHAmount) +
+            valueInterpreter.calcCanonicalAssetValueInEth(WETH_ADDRESS, _wETHAmount);
+
+        assertEq(_ticketAmount, _valueInETH);
+    }
+
+    function testAdjustPosition() public {
+        testDeposit();
+        vm.startPrank(GOVERNANOR);
+        iVault.setRebaseThreshold(uint256(1));
+        uint256 _beforeAdjustPositionOfVault = _balanceOfToken(USDT_ADDRESS, address(vault));
+        uint256 _beforeAdjustPositionOfVaultBuffer = _balanceOfToken(USDT_ADDRESS, address(vaultBuffer));
+
+        iVault.startAdjustPosition();
+        uint256 _afterAdjustPositionOfVault = _balanceOfToken(USDT_ADDRESS, address(vault));
+        uint256 _afterAdjustPositionOfVaultBuffer = _balanceOfToken(USDT_ADDRESS, address(vaultBuffer));
+
+        assertEq(
+            _beforeAdjustPositionOfVault + _beforeAdjustPositionOfVaultBuffer,
+            _afterAdjustPositionOfVault + _afterAdjustPositionOfVaultBuffer
+        );
+        assertGt(_afterAdjustPositionOfVault, _beforeAdjustPositionOfVault);
+
+        address[] memory _queues = new address[](1);
+        _queues[0] = address(mock3CoinStrategy);
+        iVault.setWithdrawalQueue(_queues);
+
+        address[] memory _tokens = new address[](3);
+        _tokens[0] = USDT_ADDRESS;
+        _tokens[1] = USDC_ADDRESS;
+        _tokens[2] = DAI_ADDRESS;
+        uint256[] memory _amounts = new uint256[](3);
+        _amounts[0] = _balanceOfToken(USDT_ADDRESS, address(vault));
+        _amounts[1] = _balanceOfToken(USDC_ADDRESS, address(vault));
+        _amounts[2] = _balanceOfToken(DAI_ADDRESS, address(vault));
+
+        iVault.lend(address(mock3CoinStrategy), _tokens, _amounts);
+
+        (address[] memory _wants, uint256[] memory _ratios) = mock3CoinStrategy.getWantsInfo();
+        uint256 _wantsLength = _wants.length;
+
+        uint256 _minProductIndex;
+        bool _isWantRatioIgnorable = mock3CoinStrategy.isWantRatioIgnorable();
+        if (!_isWantRatioIgnorable && _wantsLength > 1) {
+            for (uint256 i = 1; i < _wantsLength; i++) {
+                if (_ratios[i] == 0) {
+                    //0 is free
+                    continue;
+                } else if (_ratios[_minProductIndex] == 0) {
+                    //minProductIndex is assigned to the first index whose proportion is not 0
+                    _minProductIndex = i;
+                } else if (
+                    _amounts[_minProductIndex] * _ratios[i] > _amounts[i] * _ratios[_minProductIndex]
+                ) {
+                    _minProductIndex = i;
+                }
+            }
+        }
+
+        uint256 _minAmount = _amounts[_minProductIndex];
+        uint256 _minAspect = _ratios[_minProductIndex];
+        for (uint256 i = 0; i < _wantsLength; i++) {
+            uint256 _actualAmount = _amounts[i];
+            if (_actualAmount > 0) {
+                if (!_isWantRatioIgnorable && _ratios[i] > 0) {
+                    _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
+                    assertEq(_balanceOfToken(_wants[i], address(mock3CoinStrategy)), _actualAmount);
+                }
+            }
+        }
+
+        iVault.endAdjustPosition();
+        vaultBuffer.distributeWhenDistributing();
+
+        vm.stopPrank();
+
+        uint256 _usdiAmount = pegToken.balanceOf(USER);
+        uint256 _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(USDC_ADDRESS, _amounts[1]) +
+            valueInterpreter.calcCanonicalAssetValueInUsd(USDT_ADDRESS, _amounts[0]) +
+            valueInterpreter.calcCanonicalAssetValueInUsd(DAI_ADDRESS, _amounts[2]);
+
+        assertEq(_usdiAmount, _valueInUSD);
+    }
+
+    function testAdjustPositionWithETHi() public {
+        testDepositWithETHi();
+        vm.startPrank(GOVERNANOR);
+        iETHVault.setRebaseThreshold(uint256(1));
+        uint256 _beforeAdjustPositionOfVault = _balanceOfToken(
+            NativeToken.NATIVE_TOKEN,
+            address(ethVault)
+        );
+        uint256 _beforeAdjustPositionOfVaultBuffer = _balanceOfToken(
+            NativeToken.NATIVE_TOKEN,
+            address(ethVaultBuffer)
+        );
+
+        iETHVault.startAdjustPosition();
+        uint256 _afterAdjustPositionOfVault = _balanceOfToken(
+            NativeToken.NATIVE_TOKEN,
+            address(ethVault)
+        );
+        uint256 _afterAdjustPositionOfVaultBuffer = _balanceOfToken(
+            NativeToken.NATIVE_TOKEN,
+            address(ethVaultBuffer)
+        );
+
+        assertEq(
+            _beforeAdjustPositionOfVault + _beforeAdjustPositionOfVaultBuffer,
+            _afterAdjustPositionOfVault + _afterAdjustPositionOfVaultBuffer
+        );
+        assertGt(_afterAdjustPositionOfVault, _beforeAdjustPositionOfVault);
+
+        address[] memory _queues = new address[](1);
+        _queues[0] = address(ethMock3CoinStrategy);
+        iETHVault.setWithdrawalQueue(_queues);
+
+        address[] memory _tokens = new address[](3);
+        _tokens[0] = NativeToken.NATIVE_TOKEN;
+        _tokens[1] = STETH_ADDRESS;
+        _tokens[2] = WETH_ADDRESS;
+        uint256[] memory _amounts = new uint256[](3);
+        _amounts[0] = _balanceOfToken(NativeToken.NATIVE_TOKEN, address(ethVault));
+        _amounts[1] = _balanceOfToken(STETH_ADDRESS, address(ethVault));
+        _amounts[2] = _balanceOfToken(WETH_ADDRESS, address(ethVault));
+
+        iETHVault.lend(address(ethMock3CoinStrategy), _tokens, _amounts);
+
+        (address[] memory _wants, uint256[] memory _ratios) = ethMock3CoinStrategy.getWantsInfo();
+        uint256 _wantsLength = _wants.length;
+
+        uint256 _minProductIndex;
+        bool _isWantRatioIgnorable = ethMock3CoinStrategy.isWantRatioIgnorable();
+        if (!_isWantRatioIgnorable && _wantsLength > 1) {
+            for (uint256 i = 1; i < _wantsLength; i++) {
+                if (_ratios[i] == 0) {
+                    //0 is free
+                    continue;
+                } else if (_ratios[_minProductIndex] == 0) {
+                    //minProductIndex is assigned to the first index whose proportion is not 0
+                    _minProductIndex = i;
+                } else if (
+                    _amounts[_minProductIndex] * _ratios[i] > _amounts[i] * _ratios[_minProductIndex]
+                ) {
+                    _minProductIndex = i;
+                }
+            }
+        }
+
+        uint256 _minAmount = _amounts[_minProductIndex];
+        uint256 _minAspect = _ratios[_minProductIndex];
+        for (uint256 i = 0; i < _wantsLength; i++) {
+            uint256 _actualAmount = _amounts[i];
+            if (_actualAmount > 0) {
+                if (!_isWantRatioIgnorable && _ratios[i] > 0) {
+                    _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
+                    if(_wants[i] == STETH_ADDRESS){
+                        assertEq((_balanceOfToken(_wants[i], address(ethMock3CoinStrategy))+9)/10, _actualAmount/10);
+                    }else{
+                        assertEq(_balanceOfToken(_wants[i], address(ethMock3CoinStrategy)), _actualAmount);
+                    }
+                }
+            }
+        }
+
+        iETHVault.endAdjustPosition();
+        ethVaultBuffer.distributeWhenDistributing();
+
+        vm.stopPrank();
+
+        uint256 _ethiAmount = ethPegToken.balanceOf(USER);
+        uint256 _valueInETH = valueInterpreter.calcCanonicalAssetValueInEth(STETH_ADDRESS, _amounts[1]) +
+            valueInterpreter.calcCanonicalAssetValueInEth(NativeToken.NATIVE_TOKEN, _amounts[0]) +
+            valueInterpreter.calcCanonicalAssetValueInEth(WETH_ADDRESS, _amounts[2]);
+
+        assertEq(_ethiAmount/100, _valueInETH/100);
+    }
+
+    function testWithdraw() public {
+        testAdjustPosition();
+        uint256 _amount = pegToken.balanceOf(USER) / 4;
+
+        uint256 _redeemFeeBps = iVault.redeemFeeBps();
+        uint256 _trusteeFeeBps = iVault.trusteeFeeBps();
+        uint256 _minimumAmount = 0;
+        vm.prank(USER);
+        iVault.burn(_amount, _minimumAmount, _redeemFeeBps, _trusteeFeeBps);
+
+        uint256 _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(
+            USDC_ADDRESS,
+            _balanceOfToken(USDC_ADDRESS, USER)
+        ) +
+            valueInterpreter.calcCanonicalAssetValueInUsd(
+                USDT_ADDRESS,
+                _balanceOfToken(USDT_ADDRESS, USER)
+            ) +
+            valueInterpreter.calcCanonicalAssetValueInUsd(
+                DAI_ADDRESS,
+                _balanceOfToken(DAI_ADDRESS, USER)
+            );
+
+        assertEq(_amount / 1e18, _valueInUSD / 1e18);
+    }
+
+    function testWithdrawWithETHi() public {
+        testAdjustPositionWithETHi();
+        uint256 _amount = ethPegToken.balanceOf(USER) / 4;
+
+        uint256 _redeemFeeBps = iETHVault.redeemFeeBps();
+        uint256 _trusteeFeeBps = iETHVault.trusteeFeeBps();
+        uint256 _minimumAmount = 0;
+        vm.prank(USER);
+        (address[] memory _receiveAssets, uint256[] memory _receiveAmounts) = iETHVault.burn(_amount, _minimumAmount, _redeemFeeBps, _trusteeFeeBps);
+        uint256 _valueInETH;
+        for(uint256 i=0;i<_receiveAssets.length;i++){
+            _valueInETH = _valueInETH + valueInterpreter.calcCanonicalAssetValueInEth(_receiveAssets[i],_receiveAmounts[i]);
+        }
+
+        assertEq(_amount / 1e18, _valueInETH / 1e18);
+    }
+
+    function testSecondDeposit() public {
+        testWithdraw();
+
+        address[] memory _assets = new address[](3);
+        _assets[0] = USDC_ADDRESS;
+        _assets[1] = USDT_ADDRESS;
+        _assets[2] = DAI_ADDRESS;
+        uint256 _usdcAmount = 10000e6;
+        uint256 _usdtAmount = 10000e6;
+        uint256 _daiAmount = 10000e18;
+        uint256[] memory _amounts = new uint256[](3);
+        _amounts[0] = _usdcAmount;
+        _amounts[1] = _usdtAmount;
+        _amounts[2] = _daiAmount;
+        uint256 _minimumAmount = 0;
+        deal(USDC_ADDRESS, FRIEND, _usdcAmount);
+        deal(USDT_ADDRESS, FRIEND, _usdtAmount);
+        deal(DAI_ADDRESS, FRIEND, _daiAmount);
+
+        vm.startPrank(FRIEND);
+        _safeApprove(USDC_ADDRESS, address(vault), _usdcAmount);
+        _safeApprove(USDT_ADDRESS, address(vault), _usdtAmount);
+        _safeApprove(DAI_ADDRESS, address(vault), _daiAmount);
+        iVault.mint(_assets, _amounts, _minimumAmount);
+        vm.stopPrank();
+
+        vm.startPrank(GOVERNANOR);
+        iVault.startAdjustPosition();
+        uint256 _totalDebtOfBeforeRedeem = iVault.totalDebt();
+        uint256 _totalAssetsOfBeforeRedeem = iVault.totalAssets();
+        iVault.redeem(address(mock3CoinStrategy), _totalDebtOfBeforeRedeem / 5, 0);
+        uint256 _totalDebtOfAfterRedeem = iVault.totalDebt();
+        uint256 _totalAssetsOfAfterRedeem = iVault.totalAssets();
+
+        assertEq(_totalAssetsOfBeforeRedeem, _totalAssetsOfAfterRedeem);
+        assertGt(_totalDebtOfBeforeRedeem, _totalDebtOfAfterRedeem);
+
+        mock3CoinStrategy.transferToken(
+            FRIEND,
+            USDC_ADDRESS,
+            _balanceOfToken(USDC_ADDRESS, address(vault)) / 100000
+        );
+        address[] memory _tokens = new address[](3);
+        _tokens[0] = USDT_ADDRESS;
+        _tokens[1] = USDC_ADDRESS;
+        _tokens[2] = DAI_ADDRESS;
+        uint256[] memory _lendAmounts = new uint256[](3);
+        _lendAmounts[0] = _balanceOfToken(USDT_ADDRESS, address(vault));
+        _lendAmounts[1] = _balanceOfToken(USDC_ADDRESS, address(vault));
+        _lendAmounts[2] = _balanceOfToken(DAI_ADDRESS, address(vault));
+
+        iVault.lend(address(mock3CoinStrategy), _tokens, _lendAmounts);
+
+        iVault.endAdjustPosition();
+        vaultBuffer.distributeWhenDistributing();
+        vm.stopPrank();
+
+        uint256 _usdiAmount = pegToken.balanceOf(FRIEND);
+        uint256 _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(
+            USDC_ADDRESS,
+            _amounts[1] - _balanceOfToken(USDC_ADDRESS, FRIEND)
+        ) +
+            valueInterpreter.calcCanonicalAssetValueInUsd(USDT_ADDRESS, _amounts[0]) +
+            valueInterpreter.calcCanonicalAssetValueInUsd(DAI_ADDRESS, _amounts[2]);
+
+        assertEq(_usdiAmount / 1e17, _valueInUSD / 1e17);
+    }
+
+    function testSecondDepositWithETHi() public {
+        testWithdrawWithETHi();
+
+        address[] memory _assets = new address[](3);
+        _assets[0] = NativeToken.NATIVE_TOKEN;
+        _assets[1] = STETH_ADDRESS;
+        _assets[2] = WETH_ADDRESS;
+        uint256 _ethAmount = 10000e18;
+        uint256 _stETHAmount = 10000e18;
+        uint256 _wETHAmount = 10000e18;
+        uint256[] memory _amounts = new uint256[](3);
+        _amounts[0] = _ethAmount;
+        _amounts[1] = _stETHAmount;
+        _amounts[2] = _wETHAmount;
+        uint256 _minimumAmount = 0;
+        vm.startPrank(FRIEND);
+        deal(FRIEND, _ethAmount * 2 + _stETHAmount);
+        IEREC20Mint(STETH_ADDRESS).submit{value: _stETHAmount}(FRIEND);
+        deal(WETH_ADDRESS, FRIEND, _wETHAmount);
+
+        _safeApprove(STETH_ADDRESS, address(ethVault), _stETHAmount);
+        _safeApprove(WETH_ADDRESS, address(ethVault), _wETHAmount);
+        iETHVault.mint{value: _ethAmount}(_assets, _amounts, _minimumAmount);
+        vm.stopPrank();
+
+        vm.startPrank(GOVERNANOR);
+        iETHVault.startAdjustPosition();
+        uint256 _totalDebtOfBeforeRedeem = iETHVault.totalDebt();
+        uint256 _totalAssetsOfBeforeRedeem = iETHVault.totalAssets();
+        iETHVault.redeem(address(ethMock3CoinStrategy), _totalDebtOfBeforeRedeem / 5, 0);
+        uint256 _totalDebtOfAfterRedeem = iETHVault.totalDebt();
+        uint256 _totalAssetsOfAfterRedeem = iETHVault.totalAssets();
+
+        assertEq(_totalAssetsOfBeforeRedeem/10, _totalAssetsOfAfterRedeem/10);
+        assertGt(_totalDebtOfBeforeRedeem, _totalDebtOfAfterRedeem);
+
+        ethMock3CoinStrategy.transferToken(
+            FRIEND,
+            WETH_ADDRESS,
+            _balanceOfToken(WETH_ADDRESS, address(ethVault)) / 100000
+        );
+        address[] memory _tokens = new address[](3);
+        _tokens[0] = NativeToken.NATIVE_TOKEN;
+        _tokens[1] = STETH_ADDRESS;
+        _tokens[2] = WETH_ADDRESS;
+        uint256[] memory _lendAmounts = new uint256[](3);
+        _lendAmounts[0] = _balanceOfToken(NativeToken.NATIVE_TOKEN, address(ethVault));
+        _lendAmounts[1] = _balanceOfToken(STETH_ADDRESS, address(ethVault));
+        _lendAmounts[2] = _balanceOfToken(WETH_ADDRESS, address(ethVault));
+
+        iETHVault.lend(address(ethMock3CoinStrategy), _tokens, _lendAmounts);
+
+        iETHVault.endAdjustPosition();
+        ethVaultBuffer.distributeWhenDistributing();
+        vm.stopPrank();
+
+        uint256 _ethiAmount = ethPegToken.balanceOf(FRIEND);
+        uint256 _valueInETH = valueInterpreter.calcCanonicalAssetValueInEth(STETH_ADDRESS, _amounts[1]) +
+        valueInterpreter.calcCanonicalAssetValueInEth(NativeToken.NATIVE_TOKEN, _amounts[0]) +
+        valueInterpreter.calcCanonicalAssetValueInEth(WETH_ADDRESS, _amounts[2] - _balanceOfToken(WETH_ADDRESS, FRIEND));
+        assertEq(_ethiAmount / 1e17, _valueInETH / 1e17);
+    }
+
+    function testReport() public {
+        testAddAndRemoveStrategies();
+
+        address[] memory _tokens = new address[](3);
+        _tokens[0] = USDT_ADDRESS;
+        _tokens[1] = USDC_ADDRESS;
+        _tokens[2] = DAI_ADDRESS;
+        uint256[] memory _amounts = new uint256[](3);
+        _amounts[0] = 100000e6;
+        _amounts[1] = 200000e6;
+        _amounts[2] = 400000e18;
+        deal(_tokens[0], address(vault), _amounts[0]);
+        deal(_tokens[1], address(vault), _amounts[1]);
+        deal(_tokens[2], address(vault), _amounts[2]);
+        vm.prank(GOVERNANOR);
+        iVault.lend(address(mock3CoinStrategy), _tokens, _amounts);
+
+        IVault.StrategyParams memory _strategyParams = iVault.strategies(address(mock3CoinStrategy));
+        uint256 _totalDebtOfBeforeReport = _strategyParams.totalDebt;
+        uint256 _estimatedTotalAssetsOfBeforeReport = mock3CoinStrategy.estimatedTotalAssets();
+        uint256 _usdcAmount = 1000e6;
+        uint256 _usdtAmount = 1000e6;
+        uint256 _daiAmount = 1000e18;
+
+        deal(USDC_ADDRESS, address(mock3CoinStrategy), _balanceOfToken(USDC_ADDRESS, address(mock3CoinStrategy)) + _usdcAmount);
+        deal(USDT_ADDRESS, address(mock3CoinStrategy), _balanceOfToken(USDT_ADDRESS, address(mock3CoinStrategy)) + _usdtAmount);
+        deal(DAI_ADDRESS, address(mock3CoinStrategy), _balanceOfToken(DAI_ADDRESS, address(mock3CoinStrategy)) + _daiAmount);
+
+        vm.prank(GOVERNANOR);
+        mock3CoinStrategy.reportWithoutClaim();
+        _strategyParams = iVault.strategies(address(mock3CoinStrategy));
+        uint256 _totalDebtOfAfterReport = _strategyParams.totalDebt;
+        uint256 _estimatedTotalAssetsOfAfterReport = mock3CoinStrategy.estimatedTotalAssets();
+
+        uint256 _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(USDC_ADDRESS, _usdcAmount) +
+            valueInterpreter.calcCanonicalAssetValueInUsd(USDT_ADDRESS, _usdtAmount) +
+            valueInterpreter.calcCanonicalAssetValueInUsd(DAI_ADDRESS, _daiAmount);
+
+        assertEq(_totalDebtOfAfterReport, _totalDebtOfBeforeReport + _valueInUSD);
+        assertEq(_estimatedTotalAssetsOfAfterReport, _estimatedTotalAssetsOfBeforeReport + _valueInUSD);
+
+        _totalDebtOfBeforeReport = _strategyParams.totalDebt;
+        _estimatedTotalAssetsOfBeforeReport = mock3CoinStrategy.estimatedTotalAssets();
+
+        deal(USDC_ADDRESS, address(mock3CoinStrategy), _balanceOfToken(USDC_ADDRESS, address(mock3CoinStrategy)) + _usdcAmount);
+        deal(USDT_ADDRESS, address(mock3CoinStrategy), _balanceOfToken(USDT_ADDRESS, address(mock3CoinStrategy)) + _usdtAmount);
+        deal(DAI_ADDRESS, address(mock3CoinStrategy), _balanceOfToken(DAI_ADDRESS, address(mock3CoinStrategy)) + _daiAmount);
+
+        vm.prank(KEEPER);
+        address[] memory _strategies = new address[](1);
+        _strategies[0] = address(mock3CoinStrategy);
+        iVault.reportByKeeper(_strategies);
+        vm.stopPrank();
+        _strategyParams = iVault.strategies(address(mock3CoinStrategy));
+
+        _totalDebtOfAfterReport = _strategyParams.totalDebt;
+        _estimatedTotalAssetsOfAfterReport = mock3CoinStrategy.estimatedTotalAssets();
+
+        assertEq(_totalDebtOfAfterReport, _totalDebtOfBeforeReport + _valueInUSD);
+        assertEq(_estimatedTotalAssetsOfAfterReport, _estimatedTotalAssetsOfBeforeReport + _valueInUSD);
+    }
+
+    function testReportWithETHi() public {
+        testAddAndRemoveStrategiesWithETHi();
+
+        address[] memory _tokens = new address[](3);
+        _tokens[0] = NativeToken.NATIVE_TOKEN;
+        _tokens[1] = STETH_ADDRESS;
+        _tokens[2] = WETH_ADDRESS;
+        uint256[] memory _amounts = new uint256[](3);
+        _amounts[0] = 1000e18;
+        _amounts[1] = 2000e18;
+        _amounts[2] = 4000e18;
+        deal(address(ethVault), _amounts[0]);
+        deal(GOVERNANOR, _amounts[1]*2);
+        address masterMinter = 0x2e59A20f205bB85a89C53f1936454680651E618e;
+        deal(masterMinter, 100e18);
+        vm.prank(masterMinter);
+        IEREC20Mint(STETH_ADDRESS).removeStakingLimit();
+
+        vm.startPrank(GOVERNANOR);
+        IEREC20Mint(STETH_ADDRESS).submit{value: _amounts[1]+10}(GOVERNANOR);
+
+        IEREC20Mint(STETH_ADDRESS).transfer(address(ethVault), _amounts[1] + 2);
+        deal(_tokens[2], address(ethVault), _amounts[2]);
+
+        iETHVault.lend(address(ethMock3CoinStrategy), _tokens, _amounts);
+
+        IVault.StrategyParams memory _strategyParams = iETHVault.strategies(address(ethMock3CoinStrategy));
+        uint256 _totalDebtOfBeforeReport = _strategyParams.totalDebt;
+        uint256 _estimatedTotalAssetsOfBeforeReport = ethMock3CoinStrategy.estimatedTotalAssets();
+        uint256 _ethAmount = 10e18;
+        uint256 _stETHAmount = 10e18;
+        uint256 _wETHAmount = 10e18;
+        deal(address(ethMock3CoinStrategy), _balanceOfToken(NativeToken.NATIVE_TOKEN, address(ethMock3CoinStrategy)) + _ethAmount);
+
+        IEREC20Mint(STETH_ADDRESS).submit{value: _stETHAmount*2+20}(GOVERNANOR);
+        IEREC20Mint(STETH_ADDRESS).transfer(address(ethMock3CoinStrategy), _stETHAmount + 2);
+        deal(WETH_ADDRESS, address(ethMock3CoinStrategy), _balanceOfToken(WETH_ADDRESS, address(ethMock3CoinStrategy)) +_wETHAmount);
+
+        ethMock3CoinStrategy.reportWithoutClaim();
+        _strategyParams = iETHVault.strategies(address(ethMock3CoinStrategy));
+        uint256 _totalDebtOfAfterReport = _strategyParams.totalDebt;
+        uint256 _estimatedTotalAssetsOfAfterReport = ethMock3CoinStrategy.estimatedTotalAssets();
+
+        uint256 _valueInETH = valueInterpreter.calcCanonicalAssetValueInEth(NativeToken.NATIVE_TOKEN, _ethAmount) +
+        valueInterpreter.calcCanonicalAssetValueInEth(STETH_ADDRESS, _stETHAmount) +
+        valueInterpreter.calcCanonicalAssetValueInEth(WETH_ADDRESS, _wETHAmount);
+
+        assertEq(_totalDebtOfAfterReport/10000, (_totalDebtOfBeforeReport + _valueInETH)/10000);
+        assertEq(_estimatedTotalAssetsOfAfterReport/10000, (_estimatedTotalAssetsOfBeforeReport + _valueInETH)/10000);
+
+        _totalDebtOfBeforeReport = _strategyParams.totalDebt;
+        _estimatedTotalAssetsOfBeforeReport = ethMock3CoinStrategy.estimatedTotalAssets();
+
+        deal(address(ethMock3CoinStrategy), _balanceOfToken(NativeToken.NATIVE_TOKEN, address(ethMock3CoinStrategy)) + _ethAmount);
+        IEREC20Mint(STETH_ADDRESS).transfer(address(ethMock3CoinStrategy), _stETHAmount + 2);
+        deal(WETH_ADDRESS, address(ethMock3CoinStrategy), _balanceOfToken(WETH_ADDRESS, address(ethMock3CoinStrategy)) +_wETHAmount);
+        vm.stopPrank();
+
+        vm.prank(KEEPER);
+        address[] memory _strategies = new address[](1);
+        _strategies[0] = address(ethMock3CoinStrategy);
+        iETHVault.reportByKeeper(_strategies);
+        vm.stopPrank();
+        _strategyParams = iETHVault.strategies(address(ethMock3CoinStrategy));
+
+        _totalDebtOfAfterReport = _strategyParams.totalDebt;
+        _estimatedTotalAssetsOfAfterReport = ethMock3CoinStrategy.estimatedTotalAssets();
+
+        assertEq(_totalDebtOfAfterReport/10000, (_totalDebtOfBeforeReport + _valueInETH)/10000);
+        assertEq(_estimatedTotalAssetsOfAfterReport, _estimatedTotalAssetsOfBeforeReport + _valueInETH);
+    }
+
+    function testBurnFromStrategy() public {
+        testSecondDeposit();
+        uint256 _redeemFeeBps = iVault.redeemFeeBps();
+        uint256 _trusteeFeeBps = iVault.trusteeFeeBps();
+        uint256 _amount = pegToken.balanceOf(USER);
+        vm.prank(USER);
+        iVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
+
+        assertEq(iVault.valueOfTrackedTokens(), 0);
+
+        _amount = pegToken.balanceOf(FRIEND);
+        vm.prank(FRIEND);
+        iVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
+
+        assertEq(iVault.totalValueInStrategies(), 0);
+    }
+
+    function testBurnFromStrategyWithETHi() public {
+        testSecondDepositWithETHi();
+        uint256 _redeemFeeBps = iETHVault.redeemFeeBps();
+        uint256 _trusteeFeeBps = iETHVault.trusteeFeeBps();
+        uint256 _amount = ethPegToken.balanceOf(USER);
+        vm.prank(USER);
+        iETHVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
+
+        assertEq(iETHVault.valueOfTrackedTokens(), 0);
+
+        _amount = ethPegToken.balanceOf(FRIEND);
+        vm.prank(FRIEND);
+        iETHVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
+
+        assertEq(iETHVault.totalValueInStrategies(), 0);
+    }
+
+    function _safeApprove(
+        address _trackedAsset,
+        address _targetAddress,
+        uint256 _amount
+    ) internal {
+        if (_trackedAsset != NativeToken.NATIVE_TOKEN) {
+            IERC20Upgradeable(_trackedAsset).safeApprove(_targetAddress, 0);
+            IERC20Upgradeable(_trackedAsset).safeApprove(_targetAddress, _amount);
+        }
+    }
+
+    function _balanceOfToken(address _trackedAsset, address _owner) internal view returns (uint256) {
+        uint256 _balance;
+        if (_trackedAsset == NativeToken.NATIVE_TOKEN) {
+            _balance = _owner.balance;
+        } else {
+            _balance = IERC20Upgradeable(_trackedAsset).balanceOf(_owner);
+        }
+        return _balance;
+    }
+}

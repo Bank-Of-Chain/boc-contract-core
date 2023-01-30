@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 pragma solidity 0.8.17;
+
+import "./IVaultBuffer.sol";
 import "../access-control/AccessControlMixin.sol";
 import "../library/IterableIntMap.sol";
-import "../library/StableMath.sol";
-import "../token/IPegToken.sol";
-import "./IVaultBuffer.sol";
+import "../library/NativeToken.sol";
 import "../library/BocRoles.sol";
-import "../strategy/IStrategy.sol";
 import "../price-feeds/IValueInterpreter.sol";
+import "../strategy/IStrategy.sol";
+import "../token/IPegToken.sol";
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -19,7 +20,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 /// @notice The VaultStorage contract defines The storage layout for the Vault contract
 /// @author Bank of Chain Protocol Inc
 contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessControlMixin {
-    using StableMath for uint256;
+
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
 
@@ -74,7 +75,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     );
 
     /// @param _account The owner of token burning
-    /// @param _amounts The amount of the USDi token burning
+    /// @param _amounts The amount of the USDi/ETHi token burning
     /// @param _actualAmount The received amount actually
     /// @param _shareAmount The amount of the shares burning
     /// @param _assets The address list of assets to receive
@@ -102,7 +103,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     );
 
     /// @param  _strategy The specified strategy to redeem
-    /// @param _debtChangeAmount The amount to redeem in USD
+    /// @param _debtChangeAmount The amount to redeem in USD when USDi or in ETH when ETHi
     /// @param _assets The address list of asset redeeming 
     /// @param _amounts The amount list of asset redeeming 
     event Redeem(
@@ -125,7 +126,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
 
     /// @param  _strategy The specified strategy repaying from
     /// @param _strategyWithdrawValue The value of `_strategy` to withdraw
-    /// @param _strategyTotalValue The total value of `_strategy` in USD
+    /// @param _strategyTotalValue The total value of `_strategy` in USD when USDi or in ETH when ETHi
     /// @param _assets The address list of asset repaying from `_strategy`
     /// @param _amounts The amount list of asset repaying from `_strategy`
     event RepayFromStrategy(
@@ -137,7 +138,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     );
 
     /// @param  _strategy The strategy for reporting
-    /// @param _gain The gain in USD units for this report
+    /// @param _gain The gain for this report,the units is in USD when usdi or in ETH when ethi
     /// @param _loss The loss in USD units for this report
     /// @param _lastStrategyTotalDebt The total debt of `_strategy` for last report
     /// @param _nowStrategyTotalDebt The total debt of `_strategy` for this report
@@ -228,11 +229,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     /// @param _amounts The amount list of asset transfer from vault buffer to vault
     event PegTokenSwapCash(uint256 _pegTokenAmount, address[] _assets, uint256[] _amounts);
 
-    address internal constant ZERO_ADDRESS = address(0);
-
-    /// @dev max percentage 100%
-    uint256 internal constant MAX_BPS = 10000;
-
     /// @dev all strategy
     EnumerableSet.AddressSet internal strategySet;
     /// @dev Assets supported by the Vault, i.e. Stablecoins
@@ -248,11 +244,9 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     bool public emergencyShutdown;
     /// @notice  Pausing bools
     bool public rebasePaused;
-    /// @notice  over this difference ratio automatically rebase. 
+    /// @notice  over this difference ratio automatically rebase.
     /// rebaseThreshold is the numerator and the denominator is 1e7. x/1e7
     uint256 public rebaseThreshold;
-    /// @notice  Deprecated
-    uint256 public maxSupplyDiff;
     /// @notice  Amount of yield collected in basis points
     uint256 public trusteeFeeBps;
     /// @notice  Redemption fee in basis points
@@ -270,13 +264,10 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
 
     /// @notice withdraw strategy set
     address[] public withdrawQueue;
-    /// @dev calculated from the "keccak256("USDi.vault.governor.admin.impl");"
-    bytes32 internal constant ADMIN_IMPL_POSITION =
-        0x3d78d3961e16fde088e2e26c1cfa163f5f8bb870709088dd68c87eb4091137e2;
 
     /// @notice vault Buffer Address
     address public vaultBufferAddress;
-    /// @notice  usdi PegToken address
+    /// @notice  USDi/ETHi PegToken address
     address public pegTokenAddress;
     /// @dev Assets held in Vault from vault buffer
     mapping(address => uint256) internal transferFromVaultBufferAssetsMap;
@@ -294,9 +285,20 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     uint256 public minCheckedStrategyTotalDebt;
     /// @notice Minimum investment amount
     uint256 public minimumInvestmentAmount;
+    /// @notice vault type 0-USDi,1-ETHi
+    uint256 public vaultType;
 
     /// @dev max percentage 1e7/1e7
     uint256 internal constant TEN_MILLION_BPS = 10000000;
+
+    /// @dev max percentage 100%
+    uint256 internal constant MAX_BPS = 10000;
+
+    address internal constant ZERO_ADDRESS = address(0);
+
+    /// @dev calculated from the "keccak256("USDi/ETHi.vault.governor.admin.impl");"
+    bytes32 internal constant ADMIN_IMPL_POSITION =
+    0x3d78d3961e16fde088e2e26c1cfa163f5f8bb870709088dd68c87eb4091137e2;
 
     /// @dev set the implementation for the admin, this needs to be in a base class else we cannot set it
     /// @param _newImpl address of the implementation
