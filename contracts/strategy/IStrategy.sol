@@ -63,22 +63,22 @@ interface IStrategy {
     /// @notice Returns the position details of the strategy.
     /// @return _tokens The list of the position token
     /// @return _amounts The list of the position amount
-    /// @return _isUsd Whether to count in USD
-    /// @return _usdValue The USD value of positions held
+    /// @return _isUsdOrEth Whether to count in USD(USDi)/ETH(ETHi)
+    /// @return _usdOrEthValue The USD(USDi)/ETH(ETHi) value of positions held
     function getPositionDetail()
         external
         view
         returns (
             address[] memory _tokens,
             uint256[] memory _amounts,
-            bool _isUsd,
-            uint256 _usdValue
+            bool _isUsdOrEth,
+            uint256 _usdOrEthValue
         );
 
-    /// @notice Return the total assets of strategy in USD.
+    /// @notice Return the total assets of strategy in USD(USDi)/ETH(ETHi).
     function estimatedTotalAssets() external view returns (uint256);
 
-    /// @notice Return the third party protocol's pool total assets in USD.
+    /// @notice Return the third party protocol's pool total assets in USD(USDi)/ETH(ETHi).
     function get3rdPoolAssets() external view returns (uint256);
 
     /// @notice Harvests the Strategy, 
@@ -88,9 +88,10 @@ interface IStrategy {
     function harvest() external returns (address[] memory _rewardsTokens, uint256[] memory _claimAmounts);
 
     /// @notice Strategy borrow funds from vault
+    ///     enable payable because it needs to receive ETH from vault
     /// @param _assets borrow token address
     /// @param _amounts borrow token amount
-    function borrow(address[] memory _assets, uint256[] memory _amounts) external;
+    function borrow(address[] memory _assets, uint256[] memory _amounts) external payable;
 
     /// @notice Strategy repay the funds to vault
     /// @param _withdrawShares The amount of shares to withdraw
@@ -107,6 +108,6 @@ interface IStrategy {
     /// @notice Return the boolean value of `isWantRatioIgnorable`
     function isWantRatioIgnorable() external view returns (bool);
 
-    /// @notice Return the investable amount of strategy in USD
+    /// @notice Return the investable amount of strategy in USD(USDi)/ETH(ETHi)
     function poolQuota() external view returns (uint256);
 }

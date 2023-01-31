@@ -20,4 +20,8 @@ interface IEREC20Mint is IERC20MetadataUpgradeable {
     function mint(address _to, uint256 _amount) external;
 
     function increaseSupply(uint256 _amount) external;
+
+    function submit(address _to) external payable;
+
+    function removeStakingLimit() external;
 }

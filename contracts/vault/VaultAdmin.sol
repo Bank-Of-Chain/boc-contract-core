@@ -3,14 +3,13 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./VaultStorage.sol";
-import "../util/Helpers.sol";
 
-/// @title USDI Vault Admin Contract
+/// @title USDI/ETHi Vault Admin Contract
 /// @notice The VaultAdmin contract makes configuration and admin calls on the vault.
 /// @author Bank of Chain Protocol Inc
 contract VaultAdmin is VaultStorage {
-    using StableMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
 
@@ -157,9 +156,15 @@ contract VaultAdmin is VaultStorage {
         assetSet.add(_asset);
         // Verify that our oracle supports the asset
         // slither-disable-next-line unused-return
-        IValueInterpreter(valueInterpreter).price(_asset);
+        if(vaultType > 0){
+            if (_asset != NativeToken.NATIVE_TOKEN){
+                IValueInterpreter(valueInterpreter).priceInEth(_asset);
+            }
+        }else{
+            IValueInterpreter(valueInterpreter).price(_asset);
+        }
         trackedAssetsMap.plus(_asset, 1);
-        trackedAssetDecimalsMap[_asset] = Helpers.getDecimals(_asset);
+        trackedAssetDecimalsMap[_asset] = _getDecimals(_asset);
         emit AddAsset(_asset);
     }
 
@@ -168,13 +173,13 @@ contract VaultAdmin is VaultStorage {
     function removeAsset(address _asset) external isVaultManager {
         require(assetSet.contains(_asset), "not exist");
         require(
-            IERC20Upgradeable(_asset).balanceOf(vaultBufferAddress) == 0,
+            balanceOfTokenByOwner(_asset, vaultBufferAddress) < 10,
             "vaultBuffer exist this asset"
         );
         assetSet.remove(_asset);
         trackedAssetsMap.minus(_asset, 1);
         if (
-            trackedAssetsMap.get(_asset) <= 0 && IERC20Upgradeable(_asset).balanceOf(address(this)) == 0
+            trackedAssetsMap.get(_asset) <= 0 && balanceOfTokenByOwner(_asset, address(this)) < 10
         ) {
             trackedAssetsMap.remove(_asset);
             delete trackedAssetDecimalsMap[_asset];
@@ -204,7 +209,7 @@ contract VaultAdmin is VaultStorage {
             for (uint256 j = 0; j < _wants.length; j++) {
                 trackedAssetsMap.plus(_wants[j], 1);
                 if (trackedAssetDecimalsMap[_wants[j]] == 0) {
-                    trackedAssetDecimalsMap[_wants[j]] = Helpers.getDecimals(_wants[j]);
+                    trackedAssetDecimalsMap[_wants[j]] = _getDecimals(_wants[j]);
                 }
             }
         }
@@ -304,7 +309,7 @@ contract VaultAdmin is VaultStorage {
             trackedAssetsMap.minus(_wantToken, 1);
             if (
                 trackedAssetsMap.get(_wantToken) <= 0 &&
-                IERC20Upgradeable(_wantToken).balanceOf(address(this)) == 0
+                balanceOfTokenByOwner(_wantToken, address(this)) == 0
             ) {
                 trackedAssetsMap.remove(_wantToken);
             }
@@ -341,5 +346,29 @@ contract VaultAdmin is VaultStorage {
                 withdrawQueue[i] = ZERO_ADDRESS;
             }
         }
+    }
+
+    /// @notice Fetch the `decimals()` from an ERC20 token
+    /// @dev Grabs the `decimals()` from a contract and fails if
+    ///     the decimal value does not live within a certain range
+    /// @param _token Address of the ERC20 token
+    /// @return uint256 Decimals of the ERC20 token
+    function _getDecimals(address _token) private view returns (uint256) {
+        uint256 _decimals;
+        if (_token == NativeToken.NATIVE_TOKEN) {
+            _decimals = 18;
+        } else {
+            _decimals = IERC20Metadata(_token).decimals();
+        }
+        require(_decimals > 0, "Token must have sufficient decimal places");
+        return _decimals;
+    }
+
+    /// @notice Return the token's balance Of this contract
+    function balanceOfTokenByOwner(address _tokenAddress,address _owner) internal view returns (uint256) {
+        if (_tokenAddress == NativeToken.NATIVE_TOKEN) {
+            return _owner.balance;
+        }
+        return IERC20Upgradeable(_tokenAddress).balanceOf(_owner);
     }
 }

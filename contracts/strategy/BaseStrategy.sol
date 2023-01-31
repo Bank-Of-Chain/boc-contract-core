@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
 import "../library/StableMath.sol";
+import "../library/NativeToken.sol";
 import "../price-feeds/IValueInterpreter.sol";
 import "./IStrategy.sol";
 
@@ -42,6 +43,10 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
         require(msg.sender == address(vault));
         _;
     }
+
+    receive() external payable {}
+
+    fallback() external payable {}
 
     function _initialize(
         address _vault,
@@ -89,7 +94,12 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
     }
 
     /// @inheritdoc IStrategy
-    function getOutputsInfo() external view virtual override returns (OutputInfo[] memory _outputsInfo);
+    function getOutputsInfo() external view virtual override returns (OutputInfo[] memory _outputsInfo){
+        _outputsInfo = new OutputInfo[](1);
+        OutputInfo memory _info = _outputsInfo[0];
+        _info.outputCode = 0;
+        _info.outputTokens = wants;
+    }
 
     /// @inheritdoc IStrategy
     function getPositionDetail()
@@ -100,8 +110,8 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
         returns (
             address[] memory _tokens,
             uint256[] memory _amounts,
-            bool _isUsd,
-            uint256 _usdValue
+            bool _isUsdOrEth,
+            uint256 _usdOrEthValue
         );
 
     /// @inheritdoc IStrategy
@@ -109,11 +119,11 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
         (
             address[] memory _tokens,
             uint256[] memory _amounts,
-            bool _isUsd,
-            uint256 _usdValue
+            bool _isUsdOrEth,
+            uint256 _usdOrEthValue
         ) = getPositionDetail();
-        if (_isUsd) {
-            return _usdValue;
+        if (_isUsdOrEth) {
+            return _usdOrEthValue;
         } else {
             uint256 _totalUsdValue;
             for (uint256 i = 0; i < _tokens.length; i++) {
@@ -137,7 +147,12 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
     }
 
     /// @inheritdoc IStrategy
-    function borrow(address[] memory _assets, uint256[] memory _amounts) external override onlyVault {
+    function borrow(address[] memory _assets, uint256[] memory _amounts)
+        external
+        payable
+        override
+        onlyVault
+    {
         depositTo3rdPool(_assets, _amounts);
         emit Borrow(_assets, _amounts);
     }
@@ -193,20 +208,34 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
 
     /// @notice Return the token's balance Of this contract
     function balanceOfToken(address _tokenAddress) internal view returns (uint256) {
+        if (_tokenAddress == NativeToken.NATIVE_TOKEN) {
+            return address(this).balance;
+        }
         return IERC20Upgradeable(_tokenAddress).balanceOf(address(this));
     }
 
-    /// @notice Return the value of token in USD.
+    /// @notice Return the value of token in USD(USDi)/ETH(ETHi).
     function queryTokenValue(address _token, uint256 _amount)
         internal
         view
-        returns (uint256 _valueInUSD)
+        returns (uint256 _valueInUsdOrEth)
     {
-        _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(_token, _amount);
+        if (vault.vaultType() > 0) {
+            if (_token == NativeToken.NATIVE_TOKEN) {
+                _valueInUsdOrEth = _amount;
+            } else {
+                _valueInUsdOrEth = valueInterpreter.calcCanonicalAssetValueInEth(_token, _amount);
+            }
+        } else {
+            _valueInUsdOrEth = valueInterpreter.calcCanonicalAssetValueInUsd(_token, _amount);
+        }
     }
 
     /// @notice Return the uint with decimal of one token
     function decimalUnitOfToken(address _token) internal view returns (uint256) {
+        if (_token == NativeToken.NATIVE_TOKEN) {
+            return 1e18;
+        }
         return 10**IERC20MetadataUpgradeable(_token).decimals();
     }
 
@@ -221,8 +250,13 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
     ) internal {
         for (uint256 i = 0; i < _assets.length; i++) {
             uint256 _amount = _amounts[i];
+            address _asset = _assets[i];
             if (_amount > 0) {
-                IERC20Upgradeable(_assets[i]).safeTransfer(address(_target), _amount);
+                if (_asset == NativeToken.NATIVE_TOKEN) {
+                    payable(_target).transfer(_amount);
+                } else {
+                    IERC20Upgradeable(_asset).safeTransfer(address(_target), _amount);
+                }
             }
         }
     }

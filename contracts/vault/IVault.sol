@@ -12,12 +12,14 @@ interface IVault {
     /// @param profitLimitRatio The limited ratio of profit
     /// @param lossLimitRatio The limited ratio for loss
     /// @param enforceChangeLimit The switch of enforce change Limit
+    /// @param lastClaim The last claim timestamp
     struct StrategyParams {
         uint256 lastReport;
         uint256 totalDebt;
         uint256 profitLimitRatio;
         uint256 lossLimitRatio;
         bool enforceChangeLimit;
+        uint256 lastClaim;
     }
 
     /// @param strategy The new strategy to add
@@ -51,7 +53,7 @@ interface IVault {
     event Mint(address _account, address[] _assets, uint256[] _amounts, uint256 _mintAmount);
 
     /// @param _account The owner of token burning
-    /// @param _amounts The amount of the USDi token burning
+    /// @param _amounts The amount of the USDi/ETHi token burning
     /// @param _actualAmount The received amount actually
     /// @param _shareAmount The amount of the shares burning
     /// @param _assets The address list of assets to receive
@@ -79,7 +81,7 @@ interface IVault {
     );
 
     /// @param  _strategy The specified strategy to redeem
-    /// @param _debtChangeAmount The amount to redeem in USD
+    /// @param _debtChangeAmount The amount to redeem in USD(USDi)/ETH(ETHi)
     /// @param _assets The address list of asset redeeming 
     /// @param _amounts The amount list of asset redeeming 
     event Redeem(
@@ -92,7 +94,7 @@ interface IVault {
     /// @param  _strategy The specified strategy to lend
     /// @param _wants The address list of token wanted
     /// @param _amounts The amount list of token wanted
-    /// @param _lendValue The value to lend in USD 
+    /// @param _lendValue The value to lend in USD(USDi)/ETH(ETHi)
     event LendToStrategy(
         address indexed _strategy,
         address[] _wants,
@@ -102,7 +104,7 @@ interface IVault {
 
     /// @param  _strategy The specified strategy repaying from
     /// @param _strategyWithdrawValue The value of `_strategy` to withdraw
-    /// @param _strategyTotalValue The total value of `_strategy` in USD
+    /// @param _strategyTotalValue The total value of `_strategy` in USD(USDi)/ETH(ETHi)
     /// @param _assets The address list of asset repaying from `_strategy`
     /// @param _amounts The amount list of asset repaying from `_strategy`
     event RepayFromStrategy(
@@ -158,8 +160,8 @@ interface IVault {
     event Rebase(uint256 _totalShares, uint256 _totalValue, uint256 _newUnderlyingUnitsPerShare);
 
     /// @param  _strategy The strategy for reporting
-    /// @param _gain The gain in USD units for this report
-    /// @param _loss The loss in USD units for this report
+    /// @param _gain The gain in USD(USDi)/ETH(ETHi) units for this report
+    /// @param _loss The loss in USD(USDi)/ETH(ETHi) units for this report
     /// @param _lastStrategyTotalDebt The total debt of `_strategy` for last report
     /// @param _nowStrategyTotalDebt The total debt of `_strategy` for this report
     /// @param _rewardTokens The reward token list
@@ -208,7 +210,7 @@ interface IVault {
     /// @notice Return the version of vault
     function getVersion() external pure returns (string memory);
 
-    /// @notice Return the supported assets to mint USDi 
+    /// @notice Return the supported assets to mint USDi/ETHi
     function getSupportAssets() external view returns (address[] memory _assets);
 
     /// @notice Check '_asset' is supported or not
@@ -217,16 +219,16 @@ interface IVault {
     /// @notice Return the assets held by vault
     function getTrackedAssets() external view returns (address[] memory _assets);
 
-    /// @notice Return the Vault holds asset value directly in USD
+    /// @notice Vault holds asset value directly in USD(USDi)/ETH(ETHi)(1e18)
     function valueOfTrackedTokens() external view returns (uint256 _totalValue);
 
-    /// @notice Return the asset value in USD held by vault and vault buffer
+    /// @notice Return the asset value in USD(USDi)/ETH(ETHi) held by vault and vault buffer
     function valueOfTrackedTokensIncludeVaultBuffer() external view returns (uint256 _totalValue);
 
-    /// @notice Return the total asset value in USD held by vault
+    /// @notice Return the total asset value in USD(USDi)/ETH(ETHi) (1e18) held by vault;
     function totalAssets() external view returns (uint256);
 
-    /// @notice Return the total asset in USD held by vault and vault buffer 
+    /// @notice Return the total asset in USD(USDi)/ETH(ETHi)(1e18) held by vault and vault buffer;
     function totalAssetsIncludeVaultBuffer() external view returns (uint256);
 
     /// @notice Return the total value(by chainlink price) in USD(1e18) held by vault
@@ -241,15 +243,15 @@ interface IVault {
     /// @notice Return underlying token per share token
     function underlyingUnitsPerShare() external view returns (uint256);
 
-    /// @notice Get pegToken price in USD(1e18)
+    /// @notice Get pegToken price in USD(USDi)/ETH(ETHi)(1e18)
     function getPegTokenPrice() external view returns (uint256);
 
     /// @dev Calculate total value of all assets held in Vault.
-    /// @return _value Total value(by chainlink price) in USD (1e18)
+    /// @return _value Total value(by oracle price) in USD (1e18)
     function totalValueInVault() external view returns (uint256 _value);
 
     /// @dev Calculate total value of all assets held in Strategies.
-    /// @return _value Total value(by chainlink price) in USD (1e18)
+    /// @return _value Total value(by oracle price) in USD (1e18)
     function totalValueInStrategies() external view returns (uint256 _value);
 
     /// @notice Return all strategy addresses
@@ -268,7 +270,7 @@ interface IVault {
         view
         returns (uint256 _shareAmount);
 
-    /// @notice Minting share with stablecoins
+    /// @notice Minting the USDi/ETHi ticket with stablecoins(USDi)/ETH(ETHi)
     /// @dev Support single asset or multi-assets
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
@@ -277,20 +279,20 @@ interface IVault {
         address[] memory _assets,
         uint256[] memory _amounts,
         uint256 _minimumAmount
-    ) external returns (uint256 _shareAmount);
+    ) external payable returns (uint256 _shareAmount);
 
-    /// @notice burn USDi,return stablecoins
-    /// @param _amount Amount of USDi to burn
-    /// @param _minimumAmount Minimum usd to receive in return
+    /// @notice Burn USDi/ETHi,return stablecoins(USDi)/xETH(ETHi);xETH is like wETH,sETH,stETH,rETH etc.
+    /// @param _amount Amount of USDi/ETHi to burn
+    /// @param _minimumAmount Minimum USD(USDi)/ETH(ETHi) to receive in return
     /// @param _redeemFeeBps Redemption fee in basis points
     /// @param _trusteeFeeBps Amount of yield collected in basis points
-    /// @param _assets The address list of assets to receive
-    /// @param _amounts The amount list of assets to receive
+    /// @return _assets The address list of assets to receive
+    /// @return _amounts The amount list of assets to receive
     function burn(uint256 _amount, uint256 _minimumAmount, uint256 _redeemFeeBps, uint256 _trusteeFeeBps)
         external
         returns (address[] memory _assets, uint256[] memory _amounts);
 
-    /// @notice Change USDi supply with Vault total assets.
+    /// @notice Change USDi/ETHi supply with Vault total assets.
     /// @param _trusteeFeeBps Amount of yield collected in basis points
     function rebase(uint256 _trusteeFeeBps) external;
 
@@ -302,8 +304,8 @@ interface IVault {
         external;
 
     /// @notice Withdraw the funds from specified strategy.
-    /// @param  _strategy The specified strategy to redeem
-    /// @param _amount The amount to redeem in USD 
+    /// @param _strategy The specified strategy to redeem
+    /// @param _amount The amount to redeem in USD(USDi)/ETH(ETHi)
     /// @param _outputCode The code of output 
     function redeem(
         address _strategy,
@@ -490,6 +492,9 @@ interface IVault {
 
     /// @notice Return the address of PegToken contract
     function pegTokenAddress() external view returns (address);
+
+    /// @notice Return the vault type  0-USDi,1-ETHi
+    function vaultType() external view returns (uint256);
 
     /// @notice Sets the new implement contract address
     function setAdminImpl(address _newImpl) external;
