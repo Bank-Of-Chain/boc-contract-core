@@ -9,7 +9,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import "./IPrimitivePriceFeed.sol";
 import "./../../access-control/AccessControlMixin.sol";
-import "brain-forge-std/Test.sol";
+
 /// @title ChainlinkPriceFeed
 /// @notice The price feed is from the chainlink
 /// @author Bank of Chain Protocol Inc
@@ -569,7 +569,6 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         uint256 _latestUpdatedAt,
         uint256 _heartbeat
     ) private view {
-        console2.log('__validateRateIsNotStale _latestUpdatedAt:%s,block.timestamp:%s,_heartbeat:%s',_latestUpdatedAt,block.timestamp,_heartbeat);
         require(
             _latestUpdatedAt >= block.timestamp - _heartbeat,
             string(
