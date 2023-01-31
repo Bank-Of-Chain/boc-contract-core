@@ -5,6 +5,7 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "./../access-control/AccessControlMixin.sol";
+import "../library/NativeToken.sol";
 import "../strategy/IStrategy.sol";
 
 contract MockVault is AccessControlMixin {
@@ -50,14 +51,19 @@ contract MockVault is AccessControlMixin {
     );
 
     constructor(address _accessControlProxy, address _valueInterpreter, uint256 _vaultType) {
-        _initAccessControl(_accessControlProxy);
         valueInterpreter = _valueInterpreter;
         vaultType = _vaultType;
+        _initAccessControl(_accessControlProxy);
     }
 
     receive() external payable {}
 
     fallback() external payable {}
+
+    /// @notice Return the address of treasury
+    function treasury() external view returns (address) {
+        return address(this);
+    }
 
     /// @notice Mock function for burning
     /// @param _amount Amount of USDi to burn
@@ -75,27 +81,31 @@ contract MockVault is AccessControlMixin {
         for (uint8 i = 0; i < _assets.length; i++) {
             address _token = _assets[i];
             uint256 _amount = _amounts[i];
-            IERC20Upgradeable _item = IERC20Upgradeable(_token);
-            require(_item.balanceOf(address(this)) >= _amount, "Insufficient tokens");
-            _item.safeTransfer(_strategy, _amount);
+            if (_token == NativeToken.NATIVE_TOKEN) {
+                payable(address(_strategy)).transfer(_amount);
+            }else{
+                IERC20Upgradeable _item = IERC20Upgradeable(_token);
+                require(_item.balanceOf(address(this)) >= _amount, "Insufficient tokens");
+                _item.safeTransfer(_strategy, _amount);
+            }
         }
         IStrategy(_strategy).borrow(_assets, _amounts);
     }
 
     /// @notice Withdraw the funds from specified strategy.
     /// @param _strategy The specified strategy to redeem
-    /// @param _usdValue The amount to redeem in USD
+    /// @param _usdOrEthValue The amount to redeem in USD(USDi)/ETH(ETHi)
     /// @param _outputCode The code of output
     function redeem(
         address _strategy,
-        uint256 _usdValue,
+        uint256 _usdOrEthValue,
         uint256 _outputCode
     ) external {
         uint256 _totalValue = strategies[_strategy].totalDebt;
-        if (_usdValue > _totalValue) {
-            _usdValue = _totalValue;
+        if (_usdOrEthValue > _totalValue) {
+            _usdOrEthValue = _totalValue;
         }
-        IStrategy(_strategy).repay(_usdValue, _totalValue, _outputCode);
+        IStrategy(_strategy).repay(_usdOrEthValue, _totalValue, _outputCode);
     }
 
     /// @dev Report the current asset of strategy caller
