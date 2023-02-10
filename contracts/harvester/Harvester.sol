@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
+import "../library/NativeToken.sol";
 import "./IHarvester.sol";
 import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
@@ -55,21 +56,25 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         _initAccessControl(_accessControlProxy);
     }
 
-    function usdStrategiesLenth() external override view returns (uint256) {
+    function usdStrategiesLenth() external view override returns (uint256) {
         return usdStrategies.length();
     }
-    
-    function ethStrategiesLenth() external override view returns (uint256) {
+
+    function ethStrategiesLenth() external view override returns (uint256) {
         return ethStrategies.length();
     }
 
-    function findUsdItem(uint256 _index) external override view returns (IterableSellInfoMap.SellInfo memory){
-        (,IterableSellInfoMap.SellInfo memory _sellInfo) = usdStrategies.at(_index);
+    function findUsdItem(
+        uint256 _index
+    ) external view override returns (IterableSellInfoMap.SellInfo memory) {
+        (, IterableSellInfoMap.SellInfo memory _sellInfo) = usdStrategies.at(_index);
         return _sellInfo;
     }
 
-    function findEthItem(uint256 _index) external override view returns (IterableSellInfoMap.SellInfo memory){
-        (,IterableSellInfoMap.SellInfo memory _sellInfo) = ethStrategies.at(_index);
+    function findEthItem(
+        uint256 _index
+    ) external view override returns (IterableSellInfoMap.SellInfo memory) {
+        (, IterableSellInfoMap.SellInfo memory _sellInfo) = ethStrategies.at(_index);
         return _sellInfo;
     }
 
@@ -78,7 +83,11 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         address _asset,
         uint256 _amount
     ) external override onlyRole(BocRoles.GOV_ROLE) {
-        IERC20Upgradeable(_asset).safeTransfer(treasuryAddress, _amount);
+        if (_asset == NativeToken.NATIVE_TOKEN) {
+            payable(treasuryAddress).transfer(_amount);
+        } else {
+            IERC20Upgradeable(_asset).safeTransfer(treasuryAddress, _amount);
+        }
     }
 
     /// @notice Collect the reward token from strategy.
@@ -106,7 +115,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
             );
             usdStrategies.set(_strategy, sellInfo);
 
-            emit CollectStrategyReward(_strategy,_rewardTokens,_rewardAmounts,_sellTo,_recipient);
+            emit CollectStrategyReward(_strategy, _rewardTokens, _rewardAmounts, _sellTo, _recipient);
         }
     }
 
@@ -135,7 +144,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
             );
             ethStrategies.set(_strategy, sellInfo);
 
-            emit CollectStrategyReward(_strategy,_rewardTokens,_rewardAmounts,_sellTo,_recipient);
+            emit CollectStrategyReward(_strategy, _rewardTokens, _rewardAmounts, _sellTo, _recipient);
         }
     }
 
@@ -216,4 +225,8 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         );
         emit Exchange(_exchangeParam.platform, _fromToken, _amount, _toToken, _exchangeAmount);
     }
+
+    receive() external payable {}
+
+    fallback() external payable {}
 }
