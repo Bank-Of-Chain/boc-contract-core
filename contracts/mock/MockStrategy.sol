@@ -8,11 +8,7 @@ import "./Mock3rdPool.sol";
 contract MockStrategy is BaseStrategy {
     Mock3rdPool mock3rdPool;
 
-    function initialize(
-        address _vault,
-        address _harvester,
-        address _mock3rdPool
-    ) public initializer {
+    function initialize(address _vault, address _harvester, address _mock3rdPool) public initializer {
         mock3rdPool = Mock3rdPool(_mock3rdPool);
 
         address[] memory _wants = new address[](1);
@@ -52,19 +48,14 @@ contract MockStrategy is BaseStrategy {
         view
         virtual
         override
-        returns (
-            address[] memory _tokens,
-            uint256[] memory _amounts,
-            bool _isUsd,
-            uint256 _usdValue
-        )
+        returns (address[] memory _tokens, uint256[] memory _amounts, bool _isUsd, uint256 _usdValue)
     {
         _isUsd = true;
         uint256 _lpAmount = mock3rdPool.balanceOf(address(this));
         uint256 _sharePrice = mock3rdPool.pricePerShare();
         uint256 _decimals = mock3rdPool.decimals();
 
-        _usdValue = (_lpAmount * _sharePrice) / 10**_decimals;
+        _usdValue = (_lpAmount * _sharePrice) / 10 ** _decimals;
     }
 
     function get3rdPoolAssets() external view virtual override returns (uint256) {
@@ -72,7 +63,7 @@ contract MockStrategy is BaseStrategy {
         uint256 _sharePrice = mock3rdPool.pricePerShare();
         uint256 _decimals = mock3rdPool.decimals();
 
-        return (_totalSupply * _sharePrice) / 10**_decimals;
+        return (_totalSupply * _sharePrice) / 10 ** _decimals;
     }
 
     function reportWithoutClaim() external {
@@ -97,11 +88,26 @@ contract MockStrategy is BaseStrategy {
         _claimAmounts = mock3rdPool.claim();
     }
 
-    function depositTo3rdPool(address[] memory _assets, uint256[] memory _amounts)
-        internal
-        virtual
+    /// @notice Transfer rewardToken to Harvester
+    /// @return _rewardTokens The address list of the reward token
+    /// @return _rewardAmounts The amount list of the reward token
+    /// @return _sellTo The address of target token,sell to wants radios when _sellTo is null
+    /// @return _needReInvest The sellTo Token is need reInvest to the strategy
+    function collectReward()
+        external
         override
-    {
+        returns (
+            address[] memory _rewardTokens,
+            uint256[] memory _rewardAmounts,
+            address _sellTo,
+            bool _needReInvest
+        )
+    {}
+
+    function depositTo3rdPool(
+        address[] memory _assets,
+        uint256[] memory _amounts
+    ) internal virtual override {
         mock3rdPool.deposit(_assets, _amounts);
     }
 

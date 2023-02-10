@@ -6,7 +6,6 @@ import "../vault/IVault.sol";
 
 /// @title IStrategy interface
 interface IStrategy {
-
     /// @param _outputCode The code of output,0:default path, Greater than 0:specify output path
     /// @param outputTokens The output tokens
     struct OutputInfo {
@@ -45,7 +44,7 @@ interface IStrategy {
 
     /// @notice Return the underlying token list and ratio list needed by the strategy
     /// @return _assets the address list of token to deposit
-    /// @return _ratios the ratios list of `_assets`. 
+    /// @return _ratios the ratios list of `_assets`.
     ///     The ratio is the proportion of each asset to total assets
     function getWantsInfo() external view returns (address[] memory _assets, uint256[] memory _ratios);
 
@@ -55,7 +54,7 @@ interface IStrategy {
     /// @notice Return the output path list of the strategy when withdraw.
     function getOutputsInfo() external view returns (OutputInfo[] memory _outputsInfo);
 
-    /// @notice Sets the flag of `isWantRatioIgnorable` 
+    /// @notice Sets the flag of `isWantRatioIgnorable`
     /// @param _isWantRatioIgnorable "true" means that can ignore ratios given by wants info,
     ///    "false" is the opposite.
     function setIsWantRatioIgnorable(bool _isWantRatioIgnorable) external;
@@ -81,7 +80,7 @@ interface IStrategy {
     /// @notice Return the third party protocol's pool total assets in USD(USDi)/ETH(ETHi).
     function get3rdPoolAssets() external view returns (uint256);
 
-    /// @notice Harvests the Strategy, 
+    /// @notice Harvests the Strategy,
     ///     recognizing any profits or losses and adjusting the Strategy's position.
     /// @return _rewardsTokens The list of the reward token
     /// @return _claimAmounts The list of the reward amount claimed
@@ -110,4 +109,18 @@ interface IStrategy {
 
     /// @notice Return the investable amount of strategy in USD(USDi)/ETH(ETHi)
     function poolQuota() external view returns (uint256);
+
+    /// @notice Transfer rewardToken to Harvester
+    /// @return _rewardTokens The address list of the reward token
+    /// @return _rewardAmounts The amount list of the reward token
+    /// @return _sellTo The address of target token,sell to wants radios when _sellTo is null
+    /// @return _needReInvest The sellTo Token is need reInvest to the strategy
+    function collectReward()
+        external
+        returns (
+            address[] memory _rewardTokens,
+            uint256[] memory _rewardAmounts,
+            address _sellTo,
+            bool _needReInvest
+        );
 }
