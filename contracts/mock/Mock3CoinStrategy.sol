@@ -82,6 +82,21 @@ contract Mock3CoinStrategy is BaseStrategy {
     function reportWithoutClaim() external {
         vault.reportWithoutClaim();
     }
+    /// @notice Transfer rewardToken to Harvester
+    /// @return _rewardTokens The address list of the reward token
+    /// @return _rewardAmounts The amount list of the reward token
+    /// @return _sellTo The address of target token,sell to wants radios when _sellTo is null
+    /// @return _needReInvest The sellTo Token is need reInvest to the strategy
+    function collectReward()
+        external
+        override
+        returns (
+            address[] memory _rewardTokens,
+            uint256[] memory _rewardAmounts,
+            address _sellTo,
+            bool _needReInvest
+        )
+    {}
 
     function depositTo3rdPool(address[] memory _assets, uint256[] memory _amounts)
         internal

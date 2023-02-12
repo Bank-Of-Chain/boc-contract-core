@@ -232,10 +232,6 @@ contract VaultTest is Test {
         iVault.setPegTokenAddress(address(pegToken));
         iVault.setVaultBufferAddress(address(vaultBuffer));
 
-        harvester = new Harvester();
-        harvester.initialize(address(accessControlProxy), address(vault), USDC_ADDRESS, address(vault));
-        vm.label(address(harvester), "harvester");
-
         mock3CoinStrategy = new Mock3CoinStrategy();
         address[] memory _wants = new address[](3);
         // USDT
@@ -288,14 +284,15 @@ contract VaultTest is Test {
         iETHVault.setPegTokenAddress(address(ethPegToken));
         iETHVault.setVaultBufferAddress(address(ethVaultBuffer));
 
-        ethHarvester = new Harvester();
-        ethHarvester.initialize(
+        harvester = new Harvester();
+        harvester.initialize(
             address(accessControlProxy),
-            address(ethVault),
-            WETH_ADDRESS,
-            address(ethVault)
+            address(treasury),
+            address(exchangeAggregator),
+            address(vault),
+            address(iETHVault)
         );
-        vm.label(address(ethHarvester), "ethHarvester");
+        vm.label(address(harvester), "harvester");
 
         ethMock3CoinStrategy = new Mock3CoinStrategy();
         address[] memory _ethWants = new address[](3);
@@ -1120,11 +1117,7 @@ contract VaultTest is Test {
         assertEq(iETHVault.totalValueInStrategies(), 0);
     }
 
-    function _safeApprove(
-        address _trackedAsset,
-        address _targetAddress,
-        uint256 _amount
-    ) internal {
+    function _safeApprove(address _trackedAsset, address _targetAddress, uint256 _amount) internal {
         if (_trackedAsset != NativeToken.NATIVE_TOKEN) {
             IERC20Upgradeable(_trackedAsset).safeApprove(_targetAddress, 0);
             IERC20Upgradeable(_trackedAsset).safeApprove(_targetAddress, _amount);
