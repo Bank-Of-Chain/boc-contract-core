@@ -99,7 +99,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
     function collectUsdStrategies(
         address[] calldata _strategies
     ) external override isKeeperOrVaultOrGovOrDelegate {
-        _collectEthStrategies(usdVaultAddress, _strategies);
+        _collectStrategies(usdVaultAddress, _strategies);
     }
 
     /// @notice Collect the reward token from strategy.
@@ -107,7 +107,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
     function collectEthStrategies(
         address[] calldata _strategies
     ) external override isKeeperOrVaultOrGovOrDelegate {
-        _collectEthStrategies(ethVaultAddress, _strategies);
+        _collectStrategies(ethVaultAddress, _strategies);
     }
 
     /// @notice Exchange USD strategy's reward token to sellTo,and send to recipient
@@ -130,7 +130,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         _exchangeStrategyReward(ethVaultAddress, _strategy, _exchangeTokens);
     }
 
-    function _collectEthStrategies(address _vault, address[] calldata _strategies) internal {
+    function _collectStrategies(address _vault, address[] calldata _strategies) internal {
         require(_vault == usdVaultAddress || _vault == ethVaultAddress);
         IterableSellInfoMap.AddressToSellInfoMap storage strategies = _vault == usdVaultAddress
             ? usdStrategies
