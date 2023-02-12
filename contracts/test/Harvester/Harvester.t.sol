@@ -3,8 +3,10 @@ pragma solidity ^0.8.17;
 
 import "brain-forge-std/Test.sol";
 
+import "../../library/NativeToken.sol";
 import "../../vault/IVault.sol";
 import "../../Harvester/Harvester.sol";
+import "../../treasury/Treasury.sol";
 import "../Constants.sol";
 import "../../mock/Mock3rdPool.sol";
 import "../../mock/MockStrategy.sol";
@@ -17,28 +19,43 @@ contract HarvesterTest is Test {
     address USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
 
     address accessControlProxy = 0x94c0AA94Ef3aD19E3947e58a855636b38aDe53e0;
-    address treasury = 0xc156E56402D0A2C8924e87ff8195A4635B44BD6a;
     address exchangeManager = 0x921FE3dF4F2073f0d4d0B839B6068460397a04f9;
     address usdVault = 0x30D120f80D60E7b58CA9fFaf1aaB1815f000B7c3;
     address ethVault = 0x8f0Cb368C63fbEDF7a90E43fE50F7eb8B9411746;
+    address treasuryAddress;
 
     function setUp() public {
+
+        Treasury treasury = new Treasury();
+        treasury.initialize(accessControlProxy);
+        treasuryAddress = address(treasury);
         harvester = new Harvester();
 
-        harvester.initialize(accessControlProxy, treasury, exchangeManager, usdVault, ethVault);
+        harvester.initialize(accessControlProxy, treasuryAddress, exchangeManager, usdVault, ethVault);
     }
 
     function test_01_transferToken() public {
         uint256 wethBalance = 100 ether;
+        uint256 ethBalance = 2 ether;
         deal(WETH, address(harvester), wethBalance);
+        vm.deal(address(harvester),ethBalance);
+        vm.deal(GOVERNANOR,123 ether);
+        console2.log('harvester balance:',address(harvester).balance);
+        console2.log('governanor balance:',GOVERNANOR.balance);
 
-        uint256 beforeTransfer = IERC20(WETH).balanceOf(treasury);
+        uint256 beforeTransfer = IERC20(WETH).balanceOf(treasuryAddress);
         vm.startPrank(GOVERNANOR);
         harvester.transferToken(WETH, wethBalance);
-        vm.stopPrank();
-        uint256 afterTransfer = IERC20(WETH).balanceOf(treasury);
+        uint256 afterTransfer = IERC20(WETH).balanceOf(treasuryAddress);
 
         assertEq(afterTransfer - beforeTransfer, wethBalance);
+
+        uint256 beforeTransferBalance = treasuryAddress.balance;
+        harvester.transferToken(NativeToken.NATIVE_TOKEN, ethBalance);
+        vm.stopPrank();
+        uint256 afterTransferBalance = treasuryAddress.balance;
+
+        assertEq(afterTransferBalance - beforeTransferBalance, ethBalance);
     }
 
     function test_02_collectUsdStrategies() public {
