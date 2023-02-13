@@ -10,13 +10,21 @@ import "../strategy/BaseStrategy.sol";
 contract Mock3CoinStrategy is BaseStrategy {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    function initialize(address _vault, address _harvester, address[] memory _wants) public initializer {
-        require(_wants.length == 3,"wants length must be 3");
+    uint256[] private ratios;
+
+    function initialize(
+        address _vault,
+        address _harvester,
+        address[] memory _wants,
+        uint256[] memory _ratios
+    ) public initializer {
+        require(_wants.length == _ratios.length, "wants length must eq ratios length");
+        ratios = _ratios;
         super._initialize(_vault, _harvester, "Mock3CoinStrategy", 23, _wants);
     }
 
     function getVersion() external pure virtual override returns (string memory) {
-        return "0.0.1";
+        return "1.0.0";
     }
 
     function getWantsInfo()
@@ -27,11 +35,11 @@ contract Mock3CoinStrategy is BaseStrategy {
         returns (address[] memory _assets, uint256[] memory _ratios)
     {
         _assets = wants;
-
-        _ratios = new uint256[](3);
-        _ratios[0] = 10**_getDecimals(wants[0]) * 1;
-        _ratios[1] = 10**_getDecimals(wants[1]) * 2;
-        _ratios[2] = 10**_getDecimals(wants[2]) * 4;
+        uint256 _ratiosLength = ratios.length;
+        _ratios = new uint256[](_ratiosLength);
+        for (uint256 i = 0; i < _ratiosLength; i++) {
+            _ratios[i] = (10**_getDecimals(_assets[i])) * ratios[i];
+        }
     }
 
     /// @notice Returns the position details of the strategy.
@@ -54,7 +62,6 @@ contract Mock3CoinStrategy is BaseStrategy {
             _amounts[i] = _balanceOfToken(_tokens[i], address(this));
         }
     }
-
 
     function get3rdPoolAssets() external view virtual override returns (uint256) {
         return type(uint256).max;
@@ -82,6 +89,7 @@ contract Mock3CoinStrategy is BaseStrategy {
     function reportWithoutClaim() external {
         vault.reportWithoutClaim();
     }
+
     /// @notice Transfer rewardToken to Harvester
     /// @return _rewardTokens The address list of the reward token
     /// @return _rewardAmounts The amount list of the reward token
@@ -102,8 +110,7 @@ contract Mock3CoinStrategy is BaseStrategy {
         internal
         virtual
         override
-    {
-    }
+    {}
 
     function withdrawFrom3rdPool(
         uint256 _withdrawShares,
@@ -122,7 +129,7 @@ contract Mock3CoinStrategy is BaseStrategy {
     ) external isVaultManager {
         if (_asset == NativeToken.NATIVE_TOKEN) {
             payable(_target).transfer(_amount);
-        }else{
+        } else {
             IERC20Upgradeable(_asset).safeTransfer(address(_target), _amount);
         }
     }
@@ -143,11 +150,7 @@ contract Mock3CoinStrategy is BaseStrategy {
         return _decimals;
     }
 
-    function _balanceOfToken(address _trackedAsset, address _owner)
-    internal
-    view
-    returns (uint256)
-    {
+    function _balanceOfToken(address _trackedAsset, address _owner) internal view returns (uint256) {
         uint256 _balance;
         if (_trackedAsset == NativeToken.NATIVE_TOKEN) {
             _balance = _owner.balance;
