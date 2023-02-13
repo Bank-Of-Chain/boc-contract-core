@@ -361,7 +361,6 @@ contract Vault is VaultStorage {
         if (!_isWantRatioIgnorable && _wantsLength > 1) {
             for (uint256 i = 1; i < _wantsLength; i++) {
                 if (_ratios[i] == 0) {
-                    //0 is free
                     continue;
                 } else if (_ratios[_minProductIndex] == 0) {
                     //minProductIndex is assigned to the first index whose proportion is not 0
@@ -385,10 +384,14 @@ contract Vault is VaultStorage {
                 uint256 _actualAmount = _amountsLocal[i];
                 if (_actualAmount > 0) {
                     address _want = _wants[i];
-
-                    if (!_isWantRatioIgnorable && _ratios[i] > 0) {
-                        _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
-                        _amountsLocal[i] = _actualAmount;
+                    if (!_isWantRatioIgnorable){
+                        if (_ratios[i] > 0) {
+                            _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
+                            _amountsLocal[i] = _actualAmount;
+                        }else{
+                            _amountsLocal[i] = 0;
+                            continue;
+                        }
                     }
                     if (_want == NativeToken.NATIVE_TOKEN) {
                         _lendValue += _actualAmount;

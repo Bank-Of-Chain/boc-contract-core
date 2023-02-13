@@ -71,6 +71,8 @@ contract ExchangeAggregator is IExchangeAggregator, AccessControlMixin {
     ) public payable override returns (uint256) {
         if (_sd.srcToken == NativeToken.NATIVE_TOKEN) {
             require(_sd.amount == msg.value, "amount invalid");
+        }else{
+            require(0 == msg.value, "msg.value invalid");
         }
         return _swap(_platform, _method, _data, _sd);
     }
