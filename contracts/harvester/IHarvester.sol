@@ -7,6 +7,16 @@ import "../library/IterableSellInfoMap.sol";
 
 /// @title IHarvester interface
 interface IHarvester {
+
+    /// @param _sender The manager address
+    /// @param _token The transfer token
+    /// @param _amount The transfer amount
+    event TransferToken(
+        address indexed _sender,
+        address indexed _token,
+        uint256 _amount
+    );
+
     /// @param _strategy The traget strategy
     /// @param _rewardTokens The reward token array
     /// @param _rewardAmounts The reward amounts

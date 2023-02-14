@@ -92,6 +92,8 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         } else {
             IERC20Upgradeable(_asset).safeTransfer(treasuryAddress, _amount);
         }
+
+        emit TransferToken(msg.sender, _asset, _amount);
     }
 
     /// @notice Collect the reward token from strategy.
