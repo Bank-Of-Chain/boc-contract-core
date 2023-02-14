@@ -108,7 +108,10 @@ interface IStrategy {
     function isWantRatioIgnorable() external view returns (bool);
 
     /// @notice Return the investable amount of strategy in USD(USDi)/ETH(ETHi)
-    function poolQuota() external view returns (uint256);
+    function poolDepositQuota() external view returns (uint256);
+
+    /// @notice Return the avaiable withdraw amount of strategy in USD(USDi)/ETH(ETHi)
+    function poolWithdrawQuota() external view returns (uint256);
 
     /// @notice Transfer rewardToken to Harvester
     /// @return _rewardTokens The address list of the reward token

@@ -187,7 +187,12 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
     }
 
     /// @inheritdoc IStrategy
-    function poolQuota() public view virtual override returns (uint256) {
+    function poolDepositQuota() public view virtual override returns (uint256) {
+        return type(uint256).max;
+    }
+
+    /// @inheritdoc IStrategy
+    function poolWithdrawQuota() public view virtual override returns (uint256) {
         return type(uint256).max;
     }
 
