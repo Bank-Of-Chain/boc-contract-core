@@ -7,15 +7,10 @@ import "../library/IterableSellInfoMap.sol";
 
 /// @title IHarvester interface
 interface IHarvester {
-
     /// @param _sender The manager address
     /// @param _token The transfer token
     /// @param _amount The transfer amount
-    event TransferToken(
-        address indexed _sender,
-        address indexed _token,
-        uint256 _amount
-    );
+    event TransferToken(address indexed _sender, address indexed _token, uint256 _amount);
 
     /// @param _strategy The traget strategy
     /// @param _rewardTokens The reward token array
@@ -43,22 +38,6 @@ interface IHarvester {
         uint256 _exchangeAmount
     );
 
-    // /// @notice Sets profit receiving address
-    // /// @param _receiver The profit receive address
-    // function setProfitReceiver(address _receiver) external;
-
-    // /// @notice Sets the return token when sell rewards
-    // /// @param _sellTo The new return token when sell rewards
-    // function setSellTo(address _sellTo) external;
-
-    // /// @notice Multi strategies harvest and collect all rewards to this contarct
-    // /// @param _strategies The multi strategies to harvest
-    // function collect(address[] calldata _strategies) external;
-
-    // /// @notice After collect all rewards,exchange from all reward tokens to 'sellTo' token(one stablecoin),finally send stablecoin to receiver
-    // /// @param _exchangeTokens The all exchange info will be used
-    // function exchangeAndSend(IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens) external;
-
     function usdStrategiesLenth() external view returns (uint256);
 
     function ethStrategiesLenth() external view returns (uint256);
@@ -80,6 +59,10 @@ interface IHarvester {
     /// @notice Collect the reward token from strategy.
     /// @param _strategies The target strategies
     function collectEthStrategies(address[] calldata _strategies) external;
+
+    /// @notice Collect the reward token when strategy was redeemed.
+    /// @param _vault The vault of the strategy
+    function strategyRedeemCollect(address _vault) external;
 
     /// @notice Exchange USD strategy's reward token to sellTo,and send to recipient
     /// @param _strategy The target strategy
