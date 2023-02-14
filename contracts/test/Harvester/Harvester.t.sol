@@ -81,7 +81,7 @@ contract HarvesterTest is Test {
         pendingToClaim[0] = address(mockStrategy);
         vm.prank(KEEPER);
         harvester.collectUsdStrategies(pendingToClaim);
-        vm.clearMockedCalls();
+        
 
         assertEq(harvester.usdStrategiesLenth(),1);
 
@@ -91,6 +91,33 @@ contract HarvesterTest is Test {
         assertEq(_sellInfo.rewardAmounts[0],rewardAmount);
         assertEq(_sellInfo.sellToToken,USDT);
         assertEq(_sellInfo.recipient,address(mockStrategy));
+
+        address[] memory _rewardTokens2 = new address[](1);
+        _rewardTokens2[0] = WETH;
+        uint256 rewardAmount2 = 123 ether;
+        uint256[] memory _rewardAmounts2 = new uint256[](1);
+        _rewardAmounts2[0] = rewardAmount2;
+        vm.mockCall(
+            usdVault,
+            abi.encodeWithSelector(IVault(usdVault).checkActiveStrategy.selector, address(mockStrategy)),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(mockStrategy),
+            abi.encodeWithSelector(mockStrategy.collectReward.selector),
+            abi.encode( _rewardTokens2, _rewardAmounts2,USDT, false)
+        );
+        address[] memory pendingToClaim2 = new address[](1);
+        pendingToClaim2[0] = address(mockStrategy);
+        vm.prank(KEEPER);
+        harvester.collectUsdStrategies(pendingToClaim2);
+
+        assertEq(harvester.usdStrategiesLenth(),1);
+        IterableSellInfoMap.SellInfo memory _sellInfo2 = harvester.findUsdItem(0);
+        assertEq(_sellInfo2.rewardAmounts[0],rewardAmount+rewardAmount2);
+        assertEq(_sellInfo2.recipient,address(usdVault));
+
+        vm.clearMockedCalls();
     }
 
     function test_03_collectEthStrategies() public {
@@ -128,5 +155,40 @@ contract HarvesterTest is Test {
         assertEq(_sellInfo.rewardAmounts[0],rewardAmount);
         assertEq(_sellInfo.sellToToken,USDT);
         assertEq(_sellInfo.recipient,ethVault);
+    }
+
+    function test_04_strategyRedeemCollect() public {
+        vm.mockCall(address(0),abi.encodeWithSelector(Mock3rdPool.underlyingToken.selector),abi.encode(WETH));
+        MockStrategy mockStrategy = new MockStrategy();
+        mockStrategy.initialize(usdVault, address(harvester), address(0));
+        address[] memory _rewardTokens = new address[](1);
+        _rewardTokens[0] = WETH;
+        uint256 rewardAmount = 123 ether;
+        uint256[] memory _rewardAmounts = new uint256[](1);
+        _rewardAmounts[0] = rewardAmount;
+        vm.mockCall(
+            usdVault,
+            abi.encodeWithSelector(IVault(usdVault).checkActiveStrategy.selector, address(mockStrategy)),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(mockStrategy),
+            abi.encodeWithSelector(mockStrategy.collectReward.selector),
+            abi.encode( _rewardTokens, _rewardAmounts,USDT, true)
+        );
+        address[] memory pendingToClaim = new address[](1);
+        pendingToClaim[0] = address(mockStrategy);
+
+        vm.prank(address(mockStrategy));
+        harvester.strategyRedeemCollect(usdVault);
+
+        assertEq(harvester.usdStrategiesLenth(),1);
+
+        IterableSellInfoMap.SellInfo memory _sellInfo = harvester.findUsdItem(0);
+        assertEq(_sellInfo.strategy,address(mockStrategy));
+        assertEq(_sellInfo.rewardTokens[0],WETH);
+        assertEq(_sellInfo.rewardAmounts[0],rewardAmount);
+        assertEq(_sellInfo.sellToToken,USDT);
+        assertEq(_sellInfo.recipient,address(mockStrategy));
     }
 }

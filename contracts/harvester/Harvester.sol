@@ -29,8 +29,8 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
     /// @notice The ETH vault address
     address public ethVaultAddress;
 
-    IterableSellInfoMap.AddressToSellInfoMap private usdStrategies;
-    IterableSellInfoMap.AddressToSellInfoMap private ethStrategies;
+    IterableSellInfoMap.AddressToSellInfoMap private usdStrategyCollection;
+    IterableSellInfoMap.AddressToSellInfoMap private ethStrategyCollection;
 
     receive() external payable {}
 
@@ -61,24 +61,24 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
     }
 
     function usdStrategiesLenth() external view override returns (uint256) {
-        return usdStrategies.length();
+        return usdStrategyCollection.length();
     }
 
     function ethStrategiesLenth() external view override returns (uint256) {
-        return ethStrategies.length();
+        return ethStrategyCollection.length();
     }
 
     function findUsdItem(
         uint256 _index
     ) external view override returns (IterableSellInfoMap.SellInfo memory) {
-        (, IterableSellInfoMap.SellInfo memory _sellInfo) = usdStrategies.at(_index);
+        (, IterableSellInfoMap.SellInfo memory _sellInfo) = usdStrategyCollection.at(_index);
         return _sellInfo;
     }
 
     function findEthItem(
         uint256 _index
     ) external view override returns (IterableSellInfoMap.SellInfo memory) {
-        (, IterableSellInfoMap.SellInfo memory _sellInfo) = ethStrategies.at(_index);
+        (, IterableSellInfoMap.SellInfo memory _sellInfo) = ethStrategyCollection.at(_index);
         return _sellInfo;
     }
 
@@ -92,6 +92,8 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         } else {
             IERC20Upgradeable(_asset).safeTransfer(treasuryAddress, _amount);
         }
+
+        emit TransferToken(msg.sender, _asset, _amount);
     }
 
     /// @notice Collect the reward token from strategy.
@@ -108,6 +110,17 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         address[] calldata _strategies
     ) external override isKeeperOrVaultOrGovOrDelegate {
         _collectStrategies(ethVaultAddress, _strategies);
+    }
+
+    /// @notice Collect the reward token when strategy was redeemed.
+    /// @param _vault The vault of the strategy
+    function strategyRedeemCollect(address _vault) external {
+        require(_vault == usdVaultAddress || _vault == ethVaultAddress);
+
+        IterableSellInfoMap.AddressToSellInfoMap storage _collection = _vault == usdVaultAddress
+            ? usdStrategyCollection
+            : ethStrategyCollection;
+        _collectStrategy(_vault, msg.sender, _collection);
     }
 
     /// @notice Exchange USD strategy's reward token to sellTo,and send to recipient
@@ -132,31 +145,50 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
 
     function _collectStrategies(address _vault, address[] calldata _strategies) internal {
         require(_vault == usdVaultAddress || _vault == ethVaultAddress);
-        IterableSellInfoMap.AddressToSellInfoMap storage strategies = _vault == usdVaultAddress
-            ? usdStrategies
-            : ethStrategies;
-        require(strategies.length() == 0, "The sale list has not been processed");
+        IterableSellInfoMap.AddressToSellInfoMap storage _collection = _vault == usdVaultAddress
+            ? usdStrategyCollection
+            : ethStrategyCollection;
+        // require(strategies.length() == 0, "The sale list has not been processed");
         for (uint256 i = 0; i < _strategies.length; i++) {
             address _strategy = _strategies[i];
-            IVault(_vault).checkActiveStrategy(_strategy);
-            (
-                address[] memory _rewardTokens,
-                uint256[] memory _rewardAmounts,
-                address _sellTo,
-                bool _needReInvest
-            ) = IStrategy(_strategy).collectReward();
-            address _recipient = _needReInvest ? _strategy : _vault;
-            IterableSellInfoMap.SellInfo memory sellInfo = IterableSellInfoMap.SellInfo(
-                _strategy,
-                _rewardTokens,
-                _sellTo,
-                _rewardAmounts,
-                _recipient
-            );
-            strategies.set(_strategy, sellInfo);
-
-            emit CollectStrategyReward(_strategy, _rewardTokens, _rewardAmounts, _sellTo, _recipient);
+            _collectStrategy(_vault, _strategy, _collection);
         }
+    }
+
+    function _collectStrategy(
+        address _vault,
+        address _strategy,
+        IterableSellInfoMap.AddressToSellInfoMap storage _collection
+    ) internal {
+        IVault(_vault).checkActiveStrategy(_strategy);
+        (
+            address[] memory _rewardTokens,
+            uint256[] memory _rewardAmounts,
+            address _sellTo,
+            bool _needReInvest
+        ) = IStrategy(_strategy).collectReward();
+        address _recipient = _needReInvest ? _strategy : _vault;
+
+        IterableSellInfoMap.SellInfo memory _sellInfo = _collection.get(_strategy);
+        if (_sellInfo.strategy != address(0)) {
+            require(_sellInfo.rewardTokens.length == _rewardTokens.length);
+            for (uint i = 0; i < _rewardAmounts.length; i++) {
+                _sellInfo.rewardAmounts[i] += _rewardAmounts[i];
+            }
+            // use new recipient replace old recipient
+            if (_sellInfo.recipient != _recipient) {
+                _sellInfo.recipient = _recipient;
+            }
+        } else {
+            _sellInfo.strategy = _strategy;
+            _sellInfo.rewardTokens = _rewardTokens;
+            _sellInfo.rewardAmounts = _rewardAmounts;
+            _sellInfo.sellToToken = _sellTo;
+            _sellInfo.recipient = _recipient;
+        }
+        _collection.set(_strategy, _sellInfo);
+
+        emit CollectStrategyReward(_strategy, _rewardTokens, _rewardAmounts, _sellTo, _recipient);
     }
 
     function _exchangeStrategyReward(
@@ -166,8 +198,8 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
     ) internal {
         require(_vault == usdVaultAddress || _vault == ethVaultAddress);
         IterableSellInfoMap.AddressToSellInfoMap storage strategies = _vault == usdVaultAddress
-            ? usdStrategies
-            : ethStrategies;
+            ? usdStrategyCollection
+            : ethStrategyCollection;
         IterableSellInfoMap.SellInfo memory sellInfo = strategies.get(_strategy);
         for (uint256 i = 0; i < _exchangeTokens.length; i++) {
             IExchangeAggregator.ExchangeToken memory _exchangeToken = _exchangeTokens[i];
