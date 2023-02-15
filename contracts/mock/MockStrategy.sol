@@ -95,7 +95,7 @@ contract MockStrategy is BaseStrategy {
     /// @return _needReInvest The sellTo Token is need reInvest to the strategy
     function collectReward()
         external
-        override
+        virtual
         returns (
             address[] memory _rewardTokens,
             uint256[] memory _rewardAmounts,

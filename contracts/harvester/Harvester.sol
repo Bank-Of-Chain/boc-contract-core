@@ -11,6 +11,7 @@ import "./IHarvester.sol";
 import "./../access-control/AccessControlMixin.sol";
 import "./../library/BocRoles.sol";
 import "../vault/IVault.sol";
+import "./../strategy/IClaimableStrategy.sol";
 import "./../strategy/IStrategy.sol";
 
 /// @title Harvester
@@ -166,7 +167,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
             uint256[] memory _rewardAmounts,
             address _sellTo,
             bool _needReInvest
-        ) = IStrategy(_strategy).collectReward();
+        ) = IClaimableStrategy(_strategy).collectReward();
         address _recipient = _needReInvest ? _strategy : _vault;
 
         IterableSellInfoMap.SellInfo memory _sellInfo = _collection.get(_strategy);
@@ -201,19 +202,40 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
             ? usdStrategyCollection
             : ethStrategyCollection;
         IterableSellInfoMap.SellInfo memory sellInfo = strategies.get(_strategy);
-        for (uint256 i = 0; i < _exchangeTokens.length; i++) {
+        uint256 _sellToAmount = 0;
+        uint256 exchangeRound = _exchangeTokens.length;
+        address[] memory _platforms = new address[](exchangeRound);
+        address[] memory _fromTokens = new address[](exchangeRound);
+        uint256[] memory _fromTokenAmounts = new uint256[](exchangeRound);
+        uint256[] memory _toTokenAmounts = new uint256[](exchangeRound);
+        for (uint256 i = 0; i < exchangeRound; i++) {
             IExchangeAggregator.ExchangeToken memory _exchangeToken = _exchangeTokens[i];
             require(_exchangeToken.toToken == sellInfo.sellToToken, "Rewards can only be sold as sellTo");
-            _exchange(
+            uint256 _exchangeAmount = _exchange(
                 _exchangeToken.fromToken,
                 _exchangeToken.toToken,
                 _exchangeToken.fromAmount,
                 sellInfo.recipient,
                 _exchangeToken.exchangeParam
             );
+            _platforms[i] = _exchangeToken.exchangeParam.platform;
+            _fromTokens[i] = _exchangeToken.fromToken;
+            _fromTokenAmounts[i] = _exchangeToken.fromAmount;
+            _toTokenAmounts[i] = _exchangeAmount;
+            _sellToAmount += _exchangeAmount;
         }
+        IClaimableStrategy(_strategy).exchangeFinishCallback(_sellToAmount);
 
         strategies.remove(_strategy);
+
+        emit Exchange(
+            _strategy,
+            _platforms,
+            _fromTokens,
+            _fromTokenAmounts,
+            _toTokenAmounts,
+            sellInfo.sellToToken
+        );
     }
 
     /// @notice Exchange from all reward tokens to 'sellTo' token(one stablecoin)
@@ -245,6 +267,5 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
             _exchangeParam.encodeExchangeArgs,
             _swapDescription
         );
-        emit Exchange(_exchangeParam.platform, _fromToken, _amount, _toToken, _exchangeAmount);
     }
 }

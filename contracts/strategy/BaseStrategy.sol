@@ -137,13 +137,13 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
     function get3rdPoolAssets() external view virtual override returns (uint256);
 
     /// @inheritdoc IStrategy
-    function harvest()
+    function reportToVault()
         external
         virtual
         override
-        returns (address[] memory _rewardsTokens, uint256[] memory _claimAmounts)
+        isKeeperOrVaultOrGovOrDelegate
     {
-        vault.report(_rewardsTokens, _claimAmounts);
+        vault.report();
     }
 
     /// @inheritdoc IStrategy
