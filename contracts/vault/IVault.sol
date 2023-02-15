@@ -164,8 +164,6 @@ interface IVault {
     /// @param _loss The loss in USD(USDi)/ETH(ETHi) units for this report
     /// @param _lastStrategyTotalDebt The total debt of `_strategy` for last report
     /// @param _nowStrategyTotalDebt The total debt of `_strategy` for this report
-    /// @param _rewardTokens The reward token list
-    /// @param _claimAmounts The amount list of `_rewardTokens`
     /// @param _type The type of lend operations
     event StrategyReported(
         address indexed _strategy,
@@ -173,8 +171,6 @@ interface IVault {
         uint256 _loss,
         uint256 _lastStrategyTotalDebt,
         uint256 _nowStrategyTotalDebt,
-        address[] _rewardTokens,
-        uint256[] _claimAmounts,
         uint256 _type
     );
 
@@ -339,10 +335,8 @@ interface IVault {
     function reportWithoutClaim() external;
 
     /// @dev Report the current asset of strategy caller
-    /// @param _rewardTokens The reward token list
-    /// @param _claimAmounts The claim amount list
     /// Emits a {StrategyReported} event.
-    function report(address[] memory _rewardTokens, uint256[] memory _claimAmounts) external;
+    function report() external;
 
     /// @notice Shutdown the vault when an emergency occurs, cannot mint/burn.
     function setEmergencyShutdown(bool _active) external;

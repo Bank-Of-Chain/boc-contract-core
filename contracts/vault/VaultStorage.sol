@@ -142,8 +142,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     /// @param _loss The loss in USD units for this report
     /// @param _lastStrategyTotalDebt The total debt of `_strategy` for last report
     /// @param _nowStrategyTotalDebt The total debt of `_strategy` for this report
-    /// @param _rewardTokens The reward token list
-    /// @param _claimAmounts The amount list of `_rewardTokens`
     /// @param _type The type of lend operations
     event StrategyReported(
         address indexed _strategy,
@@ -151,8 +149,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         uint256 _loss,
         uint256 _lastStrategyTotalDebt,
         uint256 _nowStrategyTotalDebt,
-        address[] _rewardTokens,
-        uint256[] _claimAmounts,
         uint256 _type
     );
 

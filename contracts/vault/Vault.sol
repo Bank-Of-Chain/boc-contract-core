@@ -419,9 +419,7 @@ contract Vault is VaultStorage {
         }
         {
             IStrategy(_strategyAddress).borrow{value: _ethAmount}(_wants, _amountsLocal);
-            address[] memory _rewardTokens;
-            uint256[] memory _claimAmounts;
-            _report(_strategyAddress, _rewardTokens, _claimAmounts, _lendValue, 1);
+            _report(_strategyAddress, _lendValue, 1);
         }
         emit LendToStrategy(_strategyAddress, _wants, _amountsLocal, _lendValue);
     }
@@ -454,11 +452,9 @@ contract Vault is VaultStorage {
     /// Requirement: only keeper call
     /// Emits a {StrategyReported} event.
     function reportByKeeper(address[] memory _strategies) external isKeeperOrVaultOrGovOrDelegate {
-        address[] memory _rewardTokens;
-        uint256[] memory _claimAmounts;
         uint256 _strategiesLength = _strategies.length;
         for (uint256 i = 0; i < _strategiesLength; i++) {
-            _report(_strategies[i], _rewardTokens, _claimAmounts, 0, 2);
+            _report(_strategies[i], 0, 2);
         }
     }
 
@@ -466,21 +462,17 @@ contract Vault is VaultStorage {
     /// Requirement: only the strategy caller is active
     /// Emits a {StrategyReported} event.
     function reportWithoutClaim() external isActiveStrategy(msg.sender) {
-        address[] memory _rewardTokens;
-        uint256[] memory _claimAmounts;
-        _report(msg.sender, _rewardTokens, _claimAmounts, 0, 2);
+        _report(msg.sender, 0, 2);
     }
 
     /// @dev Report the current asset of strategy caller
-    /// @param _rewardTokens The reward token list
-    /// @param _claimAmounts The claim amount list
     /// Requirement: only the strategy caller is active
     /// Emits a {StrategyReported} event.
-    function report(address[] memory _rewardTokens, uint256[] memory _claimAmounts)
+    function report()
         external
         isActiveStrategy(msg.sender)
     {
-        _report(msg.sender, _rewardTokens, _claimAmounts, 0, 0);
+        _report(msg.sender, 0, 0);
     }
 
     /// @notice start  Adjust  Position
@@ -1168,13 +1160,9 @@ contract Vault is VaultStorage {
 
     /// @notice Report the current asset of strategy
     /// @param _strategy The strategy address
-    /// @param _rewardTokens The reward token list
-    /// @param _claimAmounts The claim amount list
     /// @param _type 0-harvest(claim); 1-lend; 2-report(without claim);
     function _report(
         address _strategy,
-        address[] memory _rewardTokens,
-        uint256[] memory _claimAmounts,
         uint256 _lendValue,
         uint256 _type
     ) private {
@@ -1226,8 +1214,6 @@ contract Vault is VaultStorage {
             _loss,
             _lastStrategyTotalDebt,
             _nowStrategyTotalDebt,
-            _rewardTokens,
-            _claimAmounts,
             _type
         );
     }

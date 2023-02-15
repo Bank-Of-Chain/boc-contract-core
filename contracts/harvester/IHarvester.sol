@@ -25,17 +25,17 @@ interface IHarvester {
         address _recipient
     );
 
-    /// @param _platform Called exchange platforms
-    /// @param _fromToken The token swap from
-    /// @param _fromAmount The amount In to swap
+    /// @param _platforms Called exchange platforms
+    /// @param _fromTokens The token swap from
+    /// @param _fromAmounts The amount In to swap
+    /// @param _exchangeAmounts The return amount of this swap
     /// @param _toToken The token swap to
-    /// @param _exchangeAmount The return amount of this swap
     event Exchange(
-        address _platform,
-        address _fromToken,
-        uint256 _fromAmount,
-        address _toToken,
-        uint256 _exchangeAmount
+        address[] _platforms,
+        address[] _fromTokens,
+        uint256[] _fromAmounts,
+        uint256[] _exchangeAmounts,
+        address _toToken
     );
 
     function usdStrategiesLenth() external view returns (uint256);
