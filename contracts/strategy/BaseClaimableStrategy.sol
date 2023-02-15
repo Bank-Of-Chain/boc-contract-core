@@ -75,9 +75,13 @@ abstract contract BaseClaimableStrategy is BaseStrategy, IClaimableStrategy {
         virtual
         returns (address[] memory _rewardTokens, uint256[] memory _rewardAmounts);
 
-    function sellTo() internal virtual returns (address _sellTo);
+    function sellTo() internal virtual returns (address _sellTo){
+        return wants[0];
+    }
 
-    function needReInvest() internal virtual returns (bool _needReInvest);
+    function needReInvest() internal virtual returns (bool _needReInvest){
+        return true;
+    }
 
     function exchangeFinishCallback(uint256 _amount) external onlyHarvester {
         if (_amount > 1) {
