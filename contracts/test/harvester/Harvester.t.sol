@@ -5,7 +5,7 @@ import "brain-forge-std/Test.sol";
 
 import "../../library/NativeToken.sol";
 import "../../vault/IVault.sol";
-import "../../Harvester/Harvester.sol";
+import "../../harvester/Harvester.sol";
 import "../../treasury/Treasury.sol";
 import "../Constants.sol";
 import "../../mock/Mock3rdPool.sol";
