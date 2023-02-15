@@ -25,12 +25,14 @@ interface IHarvester {
         address _recipient
     );
 
+    /// @param _strategy The collect reward strategy 
     /// @param _platforms Called exchange platforms
     /// @param _fromTokens The token swap from
     /// @param _fromAmounts The amount In to swap
     /// @param _exchangeAmounts The return amount of this swap
     /// @param _toToken The token swap to
     event Exchange(
+        address _strategy,
         address[] _platforms,
         address[] _fromTokens,
         uint256[] _fromAmounts,

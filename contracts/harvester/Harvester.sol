@@ -203,11 +203,12 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
             : ethStrategyCollection;
         IterableSellInfoMap.SellInfo memory sellInfo = strategies.get(_strategy);
         uint256 _sellToAmount = 0;
-        address[] memory _platforms = new address[](_exchangeTokens.length);
-        address[] memory _fromTokens = new address[](_exchangeTokens.length);
-        uint256[] memory _fromTokenAmounts = new uint256[](_exchangeTokens.length);
-        uint256[] memory _toTokenAmounts = new uint256[](_exchangeTokens.length);
-        for (uint256 i = 0; i < _exchangeTokens.length; i++) {
+        uint256 exchangeRound = _exchangeTokens.length;
+        address[] memory _platforms = new address[](exchangeRound);
+        address[] memory _fromTokens = new address[](exchangeRound);
+        uint256[] memory _fromTokenAmounts = new uint256[](exchangeRound);
+        uint256[] memory _toTokenAmounts = new uint256[](exchangeRound);
+        for (uint256 i = 0; i < exchangeRound; i++) {
             IExchangeAggregator.ExchangeToken memory _exchangeToken = _exchangeTokens[i];
             require(_exchangeToken.toToken == sellInfo.sellToToken, "Rewards can only be sold as sellTo");
             uint256 _exchangeAmount = _exchange(
@@ -227,7 +228,14 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
 
         strategies.remove(_strategy);
 
-        emit Exchange(_platforms, _fromTokens, _fromTokenAmounts, _toTokenAmounts, sellInfo.sellToToken);
+        emit Exchange(
+            _strategy,
+            _platforms,
+            _fromTokens,
+            _fromTokenAmounts,
+            _toTokenAmounts,
+            sellInfo.sellToToken
+        );
     }
 
     /// @notice Exchange from all reward tokens to 'sellTo' token(one stablecoin)
