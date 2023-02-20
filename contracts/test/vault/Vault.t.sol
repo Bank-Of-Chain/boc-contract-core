@@ -874,7 +874,7 @@ contract VaultTest is Test {
         uint256 _trusteeFeeBps = iETHVault.trusteeFeeBps();
         uint256 _minimumAmount = 0;
         vm.prank(USER);
-        (address[] memory _receiveAssets, uint256[] memory _receiveAmounts) = iETHVault.burn(
+        (address[] memory _receiveAssets, uint256[] memory _receiveAmounts, uint256 _actuallyReceivedAmount) = iETHVault.burn(
             _amount,
             _minimumAmount,
             _redeemFeeBps,
