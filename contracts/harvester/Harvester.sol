@@ -225,9 +225,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
             _sellToAmount += _exchangeAmount;
         }
         
-        if (sellInfo.strategy == sellInfo.recipient){
-            IClaimableStrategy(_strategy).exchangeFinishCallback(_sellToAmount);
-        }
+        IClaimableStrategy(_strategy).exchangeFinishCallback(_sellToAmount);
 
         strategies.remove(_strategy);
 
