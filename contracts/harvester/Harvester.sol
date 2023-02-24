@@ -61,11 +61,11 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         _initAccessControl(_accessControlProxy);
     }
 
-    function usdStrategiesLenth() external view override returns (uint256) {
+    function usdStrategiesLength() external view override returns (uint256) {
         return usdStrategyCollection.length();
     }
 
-    function ethStrategiesLenth() external view override returns (uint256) {
+    function ethStrategiesLength() external view override returns (uint256) {
         return ethStrategyCollection.length();
     }
 

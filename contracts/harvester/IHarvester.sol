@@ -40,9 +40,9 @@ interface IHarvester {
         address _toToken
     );
 
-    function usdStrategiesLenth() external view returns (uint256);
+    function usdStrategiesLength() external view returns (uint256);
 
-    function ethStrategiesLenth() external view returns (uint256);
+    function ethStrategiesLength() external view returns (uint256);
 
     function findUsdItem(uint256 _index) external view returns (IterableSellInfoMap.SellInfo memory);
 
