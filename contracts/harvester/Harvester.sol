@@ -61,26 +61,25 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         _initAccessControl(_accessControlProxy);
     }
 
-    function usdStrategiesLength() external view override returns (uint256) {
-        return usdStrategyCollection.length();
+    function strategiesLength(address _vault) external view override returns (uint256 _length) {
+        require(_vault == usdVaultAddress || _vault == ethVaultAddress);
+        if (_vault == usdVaultAddress) {
+            _length = usdStrategyCollection.length();
+        } else {
+            _length = ethStrategyCollection.length();
+        }
     }
 
-    function ethStrategiesLength() external view override returns (uint256) {
-        return ethStrategyCollection.length();
-    }
-
-    function findUsdItem(
+    function findItem(
+        address _vault,
         uint256 _index
-    ) external view override returns (IterableSellInfoMap.SellInfo memory) {
-        (, IterableSellInfoMap.SellInfo memory _sellInfo) = usdStrategyCollection.at(_index);
-        return _sellInfo;
-    }
-
-    function findEthItem(
-        uint256 _index
-    ) external view override returns (IterableSellInfoMap.SellInfo memory) {
-        (, IterableSellInfoMap.SellInfo memory _sellInfo) = ethStrategyCollection.at(_index);
-        return _sellInfo;
+    ) external view override returns (IterableSellInfoMap.SellInfo memory _sellInfo) {
+        require(_vault == usdVaultAddress || _vault == ethVaultAddress);
+        if (_vault == usdVaultAddress) {
+            (, _sellInfo) = usdStrategyCollection.at(_index);
+        } else {
+            (, _sellInfo) = ethStrategyCollection.at(_index);
+        }
     }
 
     /// @inheritdoc IHarvester
@@ -98,19 +97,14 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
     }
 
     /// @notice Collect the reward token from strategy.
+    /// @param _vault The vault of the strategy
     /// @param _strategies The target strategies
-    function collectUsdStrategies(
+    function collectStrategies(
+        address _vault,
         address[] calldata _strategies
     ) external override isKeeperOrVaultOrGovOrDelegate {
-        _collectStrategies(usdVaultAddress, _strategies);
-    }
-
-    /// @notice Collect the reward token from strategy.
-    /// @param _strategies The target strategies
-    function collectEthStrategies(
-        address[] calldata _strategies
-    ) external override isKeeperOrVaultOrGovOrDelegate {
-        _collectStrategies(ethVaultAddress, _strategies);
+        require(_vault == usdVaultAddress || _vault == ethVaultAddress);
+        _collectStrategies(_vault == usdVaultAddress ? usdVaultAddress : ethVaultAddress, _strategies);
     }
 
     /// @notice Collect the reward token when strategy was redeemed.
@@ -124,24 +118,17 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         _collectStrategy(_vault, msg.sender, _collection);
     }
 
-    /// @notice Exchange USD strategy's reward token to sellTo,and send to recipient
+    /// @notice Exchange strategy's reward token to sellTo,and send to recipient
+    /// @param _vault The vault of the strategy
     /// @param _strategy The target strategy
     /// @param _exchangeTokens The exchange info
-    function exchangeUsdStrategyReward(
+    function exchangeStrategyReward(
+        address _vault,
         address _strategy,
         IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens
     ) external override isKeeperOrVaultOrGovOrDelegate {
-        _exchangeStrategyReward(usdVaultAddress, _strategy, _exchangeTokens);
-    }
-
-    /// @notice Exchange ETH strategy's reward token to sellTo,and send to recipient
-    /// @param _strategy The target strategy
-    /// @param _exchangeTokens The exchange info
-    function exchangeEthStrategyReward(
-        address _strategy,
-        IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens
-    ) external override isKeeperOrVaultOrGovOrDelegate {
-        _exchangeStrategyReward(ethVaultAddress, _strategy, _exchangeTokens);
+        require(_vault == usdVaultAddress || _vault == ethVaultAddress);
+        _exchangeStrategyReward(_vault == usdVaultAddress ? usdVaultAddress : ethVaultAddress, _strategy, _exchangeTokens);
     }
 
     function _collectStrategies(address _vault, address[] calldata _strategies) internal {
@@ -211,6 +198,7 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
         for (uint256 i = 0; i < exchangeRound; i++) {
             IExchangeAggregator.ExchangeToken memory _exchangeToken = _exchangeTokens[i];
             require(_exchangeToken.toToken == sellInfo.sellToToken, "Rewards can only be sold as sellTo");
+            require(_exchangeToken.fromAmount > 0 && _exchangeToken.fromAmount <= balanceOfToken(_exchangeToken.fromToken), "Rewards can only be sold as sellTo");
             uint256 _exchangeAmount = _exchange(
                 _exchangeToken.fromToken,
                 _exchangeToken.toToken,
@@ -268,5 +256,13 @@ contract Harvester is IHarvester, AccessControlMixin, Initializable {
             _exchangeParam.encodeExchangeArgs,
             _swapDescription
         );
+    }
+
+    /// @notice Return the token's balance Of this contract
+    function balanceOfToken(address _tokenAddress) internal view returns (uint256) {
+        if (_tokenAddress == NativeToken.NATIVE_TOKEN) {
+            return address(this).balance;
+        }
+        return IERC20Upgradeable(_tokenAddress).balanceOf(address(this));
     }
 }

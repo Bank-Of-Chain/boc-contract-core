@@ -40,13 +40,9 @@ interface IHarvester {
         address _toToken
     );
 
-    function usdStrategiesLength() external view returns (uint256);
+    function strategiesLength(address _vault) external view returns (uint256 _length);
 
-    function ethStrategiesLength() external view returns (uint256);
-
-    function findUsdItem(uint256 _index) external view returns (IterableSellInfoMap.SellInfo memory);
-
-    function findEthItem(uint256 _index) external view returns (IterableSellInfoMap.SellInfo memory);
+    function findItem(address _vault, uint256 _index) external view returns (IterableSellInfoMap.SellInfo memory _sellInfo);
 
     /// @notice Recover tokens stuck in contract, i.e. transfer by mistaken.
     /// @dev Transfer token to governor.
@@ -55,29 +51,20 @@ interface IHarvester {
     function transferToken(address _asset, uint256 _amount) external;
 
     /// @notice Collect the reward token from strategy.
+    /// @param _vault The vault of the strategy
     /// @param _strategies The target strategies
-    function collectUsdStrategies(address[] calldata _strategies) external;
-
-    /// @notice Collect the reward token from strategy.
-    /// @param _strategies The target strategies
-    function collectEthStrategies(address[] calldata _strategies) external;
+    function collectStrategies(address _vault, address[] calldata _strategies) external;
 
     /// @notice Collect the reward token when strategy was redeemed.
     /// @param _vault The vault of the strategy
     function strategyRedeemCollect(address _vault) external;
 
-    /// @notice Exchange USD strategy's reward token to sellTo,and send to recipient
+    /// @notice Exchange strategy's reward token to sellTo,and send to recipient
+    /// @param _vault The vault of the strategy
     /// @param _strategy The target strategy
     /// @param _exchangeTokens The exchange info
-    function exchangeUsdStrategyReward(
-        address _strategy,
-        IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens
-    ) external;
-
-    /// @notice Exchange ETH strategy's reward token to sellTo,and send to recipient
-    /// @param _strategy The target strategy
-    /// @param _exchangeTokens The exchange info
-    function exchangeEthStrategyReward(
+    function exchangeStrategyReward(
+        address _vault,
         address _strategy,
         IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens
     ) external;
