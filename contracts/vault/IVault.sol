@@ -284,9 +284,10 @@ interface IVault {
     /// @param _trusteeFeeBps Amount of yield collected in basis points
     /// @return _assets The address list of assets to receive
     /// @return _amounts The amount list of assets to receive
+    /// @return _actuallyReceivedAmount The value of the assets in USD(USDi)/ETH(ETHi)
     function burn(uint256 _amount, uint256 _minimumAmount, uint256 _redeemFeeBps, uint256 _trusteeFeeBps)
         external
-        returns (address[] memory _assets, uint256[] memory _amounts);
+        returns (address[] memory _assets, uint256[] memory _amounts, uint256 _actuallyReceivedAmount);
 
     /// @notice Change USDi/ETHi supply with Vault total assets.
     /// @param _trusteeFeeBps Amount of yield collected in basis points

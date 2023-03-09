@@ -249,6 +249,7 @@ contract Vault is VaultStorage {
     /// @param _trusteeFeeBps Amount of yield collected in basis points
     /// @return _assets The address list of assets to receive
     /// @return _amounts The amount list of assets to receive
+    /// @return _actuallyReceivedAmount The value of the assets in USD(USDi)/ETH(ETHi)
     function burn(
         uint256 _amount,
         uint256 _minimumAmount,
@@ -259,7 +260,7 @@ contract Vault is VaultStorage {
         whenNotEmergency
         whenNotAdjustPosition
         nonReentrant
-        returns (address[] memory _assets, uint256[] memory _amounts)
+        returns (address[] memory _assets, uint256[] memory _amounts, uint256 _actuallyReceivedAmount)
     {
         uint256 _accountBalance = IPegToken(pegTokenAddress).balanceOf(msg.sender);
         require(_amount > 0 && _amount <= _accountBalance, "AI"); //USDi not enough,amount is invalid
@@ -277,8 +278,6 @@ contract Vault is VaultStorage {
             _assetPrices,
             _assetDecimals
         );
-
-        uint256 _actuallyReceivedAmount;
         (_assets, _amounts, _actuallyReceivedAmount) = _calculateAndTransfer(
             _actualAsset,
             _trackedAssets,
