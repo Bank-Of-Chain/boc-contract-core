@@ -189,6 +189,6 @@ contract HarvesterTest is Test {
         assertEq(_sellInfo.rewardTokens[0],WETH);
         assertEq(_sellInfo.rewardAmounts[0],rewardAmount);
         assertEq(_sellInfo.sellToToken,USDT);
-        assertEq(_sellInfo.recipient,address(mockStrategy));
+        assertEq(_sellInfo.recipient,address(usdVault));
     }
 }
