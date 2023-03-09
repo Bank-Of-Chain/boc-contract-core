@@ -84,7 +84,7 @@ abstract contract BaseClaimableStrategy is BaseStrategy, IClaimableStrategy {
     }
 
     function exchangeFinishCallback(uint256 _amount) external onlyHarvester {
-        if (_amount > 1) {
+        if (needReInvest() && _amount > 1) {
             reInvest();
         }
         vault.report();

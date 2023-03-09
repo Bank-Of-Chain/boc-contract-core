@@ -80,12 +80,12 @@ contract HarvesterTest is Test {
         address[] memory pendingToClaim = new address[](1);
         pendingToClaim[0] = address(mockStrategy);
         vm.prank(KEEPER);
-        harvester.collectUsdStrategies(pendingToClaim);
+        harvester.collectStrategies(usdVault, pendingToClaim);
         
 
-        assertEq(harvester.usdStrategiesLenth(),1);
+        assertEq(harvester.strategiesLength(usdVault),1);
 
-        IterableSellInfoMap.SellInfo memory _sellInfo = harvester.findUsdItem(0);
+        IterableSellInfoMap.SellInfo memory _sellInfo = harvester.findItem(usdVault, 0);
         assertEq(_sellInfo.strategy,address(mockStrategy));
         assertEq(_sellInfo.rewardTokens[0],WETH);
         assertEq(_sellInfo.rewardAmounts[0],rewardAmount);
@@ -110,10 +110,10 @@ contract HarvesterTest is Test {
         address[] memory pendingToClaim2 = new address[](1);
         pendingToClaim2[0] = address(mockStrategy);
         vm.prank(KEEPER);
-        harvester.collectUsdStrategies(pendingToClaim2);
+        harvester.collectStrategies(usdVault, pendingToClaim2);
 
-        assertEq(harvester.usdStrategiesLenth(),1);
-        IterableSellInfoMap.SellInfo memory _sellInfo2 = harvester.findUsdItem(0);
+        assertEq(harvester.strategiesLength(usdVault),1);
+        IterableSellInfoMap.SellInfo memory _sellInfo2 = harvester.findItem(usdVault, 0);
         assertEq(_sellInfo2.rewardAmounts[0],rewardAmount+rewardAmount2);
         assertEq(_sellInfo2.recipient,address(usdVault));
 
@@ -144,12 +144,12 @@ contract HarvesterTest is Test {
         address[] memory pendingToClaim = new address[](1);
         pendingToClaim[0] = address(mockStrategy);
         vm.prank(KEEPER);
-        harvester.collectEthStrategies(pendingToClaim);
+        harvester.collectStrategies(ethVault, pendingToClaim);
         vm.clearMockedCalls();
 
-        assertEq(harvester.ethStrategiesLenth(),1);
+        assertEq(harvester.strategiesLength(ethVault),1);
 
-        IterableSellInfoMap.SellInfo memory _sellInfo = harvester.findEthItem(0);
+        IterableSellInfoMap.SellInfo memory _sellInfo = harvester.findItem(ethVault, 0);
         assertEq(_sellInfo.strategy,address(mockStrategy));
         assertEq(_sellInfo.rewardTokens[0],WETH);
         assertEq(_sellInfo.rewardAmounts[0],rewardAmount);
@@ -182,13 +182,13 @@ contract HarvesterTest is Test {
         vm.prank(address(mockStrategy));
         harvester.strategyRedeemCollect(usdVault);
 
-        assertEq(harvester.usdStrategiesLenth(),1);
+        assertEq(harvester.strategiesLength(usdVault),1);
 
-        IterableSellInfoMap.SellInfo memory _sellInfo = harvester.findUsdItem(0);
+        IterableSellInfoMap.SellInfo memory _sellInfo = harvester.findItem(usdVault, 0);
         assertEq(_sellInfo.strategy,address(mockStrategy));
         assertEq(_sellInfo.rewardTokens[0],WETH);
         assertEq(_sellInfo.rewardAmounts[0],rewardAmount);
         assertEq(_sellInfo.sellToToken,USDT);
-        assertEq(_sellInfo.recipient,address(mockStrategy));
+        assertEq(_sellInfo.recipient,address(usdVault));
     }
 }
