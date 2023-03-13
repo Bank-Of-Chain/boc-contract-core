@@ -757,20 +757,30 @@ contract Vault is VaultStorage {
             address _strategy = withdrawQueue[i];
             if (_strategy == ZERO_ADDRESS) break;
 
-            uint256 _strategyTotalValue = strategies[_strategy].totalDebt;
-            if (_strategyTotalValue <= 0) {
+            uint256 _strategyTotalDebt = strategies[_strategy].totalDebt;
+            if (_strategyTotalDebt <= 0) {
                 continue;
+            }
+            uint256 _strategyWithdrawQuota = _strategyTotalDebt;
+            {
+                uint256 _withdrawQuota = IStrategy(_strategy).poolWithdrawQuota();
+                if(_withdrawQuota != type(uint256).max){
+                    uint256 _estimatedTotalAssets = IStrategy(_strategy).estimatedTotalAssets();
+                    if(_withdrawQuota < _estimatedTotalAssets){
+                        _strategyWithdrawQuota = _strategyTotalDebt * _withdrawQuota / _estimatedTotalAssets;
+                    }
+                }
             }
 
             uint256 _strategyWithdrawValue;
-            if (_needWithdrawValue > _strategyTotalValue) {
-                _strategyWithdrawValue = _strategyTotalValue;
+            if (_needWithdrawValue > _strategyWithdrawQuota) {
+                _strategyWithdrawValue = _strategyWithdrawQuota;
                 _needWithdrawValue -= _strategyWithdrawValue;
             } else {
                 //If there is less than 1U/0.001ETH left, then all redemption
                 uint256 _leftMinValue = vaultType > 0 ? 1e18 : 1e15;
-                if (_needWithdrawValue + _leftMinValue >= _strategyTotalValue) {
-                    _strategyWithdrawValue = _strategyTotalValue;
+                if (_needWithdrawValue + _leftMinValue >= _strategyTotalDebt) {
+                    _strategyWithdrawValue = _strategyWithdrawQuota;
                 } else {
                     _strategyWithdrawValue = _needWithdrawValue;
                 }
@@ -779,19 +789,19 @@ contract Vault is VaultStorage {
 
             (address[] memory _assets, uint256[] memory _amounts) = IStrategy(_strategy).repay(
                 _strategyWithdrawValue,
-                _strategyTotalValue,
+                _strategyTotalDebt,
                 0
             );
             emit RepayFromStrategy(
                 _strategy,
                 _strategyWithdrawValue,
-                _strategyTotalValue,
+                _strategyTotalDebt,
                 _assets,
                 _amounts
             );
             uint256 _nowStrategyTotalDebt = strategies[_strategy].totalDebt;
             uint256 _thisWithdrawValue = (_nowStrategyTotalDebt * _strategyWithdrawValue) /
-                _strategyTotalValue;
+            _strategyTotalDebt;
             strategies[_strategy].totalDebt = _nowStrategyTotalDebt - _thisWithdrawValue;
             _totalWithdrawValue += _thisWithdrawValue;
 

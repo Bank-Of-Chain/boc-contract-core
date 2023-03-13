@@ -11,6 +11,7 @@ contract Mock3CoinStrategy is BaseStrategy {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     uint256[] private ratios;
+    uint256 private withdrawQuota;
 
     function initialize(
         address _vault,
@@ -158,5 +159,17 @@ contract Mock3CoinStrategy is BaseStrategy {
             _balance = IERC20Upgradeable(_trackedAsset).balanceOf(_owner);
         }
         return _balance;
+    }
+
+    /// @inheritdoc IStrategy
+    function poolWithdrawQuota() public view virtual override returns (uint256) {
+        if(withdrawQuota == 0){
+            return type(uint256).max;
+        }
+        return withdrawQuota;
+    }
+
+    function setPoolWithdrawQuota(uint256 _withdrawQuota) external {
+        withdrawQuota = _withdrawQuota;
     }
 }
