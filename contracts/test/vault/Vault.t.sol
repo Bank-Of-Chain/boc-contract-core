@@ -82,7 +82,9 @@ contract VaultTest is Test {
     Harvester harvester;
     Harvester ethHarvester;
     Mock3CoinStrategy mock3CoinStrategy;
+    Mock3CoinStrategy otherMock3CoinStrategy;
     Mock3CoinStrategy ethMock3CoinStrategy;
+    Mock3CoinStrategy otherEthMock3CoinStrategy;
 
     uint256[] public arr2 = [1, 2, 3];
 
@@ -247,6 +249,10 @@ contract VaultTest is Test {
         mock3CoinStrategy.initialize(address(vault), address(harvester), _wants, _ratios);
         vm.label(address(mock3CoinStrategy), "mock3CoinStrategy");
 
+        otherMock3CoinStrategy = new Mock3CoinStrategy();
+        otherMock3CoinStrategy.initialize(address(vault), address(harvester), _wants, _ratios);
+        vm.label(address(otherMock3CoinStrategy), "otherMock3CoinStrategy");
+
         // init ETHi Vault
         ethVaultAdmin = new VaultAdmin();
         vm.label(address(ethVaultAdmin), "ethVaultAdmin");
@@ -313,6 +319,10 @@ contract VaultTest is Test {
         ethMock3CoinStrategy.initialize(address(ethVault), address(ethHarvester), _ethWants, _ethRatios);
         vm.label(address(ethMock3CoinStrategy), "ethMock3CoinStrategy");
 
+        otherEthMock3CoinStrategy = new Mock3CoinStrategy();
+        otherEthMock3CoinStrategy.initialize(address(ethVault), address(ethHarvester), _ethWants, _ethRatios);
+        vm.label(address(otherEthMock3CoinStrategy), "otherEthMock3CoinStrategy");
+
         vm.stopPrank();
     }
 
@@ -374,9 +384,14 @@ contract VaultTest is Test {
         _ratios[2] = 0;
         mockStrategy.initialize(address(vault), address(harvester), _wants, _ratios);
 
-        IVault.StrategyAdd[] memory _strategyAdds = new IVault.StrategyAdd[](1);
+        IVault.StrategyAdd[] memory _strategyAdds = new IVault.StrategyAdd[](2);
         _strategyAdds[0] = IVault.StrategyAdd({
         strategy: address(mockStrategy),
+        profitLimitRatio: uint256(100),
+        lossLimitRatio: uint256(100)
+        });
+        _strategyAdds[1] = IVault.StrategyAdd({
+        strategy: address(otherMock3CoinStrategy),
         profitLimitRatio: uint256(100),
         lossLimitRatio: uint256(100)
         });
@@ -429,9 +444,16 @@ contract VaultTest is Test {
         _ratios[2] = 0;
         ethMockStrategy.initialize(address(ethVault), address(harvester), _wants, _ratios);
 
-        IVault.StrategyAdd[] memory _strategyAdds = new IVault.StrategyAdd[](1);
+        IVault.StrategyAdd[] memory _strategyAdds = new IVault.StrategyAdd[](2);
+
         _strategyAdds[0] = IVault.StrategyAdd({
         strategy: address(ethMockStrategy),
+        profitLimitRatio: uint256(100),
+        lossLimitRatio: uint256(100)
+        });
+
+        _strategyAdds[1] = IVault.StrategyAdd({
+        strategy: address(otherEthMock3CoinStrategy),
         profitLimitRatio: uint256(100),
         lossLimitRatio: uint256(100)
         });
@@ -492,10 +514,23 @@ contract VaultTest is Test {
         iVault.removeStrategies(_removeStrategies);
         _strategies = iVault.getStrategies();
         assertEq(_strategies.length, 0);
+        _strategyAdds = new IVault.StrategyAdd[](2);
+        _strategyAdds[0] = IVault.StrategyAdd({
+        strategy: address(mock3CoinStrategy),
+        profitLimitRatio: uint256(100),
+        lossLimitRatio: uint256(100)
+        });
+
+        _strategyAdds[1] = IVault.StrategyAdd({
+        strategy: address(otherMock3CoinStrategy),
+        profitLimitRatio: uint256(100),
+        lossLimitRatio: uint256(100)
+        });
+
         iVault.addStrategies(_strategyAdds);
         _strategies = iVault.getStrategies();
         vm.stopPrank();
-        assertEq(_strategies.length, 1);
+        assertEq(_strategies.length, _strategyAdds.length);
     }
 
     function testAddAndRemoveStrategiesWithETHi() public {
@@ -520,10 +555,24 @@ contract VaultTest is Test {
         _strategies = iETHVault.getStrategies();
         assertEq(_strategies.length, 0);
 
+
+        _strategyAdds = new IVault.StrategyAdd[](2);
+        _strategyAdds[0] = IVault.StrategyAdd({
+        strategy: address(ethMock3CoinStrategy),
+        profitLimitRatio: uint256(100),
+        lossLimitRatio: uint256(100)
+        });
+
+        _strategyAdds[1] = IVault.StrategyAdd({
+        strategy: address(otherEthMock3CoinStrategy),
+        profitLimitRatio: uint256(100),
+        lossLimitRatio: uint256(100)
+        });
+
         iETHVault.addStrategies(_strategyAdds);
         _strategies = iETHVault.getStrategies();
         vm.stopPrank();
-        assertEq(_strategies.length, 1);
+        assertEq(_strategies.length, _strategyAdds.length);
     }
 
     function testFailSetVaultBufferAddress() public {
@@ -679,8 +728,9 @@ contract VaultTest is Test {
         );
         assertGt(_afterAdjustPositionOfVault, _beforeAdjustPositionOfVault);
 
-        address[] memory _queues = new address[](1);
+        address[] memory _queues = new address[](2);
         _queues[0] = address(mock3CoinStrategy);
+        _queues[1] = address(otherMock3CoinStrategy);
         iVault.setWithdrawalQueue(_queues);
 
         address[] memory _tokens = new address[](3);
@@ -688,11 +738,23 @@ contract VaultTest is Test {
         _tokens[1] = USDC_ADDRESS;
         _tokens[2] = DAI_ADDRESS;
         uint256[] memory _amounts = new uint256[](3);
-        _amounts[0] = _balanceOfToken(USDT_ADDRESS, address(vault));
-        _amounts[1] = _balanceOfToken(USDC_ADDRESS, address(vault));
-        _amounts[2] = _balanceOfToken(DAI_ADDRESS, address(vault));
+        _amounts[0] = _balanceOfToken(USDT_ADDRESS, address(vault))/2;
+        _amounts[1] = _balanceOfToken(USDC_ADDRESS, address(vault))/2;
+        _amounts[2] = _balanceOfToken(DAI_ADDRESS, address(vault))/2;
+        uint256 _valueInUSD;
+        {
+            iVault.lend(address(mock3CoinStrategy), _tokens, _amounts);
+            uint256[] memory _otherAmounts = new uint256[](3);
+            _otherAmounts[0] = _balanceOfToken(USDT_ADDRESS, address(vault));
+            _otherAmounts[1] = _balanceOfToken(USDC_ADDRESS, address(vault));
+            _otherAmounts[2] = _balanceOfToken(DAI_ADDRESS, address(vault));
 
-        iVault.lend(address(mock3CoinStrategy), _tokens, _amounts);
+            iVault.lend(address(otherMock3CoinStrategy), _tokens, _otherAmounts);
+
+            _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(USDC_ADDRESS, _amounts[1]*2) +
+            valueInterpreter.calcCanonicalAssetValueInUsd(USDT_ADDRESS, _amounts[0]*2) +
+            valueInterpreter.calcCanonicalAssetValueInUsd(DAI_ADDRESS, _amounts[2]*2);
+        }
 
         (address[] memory _wants, uint256[] memory _ratios) = mock3CoinStrategy.getWantsInfo();
         uint256 _wantsLength = _wants.length;
@@ -733,9 +795,6 @@ contract VaultTest is Test {
         vm.stopPrank();
 
         uint256 _usdiAmount = pegToken.balanceOf(USER);
-        uint256 _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(USDC_ADDRESS, _amounts[1]) +
-            valueInterpreter.calcCanonicalAssetValueInUsd(USDT_ADDRESS, _amounts[0]) +
-            valueInterpreter.calcCanonicalAssetValueInUsd(DAI_ADDRESS, _amounts[2]);
 
         assertEq(_usdiAmount, _valueInUSD);
     }
@@ -769,8 +828,9 @@ contract VaultTest is Test {
         );
         assertGt(_afterAdjustPositionOfVault, _beforeAdjustPositionOfVault);
 
-        address[] memory _queues = new address[](1);
+        address[] memory _queues = new address[](2);
         _queues[0] = address(ethMock3CoinStrategy);
+        _queues[1] = address(otherEthMock3CoinStrategy);
         iETHVault.setWithdrawalQueue(_queues);
 
         address[] memory _tokens = new address[](3);
@@ -778,11 +838,23 @@ contract VaultTest is Test {
         _tokens[1] = STETH_ADDRESS;
         _tokens[2] = WETH_ADDRESS;
         uint256[] memory _amounts = new uint256[](3);
-        _amounts[0] = _balanceOfToken(NativeToken.NATIVE_TOKEN, address(ethVault));
-        _amounts[1] = _balanceOfToken(STETH_ADDRESS, address(ethVault));
-        _amounts[2] = _balanceOfToken(WETH_ADDRESS, address(ethVault));
+        _amounts[0] = _balanceOfToken(NativeToken.NATIVE_TOKEN, address(ethVault))/2;
+        _amounts[1] = _balanceOfToken(STETH_ADDRESS, address(ethVault))/2;
+        _amounts[2] = _balanceOfToken(WETH_ADDRESS, address(ethVault))/2;
+        uint256 _valueInETH;
+        {
+            iETHVault.lend(address(ethMock3CoinStrategy), _tokens, _amounts);
 
-        iETHVault.lend(address(ethMock3CoinStrategy), _tokens, _amounts);
+            uint256[] memory _otherAmounts = new uint256[](3);
+        _otherAmounts[0] = _balanceOfToken(NativeToken.NATIVE_TOKEN, address(ethVault));
+        _otherAmounts[1] = _balanceOfToken(STETH_ADDRESS, address(ethVault));
+        _otherAmounts[2] = _balanceOfToken(WETH_ADDRESS, address(ethVault));
+            iETHVault.lend(address(otherEthMock3CoinStrategy), _tokens, _otherAmounts);
+
+            _valueInETH = valueInterpreter.calcCanonicalAssetValueInEth(STETH_ADDRESS, _amounts[1]*2) +
+            valueInterpreter.calcCanonicalAssetValueInEth(NativeToken.NATIVE_TOKEN, _amounts[0]*2) +
+            valueInterpreter.calcCanonicalAssetValueInEth(WETH_ADDRESS, _amounts[2]*2);
+        }
 
         (address[] memory _wants, uint256[] memory _ratios) = ethMock3CoinStrategy.getWantsInfo();
         uint256 _wantsLength = _wants.length;
@@ -833,9 +905,6 @@ contract VaultTest is Test {
         vm.stopPrank();
 
         uint256 _ethiAmount = ethPegToken.balanceOf(USER);
-        uint256 _valueInETH = valueInterpreter.calcCanonicalAssetValueInEth(STETH_ADDRESS, _amounts[1]) +
-            valueInterpreter.calcCanonicalAssetValueInEth(NativeToken.NATIVE_TOKEN, _amounts[0]) +
-            valueInterpreter.calcCanonicalAssetValueInEth(WETH_ADDRESS, _amounts[2]);
 
         assertEq(_ethiAmount / 100, _valueInETH / 100);
     }
@@ -1209,10 +1278,15 @@ contract VaultTest is Test {
         uint256 _redeemFeeBps = iVault.redeemFeeBps();
         uint256 _trusteeFeeBps = iVault.trusteeFeeBps();
         uint256 _amount = pegToken.balanceOf(USER);
+
+        mock3CoinStrategy.setPoolWithdrawQuota(mock3CoinStrategy.estimatedTotalAssets()/6);
+
         vm.prank(USER);
         iVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
 
         assertEq(iVault.valueOfTrackedTokens(), 0);
+
+        mock3CoinStrategy.setPoolWithdrawQuota(mock3CoinStrategy.estimatedTotalAssets());
 
         _amount = pegToken.balanceOf(FRIEND);
         vm.prank(FRIEND);
@@ -1226,15 +1300,17 @@ contract VaultTest is Test {
         uint256 _redeemFeeBps = iETHVault.redeemFeeBps();
         uint256 _trusteeFeeBps = iETHVault.trusteeFeeBps();
         uint256 _amount = ethPegToken.balanceOf(USER);
+        ethMock3CoinStrategy.setPoolWithdrawQuota(ethMock3CoinStrategy.estimatedTotalAssets()/6);
         vm.prank(USER);
         iETHVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
 
         assertEq(iETHVault.valueOfTrackedTokens(), 0);
 
+        ethMock3CoinStrategy.setPoolWithdrawQuota(ethMock3CoinStrategy.estimatedTotalAssets());
+
         _amount = ethPegToken.balanceOf(FRIEND);
         vm.prank(FRIEND);
         iETHVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
-
         assertEq(iETHVault.totalValueInStrategies(), 0);
     }
 
