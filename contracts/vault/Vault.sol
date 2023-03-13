@@ -8,7 +8,6 @@ import "../library/StableMath.sol";
 import "./VaultStorage.sol";
 import "../exchanges/IExchangeAggregator.sol";
 
-
 /// @title Vault
 /// @notice Vault is the core of the BoC protocol
 /// @notice Vault stores and manages collateral funds of all positions
