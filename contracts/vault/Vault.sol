@@ -373,7 +373,7 @@ contract Vault is VaultStorage {
             uint256[] memory _claimAmounts;
             _deltaAssets = _report(_strategyAddr, _rewardTokens, _claimAmounts, _lendValue, 1);
             if(_minDeltaAssets > 0){
-                require(_deltaAssets >= _minDeltaAssets,"not enough");
+                require(_deltaAssets >= _minDeltaAssets, "not enough");
             }
         }
         emit LendToStrategy(_strategyAddr, _wants, _toAmounts, _lendValue);
