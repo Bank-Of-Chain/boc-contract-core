@@ -349,6 +349,7 @@ contract Vault is VaultStorage {
                     address _want = _wants[i];
 
                     if (!_isWantRatioIgnorable) {
+                        //radios[i] eq 0,indicating no need to invest assets
                         if(_ratios[i] > 0){
                             _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
                             _toAmounts[i] = _actualAmount;
