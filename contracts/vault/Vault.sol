@@ -1053,60 +1053,6 @@ contract Vault is VaultStorage {
         return _totalShares;
     }
 
-    /// @notice check valid and exchange to want token
-    function _checkAndExchange(
-        address _strategy,
-        IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens
-    )
-        internal
-        returns (
-            address[] memory _wants,
-            uint256[] memory _ratios,
-            uint256[] memory toAmounts
-        )
-    {
-        (_wants, _ratios) = IStrategy(_strategy).getWantsInfo();
-        uint256 _wantsLength = _wants.length;
-        toAmounts = new uint256[](_wantsLength);
-        uint256 _exchangeTokensLength = _exchangeTokens.length;
-        for (uint256 i = 0; i < _exchangeTokensLength; i++) {
-            bool _findToToken = false;
-            for (uint256 j = 0; j < _wantsLength; j++) {
-                if (_exchangeTokens[i].toToken == _wants[j]) {
-                    _findToToken = true;
-                    break;
-                }
-            }
-            require(_findToToken, "toToken invalid");
-        }
-
-        for (uint256 j = 0; j < _wantsLength; j++) {
-            for (uint256 i = 0; i < _exchangeTokensLength; i++) {
-                IExchangeAggregator.ExchangeToken memory _exchangeToken = _exchangeTokens[i];
-
-                // not strategy need token,skip
-                if (_wants[j] != _exchangeToken.toToken) continue;
-
-                uint256 _toAmount;
-                if (_exchangeToken.fromToken == _exchangeToken.toToken) {
-                    _toAmount = _exchangeToken.fromAmount;
-                } else {
-                    if (_exchangeToken.fromAmount > 0) {
-                        _toAmount = _exchange(
-                            _exchangeToken.fromToken,
-                            _exchangeToken.toToken,
-                            _exchangeToken.fromAmount,
-                            _exchangeToken.exchangeParam
-                        );
-                    }
-                }
-
-                toAmounts[j] = _toAmount;
-                break;
-            }
-        }
-    }
-
     function _exchange(
         address _fromToken,
         address _toToken,
