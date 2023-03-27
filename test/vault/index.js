@@ -369,25 +369,28 @@ describe("Vault", function () {
         console.log("(usdt,usdc,dai)=(%s,%s,%s)", depositAmount.toFixed(), usdcDepositAmount.toFixed(), daiDepositAmount.toFixed());
         let tokens = [MFC.USDT_ADDRESS, MFC.USDC_ADDRESS, MFC.DAI_ADDRESS];
         let amounts = [depositAmount.toFixed(), usdcDepositAmount.toFixed(), daiDepositAmount.toFixed()];
-        let exchangeArray = await Promise.all(
-            map(tokens, async (tokenItem, index) => {
-                const exchangeAmounts = amounts[index].toString();
-                return {
-                    fromToken: tokenItem,
-                    toToken: tokenItem,
-                    fromAmount: exchangeAmounts,
-                    exchangeParam: {
-                        platform: exchangePlatformAdapters.testAdapter,
-                        method: 0,
-                        encodeExchangeArgs: '0x',
-                        slippage: 0,
-                        oracleAdditionalSlippage: 0
-                    }
-                }
-            })
-        );
+        // let exchangeArray = await Promise.all(
+        //     map(tokens, async (tokenItem, index) => {
+        //         const exchangeAmounts = amounts[index].toString();
+        //         return {
+        //             fromToken: tokenItem,
+        //             toToken: tokenItem,
+        //             fromAmount: exchangeAmounts,
+        //             exchangeParam: {
+        //                 platform: exchangePlatformAdapters.testAdapter,
+        //                 method: 0,
+        //                 encodeExchangeArgs: '0x',
+        //                 slippage: 0,
+        //                 oracleAdditionalSlippage: 0
+        //             }
+        //         }
+        //     })
+        // );
 
-        await iVault.lend(mockS3CoinStrategy.address, exchangeArray);
+        const _minDeltaAssets = await iVault.lend.call(mockS3CoinStrategy.address,tokens,amounts,0);
+        console.log("_minDeltaAssets",_minDeltaAssets.toString());
+
+        await iVault.lend(mockS3CoinStrategy.address,tokens,amounts, _minDeltaAssets);
 
         console.log("totalAssets after lend:%s,totalValue：%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
         console.log("totalDebt after lend:%s,totalValueInStrategies：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());
@@ -533,25 +536,28 @@ describe("Vault", function () {
         console.log("(usdt,usdc,dai)=(%s,%s,%s)", new BigNumber(await underlying.balanceOf(iVault.address)).toFixed(), new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed(), new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed());
         let tokens = [MFC.USDT_ADDRESS, MFC.USDC_ADDRESS, MFC.DAI_ADDRESS];
         let amounts = [new BigNumber(await underlying.balanceOf(iVault.address)).toFixed(), new BigNumber(await usdcToken.balanceOf(iVault.address)).toFixed(), new BigNumber(await daiToken.balanceOf(iVault.address)).toFixed()];
-        let exchangeArray = await Promise.all(
-            map(tokens, async (tokenItem, index) => {
-                const exchangeAmounts = amounts[index].toString();
-                return {
-                    fromToken: tokenItem,
-                    toToken: tokenItem,
-                    fromAmount: exchangeAmounts,
-                    exchangeParam: {
-                        platform: exchangePlatformAdapters.testAdapter,
-                        method: 0,
-                        encodeExchangeArgs: '0x',
-                        slippage: 0,
-                        oracleAdditionalSlippage: 0
-                    }
-                }
-            })
-        );
+        // let exchangeArray = await Promise.all(
+        //     map(tokens, async (tokenItem, index) => {
+        //         const exchangeAmounts = amounts[index].toString();
+        //         return {
+        //             fromToken: tokenItem,
+        //             toToken: tokenItem,
+        //             fromAmount: exchangeAmounts,
+        //             exchangeParam: {
+        //                 platform: exchangePlatformAdapters.testAdapter,
+        //                 method: 0,
+        //                 encodeExchangeArgs: '0x',
+        //                 slippage: 0,
+        //                 oracleAdditionalSlippage: 0
+        //             }
+        //         }
+        //     })
+        // );
 
-        await iVault.lend(mockS3CoinStrategy.address, exchangeArray);
+        const _minDeltaAssets = await iVault.lend.call(mockS3CoinStrategy.address,tokens,amounts,0);
+        console.log("_minDeltaAssets",_minDeltaAssets.toString());
+
+        await iVault.lend(mockS3CoinStrategy.address,tokens,amounts, _minDeltaAssets);
 
         console.log("totalAssets after lend:%s,totalValue：%s", new BigNumber(await iVault.totalAssets()).toFixed(), new BigNumber(await iVault.totalValue()).toFixed());
         console.log("totalDebt after lend:%s,totalValueInStrategies：%s", new BigNumber(await iVault.totalDebt()).toFixed(), new BigNumber(await iVault.totalValueInStrategies()).toFixed());

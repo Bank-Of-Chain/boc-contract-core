@@ -282,20 +282,28 @@ interface IVault {
     /// @notice burn USDi,return stablecoins
     /// @param _amount Amount of USDi to burn
     /// @param _minimumAmount Minimum usd to receive in return
-    /// @param _assets The address list of assets to receive
-    /// @param _amounts The amount list of assets to receive
+    /// @return _assets The address list of assets to receive
+    /// @return _amounts The amount list of assets to receive
+    /// @return _actuallyReceivedAmount The value of assets to receive
     function burn(uint256 _amount, uint256 _minimumAmount)
         external
-        returns (address[] memory _assets, uint256[] memory _amounts);
+        returns (address[] memory _assets, uint256[] memory _amounts, uint256 _actuallyReceivedAmount);
 
     /// @notice Change USDi supply with Vault total assets.
     function rebase() external;
 
     /// @notice Allocate funds in Vault to strategies.
-    /// @param  _strategy The specified strategy to lend
-    /// @param _exchangeTokens All exchange info
-    function lend(address _strategy, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens)
-        external;
+    /// @param _strategy The specified strategy to lend
+    /// @param _tokens want tokens
+    /// @param _amounts the amount of each tokens
+    /// @param _minDeltaAssets the minimum allowable asset increment
+    /// @return _deltaAssets The amount of newly added assets
+    function lend(
+        address _strategy,
+        address[] memory _tokens,
+        uint256[] memory _amounts,
+        uint256 _minDeltaAssets
+    ) external returns (uint256 _deltaAssets);
 
     /// @notice Withdraw the funds from specified strategy.
     /// @param  _strategy The specified strategy to redeem
