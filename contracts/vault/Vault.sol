@@ -64,7 +64,7 @@ contract Vault is VaultStorage {
 
     /// @notice Version of vault
     function getVersion() external pure returns (string memory) {
-        return "1.1.0";
+        return "1.1.2";
     }
 
     /// @notice Minting USDi supported assets
