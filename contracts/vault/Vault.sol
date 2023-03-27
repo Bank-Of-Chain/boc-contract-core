@@ -210,12 +210,13 @@ contract Vault is VaultStorage {
     /// @param _minimumAmount Minimum usd to receive in return
     /// @return _assets The address list of assets to receive
     /// @return _amounts The amount list of assets to receive
+    /// @return _actuallyReceivedAmount The value of assets to receive
     function burn(uint256 _amount, uint256 _minimumAmount)
         external
         whenNotEmergency
         whenNotAdjustPosition
         nonReentrant
-        returns (address[] memory _assets, uint256[] memory _amounts)
+        returns (address[] memory _assets, uint256[] memory _amounts, uint256 _actuallyReceivedAmount)
     {
         uint256 _accountBalance = IPegToken(pegTokenAddress).balanceOf(msg.sender);
         require(_amount > 0 && _amount <= _accountBalance, "USDi not enough");
@@ -231,7 +232,6 @@ contract Vault is VaultStorage {
             _assetDecimals
         );
 
-        uint256 _actuallyReceivedAmount = 0;
         (_assets, _amounts, _actuallyReceivedAmount) = _calculateAndTransfer(
             _actualAsset,
             _trackedAssets,
@@ -288,33 +288,53 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Allocate funds in Vault to strategies.
-    function lend(address _strategyAddr, IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens)
+    /// @param _strategy The specified strategy to lend
+    /// @param _tokens want tokens
+    /// @param _amounts the amount of each tokens
+    /// @param _minDeltaAssets the minimum allowable asset increment
+    /// @return _deltaAssets The amount of newly added assets
+    function lend(
+        address _strategy,
+        address[] memory _tokens,
+        uint256[] memory _amounts,
+        uint256 _minDeltaAssets
+    )
         external
         isKeeper
         whenNotEmergency
-        isActiveStrategy(_strategyAddr)
+        isActiveStrategy(_strategy)
         nonReentrant
+        returns (uint256 _deltaAssets)
     {
-        (
-            address[] memory _wants,
-            uint256[] memory _ratios,
-            uint256[] memory _toAmounts
-        ) = _checkAndExchange(_strategyAddr, _exchangeTokens);
+        address _strategyAddr = _strategy;
+        uint256[] memory _toAmounts = _amounts;
+        (address[] memory _wants, uint256[] memory _ratios) = IStrategy(_strategyAddr).getWantsInfo();
+        {
+            uint256 _wantsLength = _wants.length;
+            require(_toAmounts.length == _wantsLength, "amount invalid"); //_amounts invalid
+            require(_tokens.length == _wantsLength, "token invalid"); //_tokens invalid
+            for (uint256 i = 0; i < _wantsLength; i++) {
+                require(_tokens[i] == _wants[i], "token invalid"); //tokens invalid
+            }
+        }
+
         //Definition rule 0 means unconstrained, currencies that do not participate are not in the returned wants
         uint256 _minProductIndex = 0;
         bool _isWantRatioIgnorable = IStrategy(_strategyAddr).isWantRatioIgnorable();
-        if (!_isWantRatioIgnorable && _ratios.length > 1) {
-            for (uint256 i = 1; i < _ratios.length; i++) {
-                if (_ratios[i] == 0) {
-                    //0 is free
-                    continue;
-                } else if (_ratios[_minProductIndex] == 0) {
-                    //minProductIndex is assigned to the first index whose proportion is not 0
-                    _minProductIndex = i;
-                } else if (
-                    _toAmounts[_minProductIndex] * _ratios[i] > _toAmounts[i] * _ratios[_minProductIndex]
-                ) {
-                    _minProductIndex = i;
+        {
+            uint256 _ratiosLength = _ratios.length;
+            if (!_isWantRatioIgnorable && _ratiosLength > 1) {
+                for (uint256 i = 1; i < _ratiosLength; i++) {
+                    if (_ratios[i] == 0) {
+                        continue;
+                    } else if (_ratios[_minProductIndex] == 0) {
+                        //minProductIndex is assigned to the first index whose proportion is not 0
+                        _minProductIndex = i;
+                    } else if (
+                        _toAmounts[_minProductIndex] * _ratios[i] > _toAmounts[i] * _ratios[_minProductIndex]
+                    ) {
+                        _minProductIndex = i;
+                    }
                 }
             }
         }
@@ -328,9 +348,14 @@ contract Vault is VaultStorage {
                 if (_actualAmount > 0) {
                     address _want = _wants[i];
 
-                    if (!_isWantRatioIgnorable && _ratios[i] > 0) {
-                        _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
-                        _toAmounts[i] = _actualAmount;
+                    if (!_isWantRatioIgnorable) {
+                        if(_ratios[i] > 0){
+                            _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
+                            _toAmounts[i] = _actualAmount;
+                        }else{
+                            _toAmounts[i] = 0;
+                            continue;
+                        }
                     }
                     _lendValue =
                     _lendValue +
@@ -346,7 +371,10 @@ contract Vault is VaultStorage {
             IStrategy(_strategyAddr).borrow(_wants, _toAmounts);
             address[] memory _rewardTokens;
             uint256[] memory _claimAmounts;
-            _report(_strategyAddr, _rewardTokens, _claimAmounts, _lendValue, 1);
+            _deltaAssets = _report(_strategyAddr, _rewardTokens, _claimAmounts, _lendValue, 1);
+            if(_minDeltaAssets > 0){
+                require(_deltaAssets >= _minDeltaAssets,"not enough");
+            }
         }
         emit LendToStrategy(_strategyAddr, _wants, _toAmounts, _lendValue);
     }
@@ -1126,10 +1154,13 @@ contract Vault is VaultStorage {
         uint256[] memory _claimAmounts,
         uint256 _lendValue,
         uint256 _type
-    ) private {
+    ) private returns(uint256 _deltaAsset){
         StrategyParams memory _strategyParam = strategies[_strategy];
         uint256 _lastStrategyTotalDebt = _strategyParam.totalDebt + _lendValue;
         uint256 _nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();
+        if(_lastStrategyTotalDebt - _lendValue < _nowStrategyTotalDebt){
+            _deltaAsset = _nowStrategyTotalDebt + _lendValue - _lastStrategyTotalDebt;
+        }
         uint256 _gain = 0;
         uint256 _loss = 0;
 
