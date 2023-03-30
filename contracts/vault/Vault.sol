@@ -335,14 +335,24 @@ contract Vault is VaultStorage {
     }
 
     /// @notice Allocate funds in Vault to strategies.
-    /// @param  _strategy The specified strategy to lend
-    /// @param _tokens The address list of token wanted
-    /// @param _amounts The amount list of token wanted
+    /// @param _strategy The specified strategy to lend
+    /// @param _tokens want tokens
+    /// @param _amounts the amount of each tokens
+    /// @param _minDeltaAssets the minimum allowable asset increment
+    /// @return _deltaAssets The amount of newly added assets
     function lend(
         address _strategy,
         address[] memory _tokens,
-        uint256[] memory _amounts
-    ) external isKeeperOrVaultOrGovOrDelegate whenNotEmergency isActiveStrategy(_strategy) nonReentrant {
+        uint256[] memory _amounts,
+        uint256 _minDeltaAssets
+    )
+        external
+        isKeeperOrVaultOrGovOrDelegate
+        whenNotEmergency
+        isActiveStrategy(_strategy)
+        nonReentrant
+        returns (uint256 _deltaAssets)
+    {
         address _strategyAddress = _strategy;
         uint256[] memory _amountsLocal = _amounts;
         (address[] memory _wants, uint256[] memory _ratios) = IStrategy(_strategyAddress).getWantsInfo();
@@ -418,7 +428,10 @@ contract Vault is VaultStorage {
         }
         {
             IStrategy(_strategyAddress).borrow{value: _ethAmount}(_wants, _amountsLocal);
-            _report(_strategyAddress, _lendValue, 1);
+            _deltaAssets = _report(_strategyAddress, _lendValue, 1);
+            if(_minDeltaAssets > 0){
+                require(_deltaAssets >= _minDeltaAssets, "not enough");
+            }
         }
         emit LendToStrategy(_strategyAddress, _wants, _amountsLocal, _lendValue);
     }
@@ -1174,10 +1187,14 @@ contract Vault is VaultStorage {
         address _strategy,
         uint256 _lendValue,
         uint256 _type
-    ) private {
+    ) private returns(uint256 _deltaAsset){
         StrategyParams memory _strategyParam = strategies[_strategy];
         uint256 _lastStrategyTotalDebt = _strategyParam.totalDebt + _lendValue;
         uint256 _nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();
+        if(_lastStrategyTotalDebt - _lendValue < _nowStrategyTotalDebt){
+            _deltaAsset = _nowStrategyTotalDebt + _lendValue - _lastStrategyTotalDebt;
+        }
+
         uint256 _gain;
         uint256 _loss;
 

@@ -294,11 +294,17 @@ interface IVault {
     function rebase(uint256 _trusteeFeeBps) external;
 
     /// @notice Allocate funds in Vault to strategies.
-    /// @param  _strategy The specified strategy to lend
-    /// @param _tokens The address list of token wanted
-    /// @param _amounts The amount list of token wanted
-    function lend(address _strategy, address[] memory _tokens, uint256[] memory _amounts)
-        external;
+    /// @param _strategy The specified strategy to lend
+    /// @param _tokens want tokens
+    /// @param _amounts the amount of each tokens
+    /// @param _minDeltaAssets the minimum allowable asset increment
+    /// @return _deltaAssets The amount of newly added assets
+    function lend(
+        address _strategy,
+        address[] memory _tokens,
+        uint256[] memory _amounts,
+        uint256 _minDeltaAssets
+    ) external returns (uint256 _deltaAssets);
 
     /// @notice Withdraw the funds from specified strategy.
     /// @param _strategy The specified strategy to redeem
