@@ -368,6 +368,61 @@ contract VaultTest is Test {
         assertEq(_assets.length, 3);
     }
 
+    function calculateLendValue(
+        Mock3CoinStrategy  mockStrategy,
+        uint256[] memory _ratiosLocal, 
+        uint256[] memory _amounts,
+        address[] memory _wants,
+        address[] memory _tokens,
+        ValueInterpreter valueInterpreter,
+        uint256 vaultType
+    ) private returns(uint256 totalLendAsset){
+        (,uint256[] memory _ratiosLocal) = mockStrategy.getWantsInfo();
+        uint256 _wantsLength = _wants.length;
+
+        uint256 _minProductIndex;
+        bool _isWantRatioIgnorable = mockStrategy.isWantRatioIgnorable();
+        if (!_isWantRatioIgnorable && _wantsLength > 1) {
+            for (uint256 i = 1; i < _wantsLength; i++) {
+                if (_ratiosLocal[i] == 0) {
+                    //0 is free
+                    continue;
+                } else if (_ratiosLocal[_minProductIndex] == 0) {
+                    //minProductIndex is assigned to the first index whose proportion is not 0
+                    _minProductIndex = i;
+                } else if (
+                    _amounts[_minProductIndex] * _ratiosLocal[i] > _amounts[i] * _ratiosLocal[_minProductIndex]
+                ) {
+                    _minProductIndex = i;
+                }
+            }
+        }
+
+        uint256 _minAmount = _amounts[_minProductIndex];
+        uint256 _minAspect = _ratiosLocal[_minProductIndex];
+        for (uint256 i = 0; i < _wantsLength; i++) {
+            uint256 _actualAmount = _amounts[i];
+            if (_actualAmount > 0) {
+                if (!_isWantRatioIgnorable ) {
+                    if (_ratiosLocal[i] > 0) {
+                        _actualAmount = (_ratiosLocal[i] * _minAmount) / _minAspect;
+                        
+                    }else{
+                        continue;
+                    }
+                }
+                uint256 value;
+                if(vaultType == 0) {
+                    value = valueInterpreter.calcCanonicalAssetValueInUsd(_tokens[i],_actualAmount);
+                }else {
+                    value = valueInterpreter.calcCanonicalAssetValueInEth(_tokens[i],_actualAmount);
+                }
+                
+                totalLendAsset += value;
+            }
+        }
+    }
+
     function testLend() public{
         vm.startPrank(GOVERNANOR);
         Mock3CoinStrategy  mockStrategy = new Mock3CoinStrategy();
@@ -416,7 +471,17 @@ contract VaultTest is Test {
         _amounts[1] = _balanceOfToken(USDC_ADDRESS, address(vault));
         _amounts[2] = _balanceOfToken(DAI_ADDRESS, address(vault));
 
-        uint256 _minDeltaAssets = 15000e18;
+        uint256 totalLendAsset = calculateLendValue(
+            mockStrategy,
+            _ratios,
+            _amounts,
+            _wants,
+            _tokens,
+            valueInterpreter,
+            0
+        );
+        console2.log("====totalLendAsset is ===",totalLendAsset);
+        uint256 _minDeltaAssets = totalLendAsset;
         uint256 __minDeltaAssets = iVault.lend(address(mockStrategy), _tokens, _amounts,_minDeltaAssets);
         console2.log("====_minDeltaAssets is ===",__minDeltaAssets);
 
@@ -484,7 +549,17 @@ contract VaultTest is Test {
         _amounts[1] = _balanceOfToken(STETH_ADDRESS, address(ethVault));
         _amounts[2] = _balanceOfToken(WETH_ADDRESS, address(ethVault));
 
-        uint256 _minDeltaAssets = 14892e18;
+        uint256 totalLendAsset = calculateLendValue(
+            ethMockStrategy,
+            _ratios,
+            _amounts,
+            _wants,
+            _wants,
+            valueInterpreter,
+            1
+        );
+        console2.log("====totalLendAsset is ===",totalLendAsset);
+        uint256 _minDeltaAssets = totalLendAsset - 2;
         uint256 __minDeltaAssets = iETHVault.lend(address(ethMockStrategy), _wants, _amounts,_minDeltaAssets);
         console2.log("====_minDeltaAssets is ===",__minDeltaAssets);
 
@@ -786,9 +861,15 @@ contract VaultTest is Test {
         for (uint256 i = 0; i < _wantsLength; i++) {
             uint256 _actualAmount = _amounts[i];
             if (_actualAmount > 0) {
-                if (!_isWantRatioIgnorable && _ratios[i] > 0) {
-                    _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
-                    assertEq(_balanceOfToken(_wants[i], address(mock3CoinStrategy)), _actualAmount);
+                if (!_isWantRatioIgnorable ) {
+                        if (_ratios[i] > 0) {
+                            _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
+                            assertEq(_balanceOfToken(_wants[i], address(mock3CoinStrategy)), _actualAmount);
+                        }else{
+                           _actualAmount = 0;
+                           assertEq(_balanceOfToken(_wants[i], address(mock3CoinStrategy)), _actualAmount);
+                           continue;
+                        }
                 }
             }
         }
@@ -886,19 +967,27 @@ contract VaultTest is Test {
         for (uint256 i = 0; i < _wantsLength; i++) {
             uint256 _actualAmount = _amounts[i];
             if (_actualAmount > 0) {
-                if (!_isWantRatioIgnorable && _ratios[i] > 0) {
-                    _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
-                    if (_wants[i] == STETH_ADDRESS) {
-                        assertEq(
-                            (_balanceOfToken(_wants[i], address(ethMock3CoinStrategy)) + 9) / 10,
-                            _actualAmount / 10
-                        );
+                if (!_isWantRatioIgnorable) {
+                    if(_ratios[i] > 0) {
+                        _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
+                        if (_wants[i] == STETH_ADDRESS) {
+                            assertEq(
+                                (_balanceOfToken(_wants[i], address(ethMock3CoinStrategy)) + 9) / 10,
+                                _actualAmount / 10
+                            );
+                        } else {
+                            assertEq(
+                                _balanceOfToken(_wants[i], address(ethMock3CoinStrategy)),
+                                _actualAmount
+                            );
+                        }
                     } else {
                         assertEq(
-                            _balanceOfToken(_wants[i], address(ethMock3CoinStrategy)),
-                            _actualAmount
+                                _balanceOfToken(_wants[i], address(ethMock3CoinStrategy)),
+                                0
                         );
                     }
+                    
                 }
             }
         }
