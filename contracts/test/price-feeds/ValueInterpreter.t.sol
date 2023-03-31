@@ -10,6 +10,9 @@ import "../../price-feeds/primitives/UniswapV3PriceFeed.sol";
 import "../../price-feeds/custom/CustomWstEthPriceFeed.sol";
 import "../../price-feeds/custom/CustomEthPriceFeed.sol";
 import "../../price-feeds/custom/CustomFakePriceFeed.sol";
+import "../../price-feeds/custom/CustomFrxEthPriceFeed.sol";
+import "../../price-feeds/custom/CustomSfrxEthPriceFeed.sol";
+import "../../price-feeds/custom/CustomSEthPriceFeed.sol";
 import "../../price-feeds/custom/CustomPriceFeedAggregator.sol";
 import "../Constants.sol";
 
@@ -24,6 +27,9 @@ contract ValueInterpreterTest is Test {
     address constant WSTETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     address constant SETH2_ADDRESS = 0xFe2e637202056d30016725477c5da089Ab0A043A;
     address constant SETH2_WETH_POOL_ADDRESS = 0x7379e81228514a1D2a6Cf7559203998E20598346;
+    address constant FRX_ETH = 0x5E8422345238F34275888049021821E8E08CAa1f;
+    address constant SFRX_ETH = 0xac3E018457B222d93114458476f3E3416Abbe38F;
+    address constant S_ETH = 0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb;
 
     address constant NATIVE_TOKEN_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address constant FAKE_TOKEN_ADDRESS = 0x3F9F6ca28f711B82421A45d3e8a3B73Bd295922B;
@@ -42,6 +48,9 @@ contract ValueInterpreterTest is Test {
     CustomWstEthPriceFeed customWstEthPriceFeed;
     CustomEthPriceFeed customEthPriceFeed;
     CustomFakePriceFeed customFakePriceFeed;
+    CustomFrxEthPriceFeed customFrxEthPriceFeed;
+    CustomSfrxEthPriceFeed customSfrxEthPriceFeed;
+    CustomSEthPriceFeed customSEthPriceFeed;
 
     uint[] public arr2 = [1, 2, 3];
 
@@ -103,15 +112,27 @@ contract ValueInterpreterTest is Test {
         vm.label(address(customEthPriceFeed), "customEthPriceFeed");
         customFakePriceFeed = new CustomFakePriceFeed();
         vm.label(address(customFakePriceFeed), "customFakePriceFeed");
+        customFrxEthPriceFeed = new CustomFrxEthPriceFeed();
+        vm.label(address(customFrxEthPriceFeed), "customFrxEthPriceFeed");
+        customSfrxEthPriceFeed = new CustomSfrxEthPriceFeed();
+        vm.label(address(customSfrxEthPriceFeed), "customSfrxEthPriceFeed");
+        customSEthPriceFeed = new CustomSEthPriceFeed();
+        vm.label(address(customSEthPriceFeed), "customSEthPriceFeed");
 
-        address[] memory _baseAssets = new address[](3);
+        address[] memory _baseAssets = new address[](6);
         _baseAssets[0] = WSTETH;
         _baseAssets[1] = NATIVE_TOKEN_ADDRESS;
         _baseAssets[2] = FAKE_TOKEN_ADDRESS;
-        address[] memory _customPriceFeeds = new address[](3);
+        _baseAssets[3] = FRX_ETH;
+        _baseAssets[4] = SFRX_ETH;
+        _baseAssets[5] = S_ETH;
+        address[] memory _customPriceFeeds = new address[](6);
         _customPriceFeeds[0] = address(customWstEthPriceFeed);
         _customPriceFeeds[1] = address(customEthPriceFeed);
         _customPriceFeeds[2] = address(customFakePriceFeed);
+        _customPriceFeeds[3] = address(customFrxEthPriceFeed);
+        _customPriceFeeds[4] = address(customSfrxEthPriceFeed);
+        _customPriceFeeds[5] = address(customSEthPriceFeed);
         customPriceFeedAggregator = new CustomPriceFeedAggregator(
             _baseAssets,
             _customPriceFeeds,
@@ -186,6 +207,54 @@ contract ValueInterpreterTest is Test {
         vm.prank(GOVERNANOR);
         customPriceFeedAggregator.addOrReplaceCustomPriceFeed(WSTETH, address(customWstEthPriceFeed));
         valueInEth = valueInterpreter.calcCanonicalAssetValueInEth(WSTETH, 1e18);
+    }
+
+    function testCustomSEthPriceFeed() public {
+        uint valueInEth = valueInterpreter.calcCanonicalAssetValueInEth(S_ETH, 1e18);
+        console2.log("sEth valueInEth:", valueInEth);
+        uint valueInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(S_ETH, 1e18);
+        console2.log("sEth valueInUsd:", valueInUsd);
+
+        vm.prank(GOVERNANOR);
+        customPriceFeedAggregator.removeCustomPriceFeed(S_ETH);
+        vm.expectRevert();
+        valueInEth = valueInterpreter.calcCanonicalAssetValueInEth(S_ETH, 1e18);
+
+        vm.prank(GOVERNANOR);
+        customPriceFeedAggregator.addOrReplaceCustomPriceFeed(S_ETH, address(customSEthPriceFeed));
+        valueInEth = valueInterpreter.calcCanonicalAssetValueInEth(S_ETH, 1e18);
+    }
+
+    function testCustomFrxEthPriceFeed() public {
+        uint valueInEth = valueInterpreter.calcCanonicalAssetValueInEth(FRX_ETH, 1e18);
+        console2.log("frxEth valueInEth:", valueInEth);
+        uint valueInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(FRX_ETH, 1e18);
+        console2.log("frxEth valueInUsd:", valueInUsd);
+
+        vm.prank(GOVERNANOR);
+        customPriceFeedAggregator.removeCustomPriceFeed(FRX_ETH);
+        vm.expectRevert();
+        valueInEth = valueInterpreter.calcCanonicalAssetValueInEth(FRX_ETH, 1e18);
+
+        vm.prank(GOVERNANOR);
+        customPriceFeedAggregator.addOrReplaceCustomPriceFeed(FRX_ETH, address(customFrxEthPriceFeed));
+        valueInEth = valueInterpreter.calcCanonicalAssetValueInEth(FRX_ETH, 1e18);
+    }
+
+    function testCustomSfrxEthPriceFeed() public {
+        uint valueInEth = valueInterpreter.calcCanonicalAssetValueInEth(SFRX_ETH, 1e18);
+        console2.log("sfrxEth valueInEth:", valueInEth);
+        uint valueInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(SFRX_ETH, 1e18);
+        console2.log("sfrxEth valueInUsd:", valueInUsd);
+
+        vm.prank(GOVERNANOR);
+        customPriceFeedAggregator.removeCustomPriceFeed(SFRX_ETH);
+        vm.expectRevert();
+        valueInEth = valueInterpreter.calcCanonicalAssetValueInEth(SFRX_ETH, 1e18);
+
+        vm.prank(GOVERNANOR);
+        customPriceFeedAggregator.addOrReplaceCustomPriceFeed(SFRX_ETH, address(customSfrxEthPriceFeed));
+        valueInEth = valueInterpreter.calcCanonicalAssetValueInEth(SFRX_ETH, 1e18);
     }
 
     function testCustomPriceFeedAggregator_calcCanonicalValue() public {
