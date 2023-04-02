@@ -28,6 +28,6 @@ remappings = [
 ]
 
 eth-rpc-url = "https://eth-mainnet.alchemyapi.io/v2/LkaC5kaCGk8i5CIzO1kkuJrw3186Nkza"
-fork_block_number = 16359753
+fork_block_number = 16944132
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

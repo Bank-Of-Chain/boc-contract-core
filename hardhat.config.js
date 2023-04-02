@@ -48,7 +48,7 @@ module.exports = {
         //url: "https://mainnet.infura.io/v3/" + keys.infuraKey,
         url: 'https://eth-mainnet.alchemyapi.io/v2/' + keys.alchemyKey.dev,
         // url: 'https://eth-mainnet.alchemyapi.io/v2/LkaC5kaCGk8i5CIzO1kkuJrw3186Nkza',
-        blockNumber: 14486750, // <-- edit here
+        blockNumber: 16944132, // <-- edit here
       },
       blockGasLimit: DEFAULT_BLOCK_GAS_LIMIT,
       timeout: 1800000,
