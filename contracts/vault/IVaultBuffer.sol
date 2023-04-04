@@ -6,6 +6,18 @@ pragma solidity 0.8.17;
 interface IVaultBuffer {
     event OpenDistribute();
     event CloseDistribute();
+    /// @param  _platform The platform used for the exchange
+    /// @param _srcAsset The address of asset exchange from 
+    /// @param _srcAmount The amount of asset exchange from 
+    /// @param _distAsset The address of asset exchange to 
+    /// @param _distAmount The amount of asset exchange to 
+    event Exchange(
+        address _platform,
+        address _srcAsset,
+        uint256 _srcAmount,
+        address _distAsset,
+        uint256 _distAmount
+    );
 
     /// @notice mint pending shares
     /// @param _sender user account address

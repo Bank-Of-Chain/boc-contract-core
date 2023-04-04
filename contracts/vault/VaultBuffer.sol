@@ -15,6 +15,8 @@ import "../library/NativeToken.sol";
 import "./../access-control/AccessControlMixin.sol";
 import "./IVault.sol";
 import "./IVaultBuffer.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "../price-feeds/IValueInterpreter.sol";
 
 /// @title VaultBuffer
 /// @notice The vault buffer contract receives assets from users and returns asset ticket to them
@@ -25,7 +27,8 @@ contract VaultBuffer is
     ContextUpgradeable,
     AccessControlMixin,
     IERC20Upgradeable,
-    IERC20MetadataUpgradeable
+    IERC20MetadataUpgradeable,
+    ReentrancyGuardUpgradeable
 {
     using StableMath for uint256;
     using IterableUintMap for IterableUintMap.AddressToUintMap;
@@ -51,6 +54,14 @@ contract VaultBuffer is
 
     uint256 private mDistributeLimit;
 
+    /// @dev max percentage 100%
+    uint256 internal constant MAX_BPS = 10000;
+
+    /// @notice exchangeManager
+    address public exchangeManager;
+    /// @notice valueInterpreter
+    address public valueInterpreter;
+
     /// @dev Modifier that checks that msg.sender is the vault or not
     modifier onlyVault() {
         require(msg.sender == vault);
@@ -73,7 +84,9 @@ contract VaultBuffer is
         string memory _symbol,
         address _vault,
         address _pegTokenAddr,
-        address _accessControlProxy
+        address _accessControlProxy,
+        address _exchangeManager,
+        address _valueInterpreter
     ) external initializer {
         mName = _name;
         mSymbol = _symbol;
@@ -82,6 +95,9 @@ contract VaultBuffer is
         _initAccessControl(_accessControlProxy);
 
         mDistributeLimit = 50;
+
+        exchangeManager = _exchangeManager;
+        valueInterpreter = _valueInterpreter;
     }
 
     /// @inheritdoc IVaultBuffer
@@ -455,6 +471,63 @@ contract VaultBuffer is
         address _to,
         uint256 _amount
     ) internal virtual {}
+
+
+    function exchange(
+        address _fromToken,
+        address _toToken,
+        uint256 _amount,
+        IExchangeAggregator.ExchangeParam memory _exchangeParam
+    ) external isKeeperOrVaultOrGovOrDelegate nonReentrant returns (uint256) {
+        return _exchange(_fromToken, _toToken, _amount, _exchangeParam);
+    }
+
+    function _exchange(
+        address _fromToken,
+        address _toToken,
+        uint256 _amount,
+        IExchangeAggregator.ExchangeParam memory _exchangeParam
+    ) internal returns (uint256 _exchangeAmount) {
+        require(IVault(vault).isTrackedAssets(_toToken), "TTI"); //toToken invalid
+
+        IExchangeAdapter.SwapDescription memory _swapDescription = IExchangeAdapter.SwapDescription({
+            amount: _amount,
+            srcToken: _fromToken,
+            dstToken: _toToken,
+            receiver: address(this)
+        });
+        if (_fromToken == NativeToken.NATIVE_TOKEN) {
+            // payable(exchangeManager).transfer(_amount);
+            _exchangeAmount = IExchangeAggregator(exchangeManager).swap{value: _amount}(
+                _exchangeParam.platform,
+                _exchangeParam.method,
+                _exchangeParam.encodeExchangeArgs,
+                _swapDescription
+            );
+        } else {
+            IERC20Upgradeable(_fromToken).safeApprove(exchangeManager, 0);
+            IERC20Upgradeable(_fromToken).safeApprove(exchangeManager, _amount);
+            _exchangeAmount = IExchangeAggregator(exchangeManager).swap(
+                _exchangeParam.platform,
+                _exchangeParam.method,
+                _exchangeParam.encodeExchangeArgs,
+                _swapDescription
+            );
+        }
+        uint256 oracleExpectedAmount = IValueInterpreter(valueInterpreter).calcCanonicalAssetValue(
+            _fromToken,
+            _amount,
+            _toToken
+        );
+        require(
+            _exchangeAmount >=
+                (oracleExpectedAmount *
+                    (MAX_BPS - _exchangeParam.slippage - _exchangeParam.oracleAdditionalSlippage)) /
+                    MAX_BPS,
+            "OL" //over slip point loss
+        );
+        emit Exchange(_exchangeParam.platform, _fromToken, _amount, _toToken, _exchangeAmount);
+    }
 
 
 }
