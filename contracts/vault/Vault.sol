@@ -666,11 +666,12 @@ contract Vault is VaultStorage {
         uint256[] memory _transferAmounts = new uint256[](_trackedAssetsLength);
         uint256[] memory _vaultAmounts = new uint256[](_trackedAssetsLength);
         bool _vaultBufferAboveZero = false;
+        address _vaultBufferAddress = vaultBufferAddress;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
             uint256 _balance;
             if (_dealVaultBuffer && assetSet.contains(_trackedAsset)) {
-                _balance = _balanceOfToken(_trackedAsset, vaultBufferAddress);
+                _balance = _balanceOfToken(_trackedAsset, _vaultBufferAddress);
                 if (_balance > 0) {
                     _transferAmounts[i] = _balance;
                     _vaultBufferAboveZero = true;
@@ -1191,8 +1192,8 @@ contract Vault is VaultStorage {
         StrategyParams memory _strategyParam = strategies[_strategy];
         uint256 _lastStrategyTotalDebt = _strategyParam.totalDebt + _lendValue;
         uint256 _nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();
-        if(_lastStrategyTotalDebt - _lendValue < _nowStrategyTotalDebt){
-            _deltaAsset = _nowStrategyTotalDebt + _lendValue - _lastStrategyTotalDebt;
+        if(_strategyParam.totalDebt < _nowStrategyTotalDebt){
+            _deltaAsset = _nowStrategyTotalDebt - _strategyParam.totalDebt;
         }
 
         uint256 _gain;
