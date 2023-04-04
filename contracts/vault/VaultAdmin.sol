@@ -204,7 +204,7 @@ contract VaultAdmin is VaultStorage {
                 "Strategy is invalid"
             );
             _strategies[i] = _strategyAddr;
-            _addStrategy(_strategyAddr, _strategyAdd.profitLimitRatio, _strategyAdd.lossLimitRatio);
+            _addStrategy(_strategyAddr, _strategyAdd.profitLimitRatio, _strategyAdd.lossLimitRatio, _strategyAdd.targetDebt);
             address[] memory _wants = IStrategy(_strategyAddr).getWants();
             for (uint256 j = 0; j < _wants.length; j++) {
                 trackedAssetsMap.plus(_wants[j], 1);
@@ -276,7 +276,8 @@ contract VaultAdmin is VaultStorage {
     function _addStrategy(
         address _strategy,
         uint256 _profitLimitRatio,
-        uint256 _lossLimitRatio
+        uint256 _lossLimitRatio,
+        uint256 _targetDebt
     ) internal {
         //Add strategy to approved strategies
         strategies[_strategy] = StrategyParams({
@@ -285,7 +286,8 @@ contract VaultAdmin is VaultStorage {
             profitLimitRatio: _profitLimitRatio,
             lossLimitRatio: _lossLimitRatio,
             enforceChangeLimit: true,
-            lastClaim: block.timestamp
+            lastClaim: block.timestamp,
+            targetDebt: _targetDebt
         });
         strategySet.add(_strategy);
     }

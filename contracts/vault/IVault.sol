@@ -499,4 +499,7 @@ interface IVault {
 
     /// @notice Sets the new implement contract address
     function setAdminImpl(address _newImpl) external;
+
+    /// @notice check one asset is tracked or not
+    function isTrackedAssets(address _token) external returns(bool);
 }
