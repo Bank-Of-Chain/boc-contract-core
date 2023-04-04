@@ -30,6 +30,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     /// @param lossLimitRatio The limited ratio for loss
     /// @param enforceChangeLimit The switch of enforce change Limit
     /// @param lastClaim The last claim timestamp
+    /// @param targetDebt The max target debt
     struct StrategyParams {
         uint256 lastReport;
         uint256 totalDebt;
@@ -37,15 +38,18 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         uint256 lossLimitRatio;
         bool enforceChangeLimit;
         uint256 lastClaim;
+        uint256 targetDebt;
     }
 
     /// @param strategy The new strategy to add
     /// @param profitLimitRatio The limited ratio of profit
     /// @param lossLimitRatio The limited ratio for loss
+    /// @param targetDebt The max target debt
     struct StrategyAdd {
         address strategy;
         uint256 profitLimitRatio;
         uint256 lossLimitRatio;
+        uint256 targetDebt;
     }
 
     /// @param _asset The new asset to add

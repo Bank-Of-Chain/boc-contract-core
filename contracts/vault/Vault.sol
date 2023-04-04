@@ -1351,4 +1351,18 @@ contract Vault is VaultStorage {
             }
         }
     }
+
+    function setStrategyTargetDebt(address _strategy, uint256 _newTargetDebt) external isKeeperOrVaultOrGovOrDelegate {
+        StrategyParams storage strategyParams = strategies[_strategy];
+        strategyParams.targetDebt = _newTargetDebt;
+    }
+
+    function increaseStrategyTargetDebt(address _strategy, uint256 _addAmount) external isKeeperOrVaultOrGovOrDelegate {
+        StrategyParams storage strategyParams = strategies[_strategy];
+        strategyParams.targetDebt += _addAmount;
+    }
+
+    function isTrackedAssets(address _token) external returns(bool){
+        return trackedAssetsMap.contains(_token);
+    }
 }
