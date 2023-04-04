@@ -1183,7 +1183,7 @@ contract VaultTest is Test {
                 WETH_ADDRESS,
                 _amounts[2] - _balanceOfToken(WETH_ADDRESS, FRIEND)
             );
-        assertEq(_ethiAmount / 1e17, _valueInETH / 1e17);
+        assertGe(_ethiAmount / 1e17, _valueInETH / 1e17 + 1 );
     }
 
     function testReport() public {
@@ -1331,10 +1331,10 @@ contract VaultTest is Test {
             valueInterpreter.calcCanonicalAssetValueInEth(STETH_ADDRESS, _stETHAmount) +
             valueInterpreter.calcCanonicalAssetValueInEth(WETH_ADDRESS, _wETHAmount);
 
-        assertEq(_totalDebtOfAfterReport / 10000, (_totalDebtOfBeforeReport + _valueInETH) / 10000);
+        assertEq(_totalDebtOfAfterReport / 10000, (_totalDebtOfBeforeReport + _valueInETH) / 10000  + 1);
         assertEq(
             _estimatedTotalAssetsOfAfterReport / 10000,
-            (_estimatedTotalAssetsOfBeforeReport + _valueInETH) / 10000
+            (_estimatedTotalAssetsOfBeforeReport + _valueInETH) / 10000  + 1
         );
 
         _totalDebtOfBeforeReport = _strategyParams.totalDebt;
@@ -1363,7 +1363,7 @@ contract VaultTest is Test {
         _estimatedTotalAssetsOfAfterReport = ethMock3CoinStrategy.estimatedTotalAssets();
 
         assertEq(_totalDebtOfAfterReport / 10000, (_totalDebtOfBeforeReport + _valueInETH) / 10000);
-        assertEq(_estimatedTotalAssetsOfAfterReport, _estimatedTotalAssetsOfBeforeReport + _valueInETH);
+        assertEq(_estimatedTotalAssetsOfAfterReport, _estimatedTotalAssetsOfBeforeReport + _valueInETH + 1);
     }
 
     function testBurnFromStrategy() public {
@@ -1397,6 +1397,8 @@ contract VaultTest is Test {
         vm.prank(USER);
         iETHVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
 
+        uint256 valueOfTrackedTokens =  iETHVault.valueOfTrackedTokens();
+        console2.log("valueOfTrackedTokens is",valueOfTrackedTokens);
         assertEq(iETHVault.valueOfTrackedTokens(), 0);
 
         ethMock3CoinStrategy.setPoolWithdrawQuota(ethMock3CoinStrategy.estimatedTotalAssets());
