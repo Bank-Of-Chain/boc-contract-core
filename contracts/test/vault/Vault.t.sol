@@ -447,12 +447,14 @@ contract VaultTest is Test {
         _strategyAdds[0] = IVault.StrategyAdd({
         strategy: address(mockStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e24)
         });
         _strategyAdds[1] = IVault.StrategyAdd({
         strategy: address(otherMock3CoinStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e24)
         });
 
         iVault.addStrategies(_strategyAdds);
@@ -520,13 +522,16 @@ contract VaultTest is Test {
         _strategyAdds[0] = IVault.StrategyAdd({
         strategy: address(ethMockStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e22)
         });
 
         _strategyAdds[1] = IVault.StrategyAdd({
         strategy: address(otherEthMock3CoinStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e22)
+
         });
 
         iETHVault.addStrategies(_strategyAdds);
@@ -584,7 +589,9 @@ contract VaultTest is Test {
         _strategyAdds[0] = IVault.StrategyAdd({
             strategy: address(mock3CoinStrategy),
             profitLimitRatio: uint256(100),
-            lossLimitRatio: uint256(100)
+            lossLimitRatio: uint256(100),
+            targetDebt:uint256(1e24)
+
         });
 
         vm.startPrank(GOVERNANOR);
@@ -601,13 +608,15 @@ contract VaultTest is Test {
         _strategyAdds[0] = IVault.StrategyAdd({
         strategy: address(mock3CoinStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e24)
         });
 
         _strategyAdds[1] = IVault.StrategyAdd({
         strategy: address(otherMock3CoinStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e24)
         });
 
         iVault.addStrategies(_strategyAdds);
@@ -624,7 +633,8 @@ contract VaultTest is Test {
         _strategyAdds[0] = IVault.StrategyAdd({
             strategy: address(ethMock3CoinStrategy),
             profitLimitRatio: uint256(100),
-            lossLimitRatio: uint256(100)
+            lossLimitRatio: uint256(100),
+            targetDebt:uint256(1e22)
         });
 
         vm.startPrank(GOVERNANOR);
@@ -643,13 +653,15 @@ contract VaultTest is Test {
         _strategyAdds[0] = IVault.StrategyAdd({
         strategy: address(ethMock3CoinStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e22)
         });
 
         _strategyAdds[1] = IVault.StrategyAdd({
         strategy: address(otherEthMock3CoinStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e22)
         });
 
         iETHVault.addStrategies(_strategyAdds);

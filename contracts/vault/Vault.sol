@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.17;
 
+import "brain-forge-std/Test.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "../library/StableMath.sol";
 
@@ -12,7 +13,7 @@ import "../exchanges/IExchangeAggregator.sol";
 /// @notice Vault is the core of the BoC protocol
 /// @notice Vault stores and manages collateral funds of all positions
 /// @author Bank of Chain Protocol Inc
-contract Vault is VaultStorage {
+contract Vault is VaultStorage{
     using StableMath for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -331,7 +332,10 @@ contract Vault is VaultStorage {
         uint256 _thisWithdrawValue = (_nowStrategyTotalDebt * _amount) / _strategyAssetValue;
         strategies[_strategy].totalDebt = _nowStrategyTotalDebt - _thisWithdrawValue;
         totalDebt -= _thisWithdrawValue;
+
         emit Redeem(_strategy, _amount, _assets, _amounts);
+
+       
     }
 
     /// @notice Allocate funds in Vault to strategies.
@@ -481,7 +485,7 @@ contract Vault is VaultStorage {
     /// Requirement: only the strategy caller is active
     /// Emits a {StrategyReported} event.
     function report()
-        external
+        public
         isActiveStrategy(msg.sender)
     {
         _report(msg.sender, 0, 0);
@@ -1182,13 +1186,16 @@ contract Vault is VaultStorage {
 
     /// @notice Report the current asset of strategy
     /// @param _strategy The strategy address
-    /// @param _type 0-harvest(claim); 1-lend; 2-report(without claim);
+    /// @param _lendValue The value to lend or redeem
+    /// @param _type 0-harvest(claim); 1-lend; 2-report(without claim); 3-redeem;
+    /// @return _deltaAsset The delta value between `_lastStrategyTotalDebt` and `_nowStrategyTotalDebt`
     function _report(
         address _strategy,
         uint256 _lendValue,
         uint256 _type
     ) private returns(uint256 _deltaAsset){
         StrategyParams memory _strategyParam = strategies[_strategy];
+
         uint256 _lastStrategyTotalDebt = _strategyParam.totalDebt + _lendValue;
         uint256 _nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();
         if(_lastStrategyTotalDebt - _lendValue < _nowStrategyTotalDebt){

@@ -25,10 +25,12 @@ interface IVault {
     /// @param strategy The new strategy to add
     /// @param profitLimitRatio The limited ratio of profit
     /// @param lossLimitRatio The limited ratio for loss
+    /// @param targetDebt The max target debt
     struct StrategyAdd {
         address strategy;
         uint256 profitLimitRatio;
         uint256 lossLimitRatio;
+        uint256 targetDebt;
     }
 
     /// @param _asset The new asset to add
