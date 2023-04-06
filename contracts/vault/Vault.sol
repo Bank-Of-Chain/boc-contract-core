@@ -332,10 +332,7 @@ contract Vault is VaultStorage{
         uint256 _thisWithdrawValue = (_nowStrategyTotalDebt * _amount) / _strategyAssetValue;
         strategies[_strategy].totalDebt = _nowStrategyTotalDebt - _thisWithdrawValue;
         totalDebt -= _thisWithdrawValue;
-
-        emit Redeem(_strategy, _amount, _assets, _amounts);
-
-       
+        emit Redeem(_strategy, _amount, _assets, _amounts);  
     }
 
     /// @notice Allocate funds in Vault to strategies.
