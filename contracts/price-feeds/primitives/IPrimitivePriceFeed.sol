@@ -8,18 +8,6 @@ interface IPrimitivePriceFeed {
     /// @notice Calculates the value of a base asset in terms of a quote asset (using a canonical rate)
     /// @param _baseAsset The base asset
     /// @param _baseAssetAmount The base asset amount to convert
-    /// @param _quoteAsset The quote asset
-    /// @return _quoteAssetAmount The equivalent quote asset amount
-    /// @return _isValid True if the rates used in calculations are deemed valid
-    function calcCanonicalValue(
-        address _baseAsset,
-        uint256 _baseAssetAmount,
-        address _quoteAsset
-    ) external view returns (uint256 _quoteAssetAmount, bool _isValid);
-
-    /// @notice Calculates the value of a base asset in terms of a quote asset (using a canonical rate)
-    /// @param _baseAsset The base asset
-    /// @param _baseAssetAmount The base asset amount to convert
     /// @return _quoteAssetAmount The equivalent quote asset amount (usd 1e8)
     /// @return _isValid True if the rates used in calculations are deemed valid
     function calcValueInUsd(

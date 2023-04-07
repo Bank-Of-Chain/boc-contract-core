@@ -328,66 +328,6 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         );
     }
 
-    // /// @dev Helper to differentially calculate an asset value
-    // /// based on if it is a primitive or derivative asset.
-    // function __calcAssetValue(
-    //     address _baseAsset,
-    //     uint256 _amount,
-    //     address _quoteAsset
-    // ) private view returns (uint256 _value, bool _isValid) {
-    //     if (_baseAsset == _quoteAsset || _amount == 0) {
-    //         return (_amount, true);
-    //     }
-
-    //     // Handle case that asset with uniswapV3
-    //     if (
-    //         ICustomPriceFeedAggregator(customPriceFeedAggregator).isSupportedAsset(_baseAsset) &&
-    //         ICustomPriceFeedAggregator(customPriceFeedAggregator).isSupportedAsset(_quoteAsset)
-    //     ) {
-    //         return
-    //             ICustomPriceFeedAggregator(customPriceFeedAggregator).calcCanonicalValue(
-    //                 _baseAsset,
-    //                 _amount,
-    //                 _quoteAsset
-    //             );
-    //     }
-
-    //     // Handle case that asset with chainlink
-    //     if (
-    //         IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(_baseAsset) &&
-    //         IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(_quoteAsset)
-    //     ) {
-    //         return
-    //             IPrimitivePriceFeed(chainlinkPriceFeed).calcCanonicalValue(
-    //                 _baseAsset,
-    //                 _amount,
-    //                 _quoteAsset
-    //             );
-    //     }
-
-    //     // Handle case that asset with customPriceFeed
-    //     if (
-    //         IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(_baseAsset) &&
-    //         IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(_quoteAsset)
-    //     ) {
-    //         return
-    //             IPrimitivePriceFeed(uniswapV3PriceFeed).calcCanonicalValue(
-    //                 _baseAsset,
-    //                 _amount,
-    //                 _quoteAsset
-    //             );
-    //     }
-
-    //     revert(
-    //         string(
-    //             abi.encodePacked(
-    //                 "__calcAssetValue: Unsupported _baseAsset ",
-    //                 Strings.toHexString(uint160(_baseAsset), 20)
-    //             )
-    //         )
-    //     );
-    // }
-
     function _getQuoteAssetUnit(address _quoteAsset) private view returns(uint256){
         // Handle case that asset with customPriceFeed
         if (ICustomPriceFeedAggregator(customPriceFeedAggregator).isSupportedAsset(_quoteAsset)) {
@@ -434,15 +374,6 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             return (_baseTotalValueInUsd * _quoteAssetOneUnit / _priceInUsdPerQuote , true);
         }
         return (0, false);
-
-        revert(
-            string(
-                abi.encodePacked(
-                    "__calcAssetValue: Unsupported _baseAsset ",
-                    Strings.toHexString(uint160(_baseAsset), 20)
-                )
-            )
-        );
     }
 
     /// @dev Helper to differentially calculate an asset value
@@ -464,94 +395,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             return (_baseTotalValueInEth * _quoteAssetOneUnit / _priceInEthPerQuote, true);
         }
         return (0, false);
-
-        revert(
-            string(
-                abi.encodePacked(
-                    "__calcAssetValueInEth: Unsupported _baseAsset ",
-                    Strings.toHexString(uint160(_baseAsset), 20)
-                )
-            )
-        );
     }
-
-    /// @dev Helper to calculate the value of a derivative in an arbitrary asset.
-    /// Handles multiple underlying assets (e.g., Uniswap and Balancer pool tokens).
-    /// Handles underlying assets that are also derivatives (e.g., a cDAI-ETH LP)
-    // function __calcDerivativeValueInUsd(
-    //     address _derivativePriceFeed,
-    //     address _derivative,
-    //     uint256 _amount
-    // ) private view returns (uint256 _value, bool _isValid) {
-    //     (address[] memory underlyings, uint256[] memory underlyingAmounts) = IDerivativePriceFeed(
-    //         _derivativePriceFeed
-    //     ).calcUnderlyingValues(_derivative, _amount);
-
-    //     require(underlyings.length > 0, "__calcDerivativeValue: No underlyings");
-    //     require(
-    //         underlyings.length == underlyingAmounts.length,
-    //         "__calcDerivativeValue: Arrays unequal lengths"
-    //     );
-
-    //     // Let validity be negated if any of the underlying value calculations are invalid
-    //     _isValid = true;
-    //     for (uint256 i = 0; i < underlyings.length; i++) {
-    //         (uint256 underlyingValue, bool underlyingValueIsValid) = __calcAssetValueInUsd(
-    //             underlyings[i],
-    //             underlyingAmounts[i]
-    //         );
-
-    //         if (!underlyingValueIsValid) {
-    //             _isValid = false;
-    //         }
-    //         _value = _value + underlyingValue;
-    //     }
-    // }
-
-    /// @dev Helper to calculate the value of a derivative in an arbitrary asset.
-    /// Handles multiple underlying assets (e.g., Uniswap and Balancer pool tokens).
-    /// Handles underlying assets that are also derivatives (e.g., a cDAI-ETH LP)
-    // function __calcDerivativeValue(
-    //     address _derivativePriceFeed,
-    //     address _derivative,
-    //     uint256 _amount,
-    //     address _quoteAsset
-    // ) private view returns (uint256 _value, bool _isValid) {
-    //     (
-    //         address[] memory _underlyings,
-    //         uint256[] memory _underlyingAmounts
-    //     ) = IDerivativePriceFeed(_derivativePriceFeed).calcUnderlyingValues(
-    //             _derivative,
-    //             _amount
-    //         );
-
-    //     require(
-    //         _underlyings.length > 0,
-    //         "__calcDerivativeValue: No underlyings"
-    //     );
-    //     require(
-    //         _underlyings.length ==_underlyingAmounts.length,
-    //         "__calcDerivativeValue: Arrays unequal lengths"
-    //     );
-
-    //     // Let validity be negated if any of the underlying value calculations are invalid
-    //     _isValid = true;
-    //     for (uint256 i = 0; i < _underlyings.length; i++) {
-    //         (
-    //             uint256 _underlyingValue,
-    //             bool _underlyingValueIsValid
-    //         ) = __calcAssetValue(
-    //                 _underlyings[i],
-    //                 _underlyingAmounts[i],
-    //                 _quoteAsset
-    //             );
-
-    //         if (!_underlyingValueIsValid) {
-    //             _isValid = false;
-    //         }
-    //         _value = _value + _underlyingValue;
-    //     }
-    // }
 
     ///////////////////
     // STATE GETTERS //
