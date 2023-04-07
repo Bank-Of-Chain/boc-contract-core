@@ -30,6 +30,20 @@ interface IValueInterpreter {
         address _quoteAsset
     ) external view returns (uint256);
 
+    /// @notice Calculates the total value of given amounts of assets in a single quote asset
+    /// @param _baseAssets The assets to convert
+    /// @param _amounts The amounts of the _baseAssets to convert
+    /// @param _quoteAsset The asset to which to convert
+    /// @return _value The sum value of _baseAssets, denominated in the _quoteAsset eth(18)
+    /// @dev Does not alter protocol state.
+    /// Does not handle a derivative quote asset.
+    function calcCanonicalAssetsTotalValueInEth(
+        address[] calldata _baseAssets,
+        uint256[] calldata _amounts,
+        address _quoteAsset
+    ) external view returns (uint256);
+
+
     
     /// @dev Calculate the usd value of a specified number of assets
     /// @param _baseAsset Source token address

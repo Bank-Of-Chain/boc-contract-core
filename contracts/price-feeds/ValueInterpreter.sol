@@ -80,6 +80,43 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     }
 
     /// @inheritdoc IValueInterpreter
+    function calcCanonicalAssetsTotalValueInEth(
+        address[] calldata _baseAssets,
+        uint256[] calldata _amounts,
+        address _quoteAsset
+    ) external view override returns (uint256 _value) {
+        require(
+            _baseAssets.length == _amounts.length,
+            "calcCanonicalAssetsTotalValueInEth: Arrays unequal lengths"
+        );
+        require(
+            IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(_quoteAsset) ||
+                IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(_quoteAsset),
+            string(
+                abi.encodePacked(
+                    "calcCanonicalAssetsTotalValueInEth: Unsupported _quoteAsset ",
+                    Strings.toHexString(uint160(_quoteAsset), 20)
+                )
+            )
+        );
+
+        bool _isValid = true;
+        for (uint256 i = 0; i < _baseAssets.length; i++) {
+            (uint256 _assetValue, bool _assetValueIsValid) = __calcAssetValueInEth(
+                _baseAssets[i],
+                _amounts[i],
+                _quoteAsset
+            );
+            _value = _value + _assetValue;
+            if (!_assetValueIsValid) {
+                _isValid = false;
+            }
+        }
+        require(_isValid, "Invalid rate");
+        return _value;
+    }
+
+    /// @inheritdoc IValueInterpreter
     function calcCanonicalAssetValue(
         address _baseAsset,
         uint256 _amount,
@@ -424,7 +461,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
        (uint256 _priceInEthPerQuote, bool _quoteIsValid) = __calcAssetValueInEth(_quoteAsset,_quoteAssetOneUnit);
 
         if (_baseIsValid && _quoteIsValid) {
-            return (_baseTotalValueInEth / _priceInEthPerQuote, true);
+            return (_baseTotalValueInEth * _quoteAssetOneUnit / _priceInEthPerQuote, true);
         }
         return (0, false);
 
