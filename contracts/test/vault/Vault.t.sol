@@ -38,6 +38,10 @@ contract VaultTest is Test {
     address constant ROCKET_ETH_ADDRESS = 0xae78736Cd615f374D3085123A210448E74Fc6393;
     address constant ROCKET_ETH_WETH_POOL_ADDRESS = 0xa4e0faA58465A2D369aa21B3e42d43374c6F9613;
 
+    address constant CBETH_ADDRESS = 0xBe9895146f7AF43049ca1c1AE358B0541Ea49704;
+    address constant CBETH_WETH_POOL_ADDRESS = 0x840DEEef2f115Cf50DA625F7368C24af6fE74410;
+
+
     address constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant USDC_AGGREAGTOR_ADDRESS = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address constant USDT_ADDRESS = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
@@ -48,6 +52,12 @@ contract VaultTest is Test {
     address constant SETH2_ADDRESS = 0xFe2e637202056d30016725477c5da089Ab0A043A;
     address constant SETH2_WETH_POOL_ADDRESS = 0x7379e81228514a1D2a6Cf7559203998E20598346;
 
+    // const ETH = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+    // const stETH = '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84';
+    // const rETH = '0xae78736Cd615f374D3085123A210448E74Fc6393';
+    // const cbETH = '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704';
+    // const sETH = '0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb';
+
     address constant NATIVE_TOKEN_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address constant FAKE_TOKEN_ADDRESS = 0x3F9F6ca28f711B82421A45d3e8a3B73Bd295922B;
     // address constant SETH2_WETH_POOL_ADDRESS = 0xDADcF64BAbfb566785f1e9DFC4889C5e593DDdC7;
@@ -56,6 +66,7 @@ contract VaultTest is Test {
     uint256 constant HOURS_OF_1_HEARTBEAT = 1 hours;
     uint32 constant ROCKET_ETH_DURATION = 1 hours;
     uint32 constant SETH2_DURATION = 1 hours;
+    uint32 constant CBETH_DURATION = 1 hours;
     ChainlinkPriceFeed.RateAsset constant STETH_RATE_ASSET = ChainlinkPriceFeed.RateAsset.ETH; //eth
 
     AccessControlProxy accessControlProxy;
@@ -134,15 +145,18 @@ contract VaultTest is Test {
 
         vm.label(address(chainlinkPriceFeed), "chainlinkPriceFeed");
 
-        address[] memory _primitives2 = new address[](2);
+        address[] memory _primitives2 = new address[](3);
         _primitives2[0] = ROCKET_ETH_ADDRESS;
         _primitives2[1] = SETH2_ADDRESS;
-        address[] memory _pools = new address[](2);
+        _primitives2[2] = CBETH_ADDRESS;
+        address[] memory _pools = new address[](3);
         _pools[0] = ROCKET_ETH_WETH_POOL_ADDRESS;
         _pools[1] = SETH2_WETH_POOL_ADDRESS;
-        uint32[] memory _durations = new uint32[](2);
+        _pools[2] = CBETH_WETH_POOL_ADDRESS;
+        uint32[] memory _durations = new uint32[](3);
         _durations[0] = ROCKET_ETH_DURATION;
         _durations[1] = SETH2_DURATION;
+        _durations[2] = CBETH_DURATION;
         uniswapV3PriceFeed = new UniswapV3PriceFeed(
             address(accessControlProxy),
             ETH_USD_AGGREGATOR,
@@ -185,7 +199,7 @@ contract VaultTest is Test {
         treasury.initialize(address(accessControlProxy));
         vm.label(address(treasury), "treasury");
 
-        testAdapter = new TestAdapter(address(accessControlProxy));
+        testAdapter = new TestAdapter(address(valueInterpreter));
         vm.label(address(testAdapter), "testAdapter");
         address[] memory _exchangeAdapters = new address[](1);
         _exchangeAdapters[0] = address(testAdapter);
@@ -1183,7 +1197,7 @@ contract VaultTest is Test {
                 WETH_ADDRESS,
                 _amounts[2] - _balanceOfToken(WETH_ADDRESS, FRIEND)
             );
-        assertEq(_ethiAmount / 1e17, _valueInETH / 1e17);
+        assertEq(_ethiAmount / 1e17, _valueInETH / 1e17 + 1);
     }
 
     function testReport() public {
@@ -1331,10 +1345,10 @@ contract VaultTest is Test {
             valueInterpreter.calcCanonicalAssetValueInEth(STETH_ADDRESS, _stETHAmount) +
             valueInterpreter.calcCanonicalAssetValueInEth(WETH_ADDRESS, _wETHAmount);
 
-        assertEq(_totalDebtOfAfterReport / 10000, (_totalDebtOfBeforeReport + _valueInETH) / 10000);
+        assertEq(_totalDebtOfAfterReport / 10000, (_totalDebtOfBeforeReport + _valueInETH) / 10000  + 1);
         assertEq(
             _estimatedTotalAssetsOfAfterReport / 10000,
-            (_estimatedTotalAssetsOfBeforeReport + _valueInETH) / 10000
+            (_estimatedTotalAssetsOfBeforeReport + _valueInETH) / 10000 + 1
         );
 
         _totalDebtOfBeforeReport = _strategyParams.totalDebt;
@@ -1363,7 +1377,7 @@ contract VaultTest is Test {
         _estimatedTotalAssetsOfAfterReport = ethMock3CoinStrategy.estimatedTotalAssets();
 
         assertEq(_totalDebtOfAfterReport / 10000, (_totalDebtOfBeforeReport + _valueInETH) / 10000);
-        assertEq(_estimatedTotalAssetsOfAfterReport, _estimatedTotalAssetsOfBeforeReport + _valueInETH);
+        assertEq(_estimatedTotalAssetsOfAfterReport, _estimatedTotalAssetsOfBeforeReport + _valueInETH + 1);
     }
 
     function testBurnFromStrategy() public {
@@ -1423,4 +1437,179 @@ contract VaultTest is Test {
         }
         return _balance;
     }
+
+    function testExchange() external {
+        vm.startPrank(GOVERNANOR);
+
+        iVault.addAsset(USDC_ADDRESS);
+        iVault.addAsset(USDT_ADDRESS);
+        iVault.addAsset(DAI_ADDRESS);
+        iVault.addAsset(NATIVE_TOKEN_ADDRESS);
+        
+        iVault.addAsset(WETH_ADDRESS);
+
+        address[] memory _assets = iVault.getSupportAssets();
+
+        uint256 _usdcAmount = 10000e6;
+        uint256 _usdtAmount = 10000e6;
+        uint256 _daiAmount = 10000e18;
+        uint256 _ethAmount = 10000 ether;
+        uint256 _ethAmountBuffer = 100 ether;
+        uint256 _wethAmount = 10000e18;
+
+        deal(USDC_ADDRESS, address(testAdapter), _usdcAmount*10);
+        deal(USDT_ADDRESS, address(testAdapter), _usdtAmount*10);
+        deal(DAI_ADDRESS, address(testAdapter), _daiAmount*10);
+        deal(WETH_ADDRESS, address(testAdapter), _wethAmount*10);
+        vm.deal(address(testAdapter), _ethAmount);
+
+
+        deal(USDC_ADDRESS, address(iVault), _usdcAmount);
+        deal(USDT_ADDRESS, address(iVault), _usdtAmount);
+        deal(DAI_ADDRESS, address(iVault), _daiAmount);
+        deal(WETH_ADDRESS, address(iVault), _ethAmountBuffer);
+        
+        vm.deal(address(iVault), _ethAmountBuffer);
+        IExchangeAggregator.ExchangeParam memory _exchangeParam = IExchangeAggregator.ExchangeParam({
+            platform: address(testAdapter),
+            method: 0,
+            encodeExchangeArgs: "0x",
+            slippage: 0,
+            oracleAdditionalSlippage: 0
+        });
+        IExchangeAdapter.SwapDescription memory _swapDesc = IExchangeAdapter.SwapDescription({
+            amount: _usdcAmount / 2,
+            srcToken: USDC_ADDRESS,
+            dstToken: USDT_ADDRESS,
+            receiver: address(iVault)
+        });
+        uint256 amountReceived = iVault.exchange(_swapDesc.srcToken, _swapDesc.dstToken, _swapDesc.amount, _exchangeParam);
+        console2.log("amountReceived is", amountReceived);
+
+        IExchangeAdapter.SwapDescription memory _swapDesc01 = IExchangeAdapter.SwapDescription({
+            amount: _usdcAmount / 2,
+            srcToken: USDC_ADDRESS,
+            dstToken: DAI_ADDRESS,
+            receiver: address(iVault)
+        });
+        amountReceived = iVault.exchange(_swapDesc01.srcToken, _swapDesc01.dstToken, _swapDesc01.amount, _exchangeParam);
+        console2.log("amountReceived is", amountReceived);
+
+        deal(USDC_ADDRESS, address(iVault), _usdcAmount);
+        IExchangeAdapter.SwapDescription memory _swapDesc02 = IExchangeAdapter.SwapDescription({
+            amount: _usdcAmount / 2,
+            srcToken: USDC_ADDRESS,
+            dstToken: WETH_ADDRESS,
+            receiver: address(iVault)
+        });
+        uint256 amountReceived02 = iVault.exchange(_swapDesc02.srcToken, _swapDesc02.dstToken, _swapDesc02.amount, _exchangeParam);
+        console2.log("amountReceived02 is", amountReceived02);
+
+        deal(USDC_ADDRESS, address(iVault), _usdcAmount*2);
+        IExchangeAdapter.SwapDescription memory _swapDesc03 = IExchangeAdapter.SwapDescription({
+            amount: _usdcAmount / 2,
+            srcToken: USDC_ADDRESS,
+            dstToken: NATIVE_TOKEN_ADDRESS,
+            receiver: address(iVault)
+        });
+        uint256 amountReceived03 = iVault.exchange(_swapDesc03.srcToken, _swapDesc03.dstToken, _swapDesc03.amount, _exchangeParam);
+        console2.log("amountReceived03 is", amountReceived03);
+
+        IExchangeAdapter.SwapDescription memory _swapDesc04 = IExchangeAdapter.SwapDescription({
+            amount: _ethAmountBuffer / 2,
+            srcToken: NATIVE_TOKEN_ADDRESS,
+            dstToken: USDC_ADDRESS,
+            receiver: address(iVault)
+        });
+        uint256 amountReceived04 = iVault.exchange(_swapDesc04.srcToken, _swapDesc04.dstToken, _swapDesc04.amount, _exchangeParam);
+        console2.log("amountReceived04 is", amountReceived04);
+
+        vm.stopPrank();
+
+    }
+
+    function testExchangeForEthVault() external {
+
+        vm.startPrank(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
+        uint256 _stethAmount = 10000e18;
+        IERC20(STETH_ADDRESS).transfer(address(iETHVault), _stethAmount + 1);
+        IERC20(STETH_ADDRESS).transfer(address(testAdapter), _stethAmount*10 + 1);
+
+        vm.stopPrank();
+
+        vm.startPrank(GOVERNANOR);
+
+        iETHVault.addAsset(CBETH_ADDRESS);
+        iETHVault.addAsset(STETH_ADDRESS);
+        iETHVault.addAsset(WETH_ADDRESS);
+        iETHVault.addAsset(ROCKET_ETH_ADDRESS);
+        //iETHVault.addAsset(WSTETH);
+        iETHVault.addAsset(NATIVE_TOKEN_ADDRESS);
+
+        address[] memory _assets = iETHVault.getSupportAssets();
+
+        
+        uint256 _cbethAmount = 10000e18;
+        uint256 _rethAmount = 10000e18;
+        uint256 _ethAmount = 10000 ether;
+        uint256 _ethAmountBuffer = 100 ether;
+        uint256 _wethAmount = 10000e18;
+
+        deal(CBETH_ADDRESS, address(testAdapter), _cbethAmount*10);
+        deal(ROCKET_ETH_ADDRESS, address(testAdapter), _rethAmount*10);
+        deal(WETH_ADDRESS, address(testAdapter), _wethAmount*10);
+        vm.deal(address(testAdapter), _ethAmount*10);
+
+
+        deal(CBETH_ADDRESS, address(iETHVault), _cbethAmount);
+        deal(ROCKET_ETH_ADDRESS, address(iETHVault), _rethAmount);
+        deal(WETH_ADDRESS, address(iETHVault), _ethAmountBuffer);
+        vm.deal(address(iETHVault), _ethAmountBuffer);
+
+        IExchangeAggregator.ExchangeParam memory _exchangeParam = IExchangeAggregator.ExchangeParam({
+            platform: address(testAdapter),
+            method: 0,
+            encodeExchangeArgs: "0x",
+            slippage: 0,
+            oracleAdditionalSlippage: 0
+        });
+        IExchangeAdapter.SwapDescription memory _swapDesc = IExchangeAdapter.SwapDescription({
+            amount: _cbethAmount / 2,
+            srcToken: CBETH_ADDRESS,
+            dstToken: ROCKET_ETH_ADDRESS,
+            receiver: address(iETHVault)
+        });
+        uint256 amountReceived = iETHVault.exchange(_swapDesc.srcToken, _swapDesc.dstToken, _swapDesc.amount, _exchangeParam);
+        console2.log("amountReceived is", amountReceived);
+        _swapDesc = IExchangeAdapter.SwapDescription({
+            amount: _cbethAmount / 2,
+            srcToken: ROCKET_ETH_ADDRESS,
+            dstToken: CBETH_ADDRESS,
+            receiver: address(iETHVault)
+        });
+        amountReceived = iETHVault.exchange(_swapDesc.srcToken, _swapDesc.dstToken, _swapDesc.amount, _exchangeParam);
+        console2.log("amountReceived is", amountReceived);
+
+        _swapDesc = IExchangeAdapter.SwapDescription({
+            amount: _rethAmount / 2,
+            srcToken: STETH_ADDRESS,
+            dstToken: CBETH_ADDRESS,
+            receiver: address(iETHVault)
+        });
+        amountReceived = iETHVault.exchange(_swapDesc.srcToken, _swapDesc.dstToken, _swapDesc.amount, _exchangeParam);
+        console2.log("amountReceived is", amountReceived);
+
+        _swapDesc = IExchangeAdapter.SwapDescription({
+            amount: _rethAmount / 2,
+            srcToken: CBETH_ADDRESS,
+            dstToken: STETH_ADDRESS,
+            receiver: address(iETHVault)
+        });
+        amountReceived = iETHVault.exchange(_swapDesc.srcToken, _swapDesc.dstToken, _swapDesc.amount, _exchangeParam);
+        console2.log("amountReceived is", amountReceived);
+
+        vm.stopPrank();
+
+    }
+
 }

@@ -30,26 +30,6 @@ contract CustomPriceFeedAggregator is ICustomPriceFeedAggregator, AccessControlM
         delete customPriceFeeds[_baseAsset];
     }
 
-    function calcCanonicalValue(
-        address _baseAsset,
-        uint256 _baseAssetAmount,
-        address _quoteAsset
-    ) external view override returns (uint256 _quoteAssetAmount, bool _isValid) {
-        (uint256 _priceInUsdPerBase, bool _baseIsValid) = calcValueInUsd(
-            _baseAsset,
-            getAssetUnit(_baseAsset)
-        );
-        (uint256 _priceInUsdPerQuote, bool _quoteIsValid) = calcValueInUsd(
-            _quoteAsset,
-            getAssetUnit(_quoteAsset)
-        );
-
-        if (_baseIsValid && _quoteIsValid) {
-            return ((_priceInUsdPerBase * _baseAssetAmount) / _priceInUsdPerQuote, true);
-        }
-        return (0, false);
-    }
-
     function calcValueInUsd(
         address _baseAsset,
         uint256 _baseAssetAmount

@@ -120,35 +120,6 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     // EXTERNAL FUNCTIONS
 
     /// @inheritdoc IPrimitivePriceFeed
-    function calcCanonicalValue(
-        address _baseAsset,
-        uint256 _baseAssetAmount,
-        address _quoteAsset
-    ) public view override returns (uint256 _quoteAssetAmount, bool _isValid) {
-        // Case where _baseAsset == _quoteAsset is handled by ValueInterpreter
-
-        int256 baseAssetRate = __getLatestRateData(_baseAsset);
-        if (baseAssetRate <= 0) {
-            return (0, false);
-        }
-
-        int256 quoteAssetRate = __getLatestRateData(_quoteAsset);
-        if (quoteAssetRate <= 0) {
-            return (0, false);
-        }
-
-        (_quoteAssetAmount, _isValid) = __calcConversionAmount(
-            _baseAsset,
-            _baseAssetAmount,
-            uint256(baseAssetRate),
-            _quoteAsset,
-            uint256(quoteAssetRate)
-        );
-
-        return (_quoteAssetAmount, _isValid);
-    }
-
-    /// @inheritdoc IPrimitivePriceFeed
     function calcValueInUsd(
         address _baseAsset,
         uint256 _baseAssetAmount
