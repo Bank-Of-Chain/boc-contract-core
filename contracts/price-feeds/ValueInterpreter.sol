@@ -276,6 +276,93 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         );
     }
 
+    // /// @dev Helper to differentially calculate an asset value
+    // /// based on if it is a primitive or derivative asset.
+    // function __calcAssetValue(
+    //     address _baseAsset,
+    //     uint256 _amount,
+    //     address _quoteAsset
+    // ) private view returns (uint256 _value, bool _isValid) {
+    //     if (_baseAsset == _quoteAsset || _amount == 0) {
+    //         return (_amount, true);
+    //     }
+
+    //     // Handle case that asset with uniswapV3
+    //     if (
+    //         ICustomPriceFeedAggregator(customPriceFeedAggregator).isSupportedAsset(_baseAsset) &&
+    //         ICustomPriceFeedAggregator(customPriceFeedAggregator).isSupportedAsset(_quoteAsset)
+    //     ) {
+    //         return
+    //             ICustomPriceFeedAggregator(customPriceFeedAggregator).calcCanonicalValue(
+    //                 _baseAsset,
+    //                 _amount,
+    //                 _quoteAsset
+    //             );
+    //     }
+
+    //     // Handle case that asset with chainlink
+    //     if (
+    //         IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(_baseAsset) &&
+    //         IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(_quoteAsset)
+    //     ) {
+    //         return
+    //             IPrimitivePriceFeed(chainlinkPriceFeed).calcCanonicalValue(
+    //                 _baseAsset,
+    //                 _amount,
+    //                 _quoteAsset
+    //             );
+    //     }
+
+    //     // Handle case that asset with customPriceFeed
+    //     if (
+    //         IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(_baseAsset) &&
+    //         IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(_quoteAsset)
+    //     ) {
+    //         return
+    //             IPrimitivePriceFeed(uniswapV3PriceFeed).calcCanonicalValue(
+    //                 _baseAsset,
+    //                 _amount,
+    //                 _quoteAsset
+    //             );
+    //     }
+
+    //     revert(
+    //         string(
+    //             abi.encodePacked(
+    //                 "__calcAssetValue: Unsupported _baseAsset ",
+    //                 Strings.toHexString(uint160(_baseAsset), 20)
+    //             )
+    //         )
+    //     );
+    // }
+
+    function _getQuoteAssetUnit(address _quoteAsset) private view returns(uint256){
+        // Handle case that asset with customPriceFeed
+        if (ICustomPriceFeedAggregator(customPriceFeedAggregator).isSupportedAsset(_quoteAsset)) {
+            return
+                ICustomPriceFeedAggregator(customPriceFeedAggregator).getAssetUnit(_quoteAsset);
+        }
+
+        // Handle case that asset with chainlink
+        if (IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(_quoteAsset)) {
+            return IPrimitivePriceFeed(chainlinkPriceFeed).getAssetUnit(_quoteAsset);
+        }
+
+        // Handle case that asset with uniswapV3
+        if (IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(_quoteAsset)) {
+            return IPrimitivePriceFeed(uniswapV3PriceFeed).getAssetUnit(_quoteAsset);
+        }
+
+        revert(
+            string(
+                abi.encodePacked(
+                    "_getQuoteAssetUnit: Unsupported _quoteAsset ",
+                    Strings.toHexString(uint160(_quoteAsset), 20)
+                )
+            )
+        );
+    }
+
     /// @dev Helper to differentially calculate an asset value
     /// based on if it is a primitive or derivative asset.
     function __calcAssetValue(
@@ -287,49 +374,50 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             return (_amount, true);
         }
 
-        // Handle case that asset with uniswapV3
-        if (
-            ICustomPriceFeedAggregator(customPriceFeedAggregator).isSupportedAsset(_baseAsset) &&
-            ICustomPriceFeedAggregator(customPriceFeedAggregator).isSupportedAsset(_quoteAsset)
-        ) {
-            return
-                ICustomPriceFeedAggregator(customPriceFeedAggregator).calcCanonicalValue(
-                    _baseAsset,
-                    _amount,
-                    _quoteAsset
-                );
-        }
+       (uint256 _baseTotalValueInUsd,bool _baseIsValid)  = __calcAssetValueInUsd(_baseAsset,_amount);
+       uint256 _quoteAssetOneUnit = _getQuoteAssetUnit(_quoteAsset);
+       (uint256 _priceInUsdPerQuote, bool _quoteIsValid) = __calcAssetValueInUsd(_quoteAsset,_quoteAssetOneUnit);
 
-        // Handle case that asset with chainlink
-        if (
-            IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(_baseAsset) &&
-            IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(_quoteAsset)
-        ) {
-            return
-                IPrimitivePriceFeed(chainlinkPriceFeed).calcCanonicalValue(
-                    _baseAsset,
-                    _amount,
-                    _quoteAsset
-                );
+        if (_baseIsValid && _quoteIsValid) {
+            return (_baseTotalValueInUsd / _priceInUsdPerQuote, true);
         }
-
-        // Handle case that asset with customPriceFeed
-        if (
-            IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(_baseAsset) &&
-            IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(_quoteAsset)
-        ) {
-            return
-                IPrimitivePriceFeed(uniswapV3PriceFeed).calcCanonicalValue(
-                    _baseAsset,
-                    _amount,
-                    _quoteAsset
-                );
-        }
+        return (0, false);
 
         revert(
             string(
                 abi.encodePacked(
                     "__calcAssetValue: Unsupported _baseAsset ",
+                    Strings.toHexString(uint160(_baseAsset), 20)
+                )
+            )
+        );
+    }
+
+    /// @dev Helper to differentially calculate an asset value
+    /// based on if it is a primitive or derivative asset.
+    function __calcAssetValueInEth(
+        address _baseAsset,
+        uint256 _amount,
+        address _quoteAsset
+    ) private view returns (uint256 _value, bool _isValid) {
+        if (_baseAsset == _quoteAsset || _amount == 0) {
+            return (_amount, true);
+        }
+
+       (uint256 _baseTotalValueInEth,bool _baseIsValid)  = __calcAssetValueInEth(_baseAsset,_amount);
+       uint256 _quoteAssetOneUnit = _getQuoteAssetUnit(_quoteAsset);
+       (uint256 _priceInEthPerQuote, bool _quoteIsValid) = __calcAssetValueInEth(_quoteAsset,_quoteAssetOneUnit);
+
+        if (_baseIsValid && _quoteIsValid) {
+            return (_baseTotalValueInEth / _priceInEthPerQuote, true);
+        }
+        return (0, false);
+
+
+        revert(
+            string(
+                abi.encodePacked(
+                    "__calcAssetValueInEth: Unsupported _baseAsset ",
                     Strings.toHexString(uint160(_baseAsset), 20)
                 )
             )

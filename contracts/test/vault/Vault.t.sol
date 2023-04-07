@@ -185,7 +185,7 @@ contract VaultTest is Test {
         treasury.initialize(address(accessControlProxy));
         vm.label(address(treasury), "treasury");
 
-        testAdapter = new TestAdapter(address(accessControlProxy));
+        testAdapter = new TestAdapter(address(valueInterpreter));
         vm.label(address(testAdapter), "testAdapter");
         address[] memory _exchangeAdapters = new address[](1);
         _exchangeAdapters[0] = address(testAdapter);
@@ -1423,4 +1423,85 @@ contract VaultTest is Test {
         }
         return _balance;
     }
+
+    function testExchange() external {
+        vm.startPrank(GOVERNANOR);
+
+        iVault.addAsset(USDC_ADDRESS);
+        iVault.addAsset(USDT_ADDRESS);
+        iVault.addAsset(DAI_ADDRESS);
+        iVault.addAsset(NATIVE_TOKEN_ADDRESS);
+        
+        iVault.addAsset(WETH_ADDRESS);
+
+        address[] memory _assets = iVault.getSupportAssets();
+
+        uint256 _usdcAmount = 10000e6;
+        uint256 _usdtAmount = 10000e6;
+        uint256 _daiAmount = 10000e18;
+        uint256 _ethAmount = 10000 ether;
+        uint256 _ethAmountBuffer = 100 ether;
+        uint256 _wethAmount = 10000e18;
+
+        deal(USDC_ADDRESS, address(testAdapter), _usdcAmount*10);
+        deal(USDT_ADDRESS, address(testAdapter), _usdtAmount*10);
+        deal(DAI_ADDRESS, address(testAdapter), _daiAmount*10);
+        deal(WETH_ADDRESS, address(testAdapter), _wethAmount*10);
+        vm.deal(address(testAdapter), _ethAmount);
+
+
+        deal(USDC_ADDRESS, address(iVault), _usdcAmount);
+        deal(USDT_ADDRESS, address(iVault), _usdtAmount);
+        deal(DAI_ADDRESS, address(iVault), _daiAmount);
+        deal(WETH_ADDRESS, address(iVault), _ethAmountBuffer);
+        
+        vm.deal(address(iVault), _ethAmountBuffer);
+        IExchangeAggregator.ExchangeParam memory _exchangeParam = IExchangeAggregator.ExchangeParam({
+            platform: address(testAdapter),
+            method: 0,
+            encodeExchangeArgs: "0x",
+            slippage: 0,
+            oracleAdditionalSlippage: 0
+        });
+        IExchangeAdapter.SwapDescription memory _swapDesc = IExchangeAdapter.SwapDescription({
+            amount: _usdcAmount / 2,
+            srcToken: USDC_ADDRESS,
+            dstToken: USDT_ADDRESS,
+            receiver: address(iVault)
+        });
+        uint256 amountReceived = iVault.exchange(_swapDesc.srcToken, _swapDesc.dstToken, _swapDesc.amount, _exchangeParam);
+        console2.log("amountReceived is", amountReceived);
+
+        IExchangeAdapter.SwapDescription memory _swapDesc01 = IExchangeAdapter.SwapDescription({
+            amount: _usdcAmount / 2,
+            srcToken: USDC_ADDRESS,
+            dstToken: DAI_ADDRESS,
+            receiver: address(iVault)
+        });
+        amountReceived = iVault.exchange(_swapDesc01.srcToken, _swapDesc01.dstToken, _swapDesc01.amount, _exchangeParam);
+        console2.log("amountReceived is", amountReceived);
+
+        deal(USDC_ADDRESS, address(iVault), _usdcAmount);
+        IExchangeAdapter.SwapDescription memory _swapDesc02 = IExchangeAdapter.SwapDescription({
+            amount: _usdcAmount / 2,
+            srcToken: USDC_ADDRESS,
+            dstToken: WETH_ADDRESS,
+            receiver: address(iVault)
+        });
+        uint256 amountReceived02 = iVault.exchange(_swapDesc02.srcToken, _swapDesc02.dstToken, _swapDesc02.amount, _exchangeParam);
+        console2.log("amountReceived02 is", amountReceived02);
+
+        deal(USDC_ADDRESS, address(iVault), _usdcAmount);
+        IExchangeAdapter.SwapDescription memory _swapDesc03 = IExchangeAdapter.SwapDescription({
+            amount: _usdcAmount / 2,
+            srcToken: USDC_ADDRESS,
+            dstToken: NATIVE_TOKEN_ADDRESS,
+            receiver: address(iVault)
+        });
+        uint256 amountReceived03 = iVault.exchange(_swapDesc03.srcToken, _swapDesc03.dstToken, _swapDesc03.amount, _exchangeParam);
+        console2.log("amountReceived03 is", amountReceived03);
+
+        vm.stopPrank();
+    }
+
 }
