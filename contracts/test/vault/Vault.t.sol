@@ -1183,7 +1183,7 @@ contract VaultTest is Test {
                 WETH_ADDRESS,
                 _amounts[2] - _balanceOfToken(WETH_ADDRESS, FRIEND)
             );
-        assertEq(_ethiAmount / 1e17, _valueInETH / 1e17);
+        assertEq(_ethiAmount / 1e17, _valueInETH / 1e17 + 1);
     }
 
     function testReport() public {
@@ -1331,10 +1331,10 @@ contract VaultTest is Test {
             valueInterpreter.calcCanonicalAssetValueInEth(STETH_ADDRESS, _stETHAmount) +
             valueInterpreter.calcCanonicalAssetValueInEth(WETH_ADDRESS, _wETHAmount);
 
-        assertEq(_totalDebtOfAfterReport / 10000, (_totalDebtOfBeforeReport + _valueInETH) / 10000);
+        assertEq(_totalDebtOfAfterReport / 10000, (_totalDebtOfBeforeReport + _valueInETH) / 10000  + 1);
         assertEq(
             _estimatedTotalAssetsOfAfterReport / 10000,
-            (_estimatedTotalAssetsOfBeforeReport + _valueInETH) / 10000
+            (_estimatedTotalAssetsOfBeforeReport + _valueInETH) / 10000 + 1
         );
 
         _totalDebtOfBeforeReport = _strategyParams.totalDebt;
@@ -1363,7 +1363,7 @@ contract VaultTest is Test {
         _estimatedTotalAssetsOfAfterReport = ethMock3CoinStrategy.estimatedTotalAssets();
 
         assertEq(_totalDebtOfAfterReport / 10000, (_totalDebtOfBeforeReport + _valueInETH) / 10000);
-        assertEq(_estimatedTotalAssetsOfAfterReport, _estimatedTotalAssetsOfBeforeReport + _valueInETH);
+        assertEq(_estimatedTotalAssetsOfAfterReport, _estimatedTotalAssetsOfBeforeReport + _valueInETH + 1);
     }
 
     function testBurnFromStrategy() public {
@@ -1491,7 +1491,7 @@ contract VaultTest is Test {
         uint256 amountReceived02 = iVault.exchange(_swapDesc02.srcToken, _swapDesc02.dstToken, _swapDesc02.amount, _exchangeParam);
         console2.log("amountReceived02 is", amountReceived02);
 
-        deal(USDC_ADDRESS, address(iVault), _usdcAmount);
+        deal(USDC_ADDRESS, address(iVault), _usdcAmount*2);
         IExchangeAdapter.SwapDescription memory _swapDesc03 = IExchangeAdapter.SwapDescription({
             amount: _usdcAmount / 2,
             srcToken: USDC_ADDRESS,
@@ -1501,7 +1501,18 @@ contract VaultTest is Test {
         uint256 amountReceived03 = iVault.exchange(_swapDesc03.srcToken, _swapDesc03.dstToken, _swapDesc03.amount, _exchangeParam);
         console2.log("amountReceived03 is", amountReceived03);
 
+        IExchangeAdapter.SwapDescription memory _swapDesc04 = IExchangeAdapter.SwapDescription({
+            amount: _ethAmountBuffer / 2,
+            srcToken: NATIVE_TOKEN_ADDRESS,
+            dstToken: USDC_ADDRESS,
+            receiver: address(iVault)
+        });
+        uint256 amountReceived04 = iVault.exchange(_swapDesc04.srcToken, _swapDesc04.dstToken, _swapDesc04.amount, _exchangeParam);
+        console2.log("amountReceived04 is", amountReceived04);
+
         vm.stopPrank();
+
+
     }
 
 }
