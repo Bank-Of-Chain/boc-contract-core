@@ -49,6 +49,17 @@ interface IValueInterpreter {
         uint256 _amount
     ) external view returns (uint256);
 
+    /// @dev Calculate the usd value of a specified number of assets
+    /// @param _baseAsset Source token address
+    /// @param _amount The amount of source token
+    /// @param _quoteAsset The asset to which to convert
+    /// return eth(1e18)
+    function calcCanonicalAssetValueInEth(
+        address _baseAsset,
+        uint256 _amount,
+        address _quoteAsset
+    ) external view returns (uint256 _value);
+
      
     /// @dev Calculate the usd value of baseUnit volume assets
     /// @param _baseAsset The ssset token address
