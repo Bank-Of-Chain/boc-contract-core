@@ -95,6 +95,21 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     }
 
     /// @inheritdoc IValueInterpreter
+    function calcCanonicalAssetValueInEth(
+        address _baseAsset,
+        uint256 _amount,
+        address _quoteAsset
+    ) external view override returns (uint256 _value) {
+        if (_baseAsset == _quoteAsset || _amount == 0) {
+            return _amount;
+        }
+        bool _isValid;
+        (_value, _isValid) = __calcAssetValueInEth(_baseAsset, _amount, _quoteAsset);
+        require(_isValid, "Invalid rate");
+        return _value;
+    }
+
+    /// @inheritdoc IValueInterpreter
     function calcCanonicalAssetValueInUsd(
         address _baseAsset,
         uint256 _amount
@@ -379,7 +394,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
        (uint256 _priceInUsdPerQuote, bool _quoteIsValid) = __calcAssetValueInUsd(_quoteAsset,_quoteAssetOneUnit);
 
         if (_baseIsValid && _quoteIsValid) {
-            return (_baseTotalValueInUsd / _priceInUsdPerQuote, true);
+            return (_baseTotalValueInUsd * _quoteAssetOneUnit / _priceInUsdPerQuote , true);
         }
         return (0, false);
 
@@ -412,7 +427,6 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             return (_baseTotalValueInEth / _priceInEthPerQuote, true);
         }
         return (0, false);
-
 
         revert(
             string(
