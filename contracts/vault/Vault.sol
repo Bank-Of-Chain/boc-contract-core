@@ -309,11 +309,17 @@ contract Vault is VaultStorage {
         address _strategy,
         uint256 _amount,
         uint256 _outputCode
-    ) external isKeeperOrVaultOrGovOrDelegate isActiveStrategy(_strategy) nonReentrant {
+    )
+        external
+        isKeeperOrVaultOrGovOrDelegate
+        isActiveStrategy(_strategy)
+        nonReentrant
+        returns (address[] memory _assets, uint256[] memory _amounts)
+    {
         uint256 _strategyAssetValue = strategies[_strategy].totalDebt;
         require(_amount <= _strategyAssetValue, "AI"); //amount invalid
 
-        (address[] memory _assets, uint256[] memory _amounts) = IStrategy(_strategy).repay(
+        (_assets, _amounts) = IStrategy(_strategy).repay(
             _amount,
             _strategyAssetValue,
             _outputCode
