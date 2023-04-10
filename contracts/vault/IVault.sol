@@ -314,7 +314,7 @@ interface IVault {
         address _strategy,
         uint256 _amount,
         uint256 _outputCode
-    ) external;
+    ) external returns (address[] memory _assets, uint256[] memory _amounts);
 
     /// @dev Exchange from '_fromToken' to '_toToken'
     /// @param _fromToken The token swap from
