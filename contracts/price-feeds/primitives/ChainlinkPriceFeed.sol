@@ -59,11 +59,6 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         uint256 _nextHeartbeat
     );
 
-    enum RateAsset {
-        ETH, // ETH as asset unit
-        USD // USD as asset unit
-    }
-
     /// @param aggregator The aggregator address
     /// @param heartbeat The heartbeat value for `aggregator`
     /// @param rateAsset The `RateAsset` enum value for one primitive asset
@@ -164,6 +159,11 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     /// @inheritdoc IPrimitivePriceFeed
     function getAssetUnit(address _asset) public view override returns (uint256 _unit) {
         return getUnitForPrimitive(_asset);
+    }
+
+    /// @inheritdoc IPrimitivePriceFeed
+    function getRateAsset(address _asset) external view override returns (RateAsset _rateAsset) {
+        return getRateAssetForPrimitive(_asset);
     }
 
     /// @inheritdoc IPrimitivePriceFeed

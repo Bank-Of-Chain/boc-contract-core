@@ -6,6 +6,7 @@ import "brain-forge-std/Test.sol";
 import "../../access-control/AccessControlProxy.sol";
 import "../../price-feeds/ValueInterpreter.sol";
 import "../../price-feeds/primitives/ChainlinkPriceFeed.sol";
+import "../../price-feeds/primitives/IPrimitivePriceFeed.sol";
 import "../../price-feeds/primitives/UniswapV3PriceFeed.sol";
 import "../../price-feeds/custom/CustomWstEthPriceFeed.sol";
 import "../../price-feeds/custom/CustomEthPriceFeed.sol";
@@ -38,7 +39,7 @@ contract ValueInterpreterTest is Test {
     uint256 constant STETH_HEARTBEAT = 24 hours;
     uint32 constant ROCKET_ETH_DURATION = 1 hours;
     uint32 constant SETH2_DURATION = 1 hours;
-    ChainlinkPriceFeed.RateAsset constant STETH_RATE_ASSET = ChainlinkPriceFeed.RateAsset.ETH; //eth
+    IPrimitivePriceFeed.RateAsset constant STETH_RATE_ASSET = IPrimitivePriceFeed.RateAsset.ETH; //eth
 
     AccessControlProxy accessControlProxy;
     ValueInterpreter valueInterpreter;
@@ -67,11 +68,11 @@ contract ValueInterpreterTest is Test {
         _aggregators[0] = STETH_AGGREAGTOR_ADDRESS;
         uint256[] memory _heartbeats = new uint256[](1);
         _heartbeats[0] = STETH_HEARTBEAT;
-        ChainlinkPriceFeed.RateAsset[] memory _rateAssets = new ChainlinkPriceFeed.RateAsset[](1);
+        IPrimitivePriceFeed.RateAsset[] memory _rateAssets = new IPrimitivePriceFeed.RateAsset[](1);
         _rateAssets[0] = STETH_RATE_ASSET;
         address[] memory _basePeggeds = new address[](1);
         _basePeggeds[0] = WETH_ADDRESS;
-        ChainlinkPriceFeed.RateAsset[] memory _peggedRateAssets = new ChainlinkPriceFeed.RateAsset[](1);
+        IPrimitivePriceFeed.RateAsset[] memory _peggedRateAssets = new IPrimitivePriceFeed.RateAsset[](1);
         _peggedRateAssets[0] = STETH_RATE_ASSET;
 
         chainlinkPriceFeed = new ChainlinkPriceFeed(

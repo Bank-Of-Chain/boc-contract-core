@@ -164,6 +164,9 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     /// @param _threshold is the numerator and the denominator is 1e7. x/1e7
     event RebaseThresholdUpdated(uint256 _threshold);
 
+    /// @param _threshold is the numerator and the denominator is 1e7. x/1e7
+    event DeltaThresholdUpdated(uint256 _threshold);
+
     /// @param _basis the new value of `trusteeFeeBps`
     event TrusteeFeeBpsChanged(uint256 _basis);
 
@@ -281,6 +284,9 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     uint256 public minCheckedStrategyTotalDebt;
     /// @notice Minimum investment amount
     uint256 public minimumInvestmentAmount;
+    /// @notice reduce over this difference ratio will revert(when lend or redeem).
+    /// deltaThreshold is the numerator and the denominator is 1e7. x/1e7
+    uint256 public deltaThreshold;
     /// @notice vault type 0-USDi,1-ETHi
     uint256 public vaultType;
 

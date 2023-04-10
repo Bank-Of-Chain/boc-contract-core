@@ -38,6 +38,8 @@ contract Vault is VaultStorage {
 
         // 1 / 1000e4
         rebaseThreshold = 1;
+        // 1 / 10e4
+        deltaThreshold = 100;
         // one week
         maxTimestampBetweenTwoReported = 604800;
         underlyingUnitsPerShare = 1e18;
@@ -204,11 +206,10 @@ contract Vault is VaultStorage {
     /// @param _amounts Amount of the asset being deposited
     /// @dev Support single asset or multi-assets
     /// @return The share Amount estimated
-    function estimateMint(address[] memory _assets, uint256[] memory _amounts)
-        public
-        view
-        returns (uint256)
-    {
+    function estimateMint(
+        address[] memory _assets,
+        uint256[] memory _amounts
+    ) public view returns (uint256) {
         (uint256 _mintAmount, ) = _estimateMint(_assets, _amounts);
         return _mintAmount;
     }
@@ -319,11 +320,7 @@ contract Vault is VaultStorage {
         uint256 _strategyAssetValue = strategies[_strategy].totalDebt;
         require(_amount <= _strategyAssetValue, "AI"); //amount invalid
 
-        (_assets, _amounts) = IStrategy(_strategy).repay(
-            _amount,
-            _strategyAssetValue,
-            _outputCode
-        );
+        (_assets, _amounts) = IStrategy(_strategy).repay(_amount, _strategyAssetValue, _outputCode);
         if (adjustPositionPeriod) {
             uint256 _assetsLength = _assets.length;
             for (uint256 i = 0; i < _assetsLength; i++) {
@@ -399,11 +396,11 @@ contract Vault is VaultStorage {
                 uint256 _actualAmount = _amountsLocal[i];
                 if (_actualAmount > 0) {
                     address _want = _wants[i];
-                    if (!_isWantRatioIgnorable){
+                    if (!_isWantRatioIgnorable) {
                         if (_ratios[i] > 0) {
                             _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
                             _amountsLocal[i] = _actualAmount;
-                        }else{
+                        } else {
                             _amountsLocal[i] = 0;
                             continue;
                         }
@@ -435,8 +432,8 @@ contract Vault is VaultStorage {
         {
             IStrategy(_strategyAddress).borrow{value: _ethAmount}(_wants, _amountsLocal);
             _deltaAssets = _report(_strategyAddress, _lendValue, 1);
-            if(_minDeltaAssets > 0){
-                require(_deltaAssets >= _minDeltaAssets, "not enough");
+            if (_minDeltaAssets > 0) {
+                require(_deltaAssets >= _minDeltaAssets || (_minDeltaAssets - _deltaAssets) * TEN_MILLION_BPS <= _minDeltaAssets * deltaThreshold, "not enough");
             }
         }
         emit LendToStrategy(_strategyAddress, _wants, _amountsLocal, _lendValue);
@@ -453,13 +450,9 @@ contract Vault is VaultStorage {
 
     /// @notice Change USDi/ETHi supply with Vault total assets.
     /// @param _trusteeFeeBps Amount of yield collected in basis points
-    function rebase(uint256 _trusteeFeeBps)
-        external
-        whenNotEmergency
-        whenNotAdjustPosition
-        whenNotRebasePaused
-        nonReentrant
-    {
+    function rebase(
+        uint256 _trusteeFeeBps
+    ) external whenNotEmergency whenNotAdjustPosition whenNotRebasePaused nonReentrant {
         require(_trusteeFeeBps == trusteeFeeBps, "TI"); //trusteeFeeBps invalid
         uint256 _totalAssets = _totalAssetInVault() + totalDebt;
         _rebase(_totalAssets, _trusteeFeeBps);
@@ -486,10 +479,7 @@ contract Vault is VaultStorage {
     /// @dev Report the current asset of strategy caller
     /// Requirement: only the strategy caller is active
     /// Emits a {StrategyReported} event.
-    function report()
-        external
-        isActiveStrategy(msg.sender)
-    {
+    function report() external isActiveStrategy(msg.sender) {
         _report(msg.sender, 0, 0);
     }
 
@@ -660,14 +650,10 @@ contract Vault is VaultStorage {
         );
     }
 
-    function _calculateVault(address[] memory _trackedAssets, bool _dealVaultBuffer)
-        internal
-        returns (
-            uint256[] memory,
-            uint256[] memory,
-            bool
-        )
-    {
+    function _calculateVault(
+        address[] memory _trackedAssets,
+        bool _dealVaultBuffer
+    ) internal returns (uint256[] memory, uint256[] memory, bool) {
         uint256 _trackedAssetsLength = _trackedAssets.length;
         uint256[] memory _transferAmounts = new uint256[](_trackedAssetsLength);
         uint256[] memory _vaultAmounts = new uint256[](_trackedAssetsLength);
@@ -752,17 +738,16 @@ contract Vault is VaultStorage {
         return _totalAssetInVaultAndVaultBuffer;
     }
 
-    function _estimateMint(address[] memory _assets, uint256[] memory _amounts)
-        private
-        view
-        returns (uint256 _mintAmount, uint256 _ethAmount)
-    {
+    function _estimateMint(
+        address[] memory _assets,
+        uint256[] memory _amounts
+    ) private view returns (uint256 _mintAmount, uint256 _ethAmount) {
         _ethAmount = _checkMintAssets(_assets, _amounts);
         for (uint256 i = 0; i < _assets.length; i++) {
             address _asset = _assets[i];
             uint256 _assetPrice = _getAssetPrice(_asset);
             uint256 _assetDecimal = trackedAssetDecimalsMap[_asset];
-            _mintAmount += _amounts[i].mulTruncateScale(_assetPrice, 10**_assetDecimal);
+            _mintAmount += _amounts[i].mulTruncateScale(_assetPrice, 10 ** _assetDecimal);
         }
         uint256 _minimumInvestmentAmount = minimumInvestmentAmount;
         if (_minimumInvestmentAmount > 0) {
@@ -784,10 +769,12 @@ contract Vault is VaultStorage {
             uint256 _strategyWithdrawQuota = _strategyTotalDebt;
             {
                 uint256 _withdrawQuota = IStrategy(_strategy).poolWithdrawQuota();
-                if(_withdrawQuota != type(uint256).max){
+                if (_withdrawQuota != type(uint256).max) {
                     uint256 _estimatedTotalAssets = IStrategy(_strategy).estimatedTotalAssets();
-                    if(_withdrawQuota < _estimatedTotalAssets){
-                        _strategyWithdrawQuota = _strategyTotalDebt * _withdrawQuota / _estimatedTotalAssets;
+                    if (_withdrawQuota < _estimatedTotalAssets) {
+                        _strategyWithdrawQuota =
+                            (_strategyTotalDebt * _withdrawQuota) /
+                            _estimatedTotalAssets;
                     }
                 }
             }
@@ -821,7 +808,7 @@ contract Vault is VaultStorage {
             );
             uint256 _nowStrategyTotalDebt = strategies[_strategy].totalDebt;
             uint256 _thisWithdrawValue = (_nowStrategyTotalDebt * _strategyWithdrawValue) /
-            _strategyTotalDebt;
+                _strategyTotalDebt;
             strategies[_strategy].totalDebt = _nowStrategyTotalDebt - _thisWithdrawValue;
             _totalWithdrawValue += _thisWithdrawValue;
 
@@ -957,7 +944,7 @@ contract Vault is VaultStorage {
         uint256 _assetPrice = _getAssetPrice(_assetPrices, _assetIndex, _trackedAsset);
         uint256 _assetDecimal = _getAssetDecimals(_assetDecimals, _assetIndex, _trackedAsset);
 
-        uint256 _value = _balance.mulTruncateScale(_assetPrice, 10**_assetDecimal);
+        uint256 _value = _balance.mulTruncateScale(_assetPrice, 10 ** _assetDecimal);
         return _value;
     }
 
@@ -1043,14 +1030,7 @@ contract Vault is VaultStorage {
         address[] memory _trackedAssets,
         uint256[] memory _assetPrices,
         uint256[] memory _assetDecimals
-    )
-        internal
-        returns (
-            address[] memory,
-            uint256[] memory,
-            uint256
-        )
-    {
+    ) internal returns (address[] memory, uint256[] memory, uint256) {
         // calculate need transfer amount from vault ,set to outputs
         uint256[] memory _outputs = _calculateOutputs(
             _actualAsset,
@@ -1194,11 +1174,11 @@ contract Vault is VaultStorage {
         address _strategy,
         uint256 _lendValue,
         uint256 _type
-    ) private returns(uint256 _deltaAsset){
+    ) private returns (uint256 _deltaAsset) {
         StrategyParams memory _strategyParam = strategies[_strategy];
         uint256 _lastStrategyTotalDebt = _strategyParam.totalDebt + _lendValue;
         uint256 _nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();
-        if(_strategyParam.totalDebt < _nowStrategyTotalDebt){
+        if (_strategyParam.totalDebt < _nowStrategyTotalDebt) {
             _deltaAsset = _nowStrategyTotalDebt - _strategyParam.totalDebt;
         }
 
@@ -1306,11 +1286,10 @@ contract Vault is VaultStorage {
         }
     }
 
-    function _checkMintAssets(address[] memory _assets, uint256[] memory _amounts)
-        private
-        view
-        returns (uint256 _ethAmount)
-    {
+    function _checkMintAssets(
+        address[] memory _assets,
+        uint256[] memory _amounts
+    ) private view returns (uint256 _ethAmount) {
         require(!(IVaultBuffer(vaultBufferAddress).isDistributing()), "ID"); ////is distributing
         uint256 _assetsLength = _assets.length;
         require(

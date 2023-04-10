@@ -68,10 +68,10 @@ interface IVault {
     );
 
     /// @param  _platform The platform used for the exchange
-    /// @param _srcAsset The address of asset exchange from 
-    /// @param _srcAmount The amount of asset exchange from 
-    /// @param _distAsset The address of asset exchange to 
-    /// @param _distAmount The amount of asset exchange to 
+    /// @param _srcAsset The address of asset exchange from
+    /// @param _srcAmount The amount of asset exchange from
+    /// @param _distAsset The address of asset exchange to
+    /// @param _distAmount The amount of asset exchange to
     event Exchange(
         address _platform,
         address _srcAsset,
@@ -82,14 +82,9 @@ interface IVault {
 
     /// @param  _strategy The specified strategy to redeem
     /// @param _debtChangeAmount The amount to redeem in USD(USDi)/ETH(ETHi)
-    /// @param _assets The address list of asset redeeming 
-    /// @param _amounts The amount list of asset redeeming 
-    event Redeem(
-        address _strategy, 
-        uint256 _debtChangeAmount, 
-        address[] _assets, 
-        uint256[] _amounts
-    );
+    /// @param _assets The address list of asset redeeming
+    /// @param _amounts The amount list of asset redeeming
+    event Redeem(address _strategy, uint256 _debtChangeAmount, address[] _assets, uint256[] _amounts);
 
     /// @param  _strategy The specified strategy to lend
     /// @param _wants The address list of token wanted
@@ -177,7 +172,7 @@ interface IVault {
     /// @param _totalDebtOfBeforeAdjustPosition The total debt Of before adjust position
     /// @param _trackedAssets The address list of assets tracked
     /// @param _vaultCashDetatil The assets's balance list of vault
-    /// @param _vaultBufferCashDetail The amount list of assets transfer from vault buffer to vault 
+    /// @param _vaultBufferCashDetail The amount list of assets transfer from vault buffer to vault
     event StartAdjustPosition(
         uint256 _totalDebtOfBeforeAdjustPosition,
         address[] _trackedAssets,
@@ -188,7 +183,7 @@ interface IVault {
     /// @param _transferValue The total value to transfer on this adjust position
     /// @param _redeemValue The total value to redeem on this adjust position
     /// @param _totalDebt The all strategy asset value
-    /// @param _totalValueOfAfterAdjustPosition The total asset value Of vault after adjust position 
+    /// @param _totalValueOfAfterAdjustPosition The total asset value Of vault after adjust position
     /// @param _totalValueOfBeforeAdjustPosition The total asset value Of vault before adjust position
     event EndAdjustPosition(
         uint256 _transferValue,
@@ -199,7 +194,7 @@ interface IVault {
     );
 
     /// @param _pegTokenAmount The amount of the pegged token
-    /// @param _assets The address list of asset transfer from vault buffer to vault 
+    /// @param _assets The address list of asset transfer from vault buffer to vault
     /// @param _amounts The amount list of asset transfer from vault buffer to vault
     event PegTokenSwapCash(uint256 _pegTokenAmount, address[] _assets, uint256[] _amounts);
 
@@ -261,10 +256,10 @@ interface IVault {
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
     /// @return _shareAmount The amount of shares estimated to mint
-    function estimateMint(address[] memory _assets, uint256[] memory _amounts)
-        external
-        view
-        returns (uint256 _shareAmount);
+    function estimateMint(
+        address[] memory _assets,
+        uint256[] memory _amounts
+    ) external view returns (uint256 _shareAmount);
 
     /// @notice Minting the USDi/ETHi ticket with stablecoins(USDi)/ETH(ETHi)
     /// @dev Support single asset or multi-assets
@@ -285,7 +280,12 @@ interface IVault {
     /// @return _assets The address list of assets to receive
     /// @return _amounts The amount list of assets to receive
     /// @return _actuallyReceivedAmount The value of the assets in USD(USDi)/ETH(ETHi)
-    function burn(uint256 _amount, uint256 _minimumAmount, uint256 _redeemFeeBps, uint256 _trusteeFeeBps)
+    function burn(
+        uint256 _amount,
+        uint256 _minimumAmount,
+        uint256 _redeemFeeBps,
+        uint256 _trusteeFeeBps
+    )
         external
         returns (address[] memory _assets, uint256[] memory _amounts, uint256 _actuallyReceivedAmount);
 
@@ -309,7 +309,7 @@ interface IVault {
     /// @notice Withdraw the funds from specified strategy.
     /// @param _strategy The specified strategy to redeem
     /// @param _amount The amount to redeem in USD(USDi)/ETH(ETHi)
-    /// @param _outputCode The code of output 
+    /// @param _outputCode The code of output
     function redeem(
         address _strategy,
         uint256 _amount,
@@ -406,13 +406,13 @@ interface IVault {
     /// @dev The removed policy withdraws funds from the 3rd protocol and returns to the Vault
     function removeStrategies(address[] memory _strategies) external;
 
-    /// @notice Forced to remove the '_strategy' 
+    /// @notice Forced to remove the '_strategy'
     function forceRemoveStrategy(address _strategy) external;
 
     /////////////////////////////////////////
     //           WithdrawalQueue           //
     /////////////////////////////////////////
-    
+
     /// @notice Return the withdrawal queue
     function getWithdrawalQueue() external view returns (address[] memory);
 
@@ -431,7 +431,7 @@ interface IVault {
 
     /// @notice Return the rebaseThreshold value,
     /// over this difference ratio automatically rebase.
-    /// rebaseThreshold is the numerator and the denominator is 1e7, 
+    /// rebaseThreshold is the numerator and the denominator is 1e7,
     /// the real ratio is `rebaseThreshold`/1e7.
     function rebaseThreshold() external view returns (uint256);
 
@@ -462,11 +462,11 @@ interface IVault {
     /// @notice Return the address of access control proxy contract
     function accessControlProxy() external view returns (address);
 
-    /// @notice Sets the minimum strategy total debt 
+    /// @notice Sets the minimum strategy total debt
     ///     that will be checked for the strategy reporting
     function setMinCheckedStrategyTotalDebt(uint256 _minCheckedStrategyTotalDebt) external;
 
-    /// @notice Return the minimum strategy total debt 
+    /// @notice Return the minimum strategy total debt
     ///     that will be checked for the strategy reporting
     function minCheckedStrategyTotalDebt() external view returns (uint256);
 

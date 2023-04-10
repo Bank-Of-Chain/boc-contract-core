@@ -84,6 +84,10 @@ contract UniswapV3PriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         return primitiveToUnit[_asset];
     }
 
+    function getRateAsset(address _asset) external view override returns (RateAsset _rateAsset) {
+        return RateAsset.ETH;
+    }
+
     function isSupportedAsset(address _asset) external view override returns (bool _isSupported) {
         return primitiveToAggregatorInfo[_asset].pool != address(0);
     }

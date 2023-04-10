@@ -19,12 +19,11 @@ import "./IValueInterpreter.sol";
 /// to explicitly define the types of values that they should (and will) be using in a future release.
 /// @author Bank of Chain Protocol Inc
 contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
-
     /// @param _chainlinkPriceFeed The address of the new primitive price feed contract
     event UpdateChainPriceFeed(address _chainlinkPriceFeed);
 
     /// @param _uniswapV3PriceFeed The price feed address of the new aggregated derivative
-    event UpdateUniswapV3PriceFeed(address _uniswapV3PriceFeed);/// @param _uniswapV3PriceFeed The price feed address of the new aggregated derivative
+    event UpdateUniswapV3PriceFeed(address _uniswapV3PriceFeed); /// @param _uniswapV3PriceFeed The price feed address of the new aggregated derivative
 
     /// @param _customPriceFeedAggregator The price feed address of the new aggregated derivative
     event UpdateCustomPriceFeedAggregator(address _customPriceFeedAggregator);
@@ -33,7 +32,12 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     address private uniswapV3PriceFeed;
     address private customPriceFeedAggregator;
 
-    constructor(address _chainlinkPriceFeed, address _uniswapV3PriceFeed,address _customPriceFeedAggregator, address _accessControlProxy) {
+    constructor(
+        address _chainlinkPriceFeed,
+        address _uniswapV3PriceFeed,
+        address _customPriceFeedAggregator,
+        address _accessControlProxy
+    ) {
         uniswapV3PriceFeed = _uniswapV3PriceFeed;
         chainlinkPriceFeed = _chainlinkPriceFeed;
         customPriceFeedAggregator = _customPriceFeedAggregator;
@@ -54,7 +58,8 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         );
         require(
             IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(_quoteAsset) ||
-                IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(_quoteAsset),
+                IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(_quoteAsset) ||
+                IPrimitivePriceFeed(customPriceFeedAggregator).isSupportedAsset(_quoteAsset),
             string(
                 abi.encodePacked(
                     "calcCanonicalAssetsTotalValue: Unsupported _quoteAsset ",
@@ -66,43 +71,6 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         bool _isValid = true;
         for (uint256 i = 0; i < _baseAssets.length; i++) {
             (uint256 _assetValue, bool _assetValueIsValid) = __calcAssetValue(
-                _baseAssets[i],
-                _amounts[i],
-                _quoteAsset
-            );
-            _value = _value + _assetValue;
-            if (!_assetValueIsValid) {
-                _isValid = false;
-            }
-        }
-        require(_isValid, "Invalid rate");
-        return _value;
-    }
-
-    /// @inheritdoc IValueInterpreter
-    function calcCanonicalAssetsTotalValueInEth(
-        address[] calldata _baseAssets,
-        uint256[] calldata _amounts,
-        address _quoteAsset
-    ) external view override returns (uint256 _value) {
-        require(
-            _baseAssets.length == _amounts.length,
-            "calcCanonicalAssetsTotalValueInEth: Arrays unequal lengths"
-        );
-        require(
-            IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(_quoteAsset) ||
-                IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(_quoteAsset),
-            string(
-                abi.encodePacked(
-                    "calcCanonicalAssetsTotalValueInEth: Unsupported _quoteAsset ",
-                    Strings.toHexString(uint160(_quoteAsset), 20)
-                )
-            )
-        );
-
-        bool _isValid = true;
-        for (uint256 i = 0; i < _baseAssets.length; i++) {
-            (uint256 _assetValue, bool _assetValueIsValid) = __calcAssetValueInEth(
                 _baseAssets[i],
                 _amounts[i],
                 _quoteAsset
@@ -131,20 +99,6 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         return _value;
     }
 
-    /// @inheritdoc IValueInterpreter
-    function calcCanonicalAssetValueInEth(
-        address _baseAsset,
-        uint256 _amount,
-        address _quoteAsset
-    ) external view override returns (uint256 _value) {
-        if (_baseAsset == _quoteAsset || _amount == 0) {
-            return _amount;
-        }
-        bool _isValid;
-        (_value, _isValid) = __calcAssetValueInEth(_baseAsset, _amount, _quoteAsset);
-        require(_isValid, "Invalid rate");
-        return _value;
-    }
 
     /// @inheritdoc IValueInterpreter
     function calcCanonicalAssetValueInUsd(
@@ -281,7 +235,6 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             return IPrimitivePriceFeed(uniswapV3PriceFeed).calcValueInUsd(_baseAsset, _amount);
         }
 
-
         revert(
             string(
                 abi.encodePacked(
@@ -317,7 +270,6 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             return IPrimitivePriceFeed(uniswapV3PriceFeed).calcValueInEth(_baseAsset, _amount);
         }
 
-
         revert(
             string(
                 abi.encodePacked(
@@ -328,11 +280,10 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         );
     }
 
-    function _getQuoteAssetUnit(address _quoteAsset) private view returns(uint256){
+    function _getQuoteAssetUnit(address _quoteAsset) private view returns (uint256) {
         // Handle case that asset with customPriceFeed
         if (ICustomPriceFeedAggregator(customPriceFeedAggregator).isSupportedAsset(_quoteAsset)) {
-            return
-                ICustomPriceFeedAggregator(customPriceFeedAggregator).getAssetUnit(_quoteAsset);
+            return ICustomPriceFeedAggregator(customPriceFeedAggregator).getAssetUnit(_quoteAsset);
         }
 
         // Handle case that asset with chainlink
@@ -355,6 +306,34 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         );
     }
 
+    function _getAssetRate(
+        address _asset
+    ) private view returns (IPrimitivePriceFeed.RateAsset _rateAsset) {
+        // Handle case that asset with customPriceFeed
+        if (ICustomPriceFeedAggregator(customPriceFeedAggregator).isSupportedAsset(_asset)) {
+            return ICustomPriceFeedAggregator(customPriceFeedAggregator).getRateAsset(_asset);
+        }
+
+        // Handle case that asset with chainlink
+        if (IPrimitivePriceFeed(chainlinkPriceFeed).isSupportedAsset(_asset)) {
+            return IPrimitivePriceFeed(chainlinkPriceFeed).getRateAsset(_asset);
+        }
+
+        // Handle case that asset with uniswapV3
+        if (IPrimitivePriceFeed(uniswapV3PriceFeed).isSupportedAsset(_asset)) {
+            return IPrimitivePriceFeed(uniswapV3PriceFeed).getRateAsset(_asset);
+        }
+
+        revert(
+            string(
+                abi.encodePacked(
+                    "_getQuoteAssetUnit: Unsupported _asset ",
+                    Strings.toHexString(uint160(_asset), 20)
+                )
+            )
+        );
+    }
+
     /// @dev Helper to differentially calculate an asset value
     /// based on if it is a primitive or derivative asset.
     function __calcAssetValue(
@@ -365,13 +344,22 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         if (_baseAsset == _quoteAsset || _amount == 0) {
             return (_amount, true);
         }
-
-       (uint256 _baseTotalValueInUsd,bool _baseIsValid)  = __calcAssetValueInUsd(_baseAsset,_amount);
-       uint256 _quoteAssetOneUnit = _getQuoteAssetUnit(_quoteAsset);
-       (uint256 _priceInUsdPerQuote, bool _quoteIsValid) = __calcAssetValueInUsd(_quoteAsset,_quoteAssetOneUnit);
+        IPrimitivePriceFeed.RateAsset _rateAsset = _getAssetRate(_baseAsset);
+        uint256 _baseTotalValue;
+        bool _baseIsValid;
+        uint256 _pricePerQuote;
+        bool _quoteIsValid;
+        uint256 _quoteAssetOneUnit = _getQuoteAssetUnit(_quoteAsset);
+        if (_rateAsset == IPrimitivePriceFeed.RateAsset.ETH) {
+            (_baseTotalValue, _baseIsValid) = __calcAssetValueInEth(_baseAsset, _amount);
+            (_pricePerQuote, _quoteIsValid) = __calcAssetValueInEth(_quoteAsset, _quoteAssetOneUnit);
+        } else {
+            (_baseTotalValue, _baseIsValid) = __calcAssetValueInUsd(_baseAsset, _amount);
+            (_pricePerQuote, _quoteIsValid) = __calcAssetValueInUsd(_quoteAsset, _quoteAssetOneUnit);
+        }
 
         if (_baseIsValid && _quoteIsValid) {
-            return (_baseTotalValueInUsd * _quoteAssetOneUnit / _priceInUsdPerQuote , true);
+            return ((_baseTotalValue * _quoteAssetOneUnit) / _pricePerQuote, true);
         }
         return (0, false);
     }
@@ -387,12 +375,15 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
             return (_amount, true);
         }
 
-       (uint256 _baseTotalValueInEth,bool _baseIsValid)  = __calcAssetValueInEth(_baseAsset,_amount);
-       uint256 _quoteAssetOneUnit = _getQuoteAssetUnit(_quoteAsset);
-       (uint256 _priceInEthPerQuote, bool _quoteIsValid) = __calcAssetValueInEth(_quoteAsset,_quoteAssetOneUnit);
+        (uint256 _baseTotalValueInEth, bool _baseIsValid) = __calcAssetValueInEth(_baseAsset, _amount);
+        uint256 _quoteAssetOneUnit = _getQuoteAssetUnit(_quoteAsset);
+        (uint256 _priceInEthPerQuote, bool _quoteIsValid) = __calcAssetValueInEth(
+            _quoteAsset,
+            _quoteAssetOneUnit
+        );
 
         if (_baseIsValid && _quoteIsValid) {
-            return (_baseTotalValueInEth * _quoteAssetOneUnit / _priceInEthPerQuote, true);
+            return ((_baseTotalValueInEth * _quoteAssetOneUnit) / _priceInEthPerQuote, true);
         }
         return (0, false);
     }
