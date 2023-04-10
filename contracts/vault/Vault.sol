@@ -1356,17 +1356,27 @@ contract Vault is VaultStorage{
         }
     }
 
-    function setStrategyTargetDebt(address _strategy, uint256 _newTargetDebt) external isKeeperOrVaultOrGovOrDelegate {
-        StrategyParams storage strategyParams = strategies[_strategy];
-        strategyParams.targetDebt = _newTargetDebt;
+    function setStrategyTargetDebt(address[] memory _strategies, uint256[] memory _newTargetDebts) external isKeeperOrVaultOrGovOrDelegate {
+        require(_strategies.length == _newTargetDebts.length,"Two lengths must be equal");
+        uint256 _len = _strategies.length;
+        for(uint256 i = 0; i<_len; i++) {
+            StrategyParams storage strategyParams = strategies[_strategies[i]];
+            strategyParams.targetDebt = _newTargetDebts[i];
+        }
     }
 
-    function increaseStrategyTargetDebt(address _strategy, uint256 _addAmount) external isKeeperOrVaultOrGovOrDelegate {
-        StrategyParams storage strategyParams = strategies[_strategy];
-        strategyParams.targetDebt += _addAmount;
+    function increaseStrategyTargetDebt(address[] memory _strategies, uint256[] memory _addAmounts) external isKeeperOrVaultOrGovOrDelegate {
+        require(_strategies.length == _addAmounts.length,"Two lengths must be equal");
+        uint256 _len = _strategies.length;
+        for(uint256 i = 0; i<_len; i++) {
+            StrategyParams storage strategyParams = strategies[_strategies[i]];
+            strategyParams.targetDebt += _addAmounts[i];
+        }
     }
 
     function isTrackedAssets(address _token) external returns(bool){
         return trackedAssetsMap.contains(_token);
     }
+
+
 }
