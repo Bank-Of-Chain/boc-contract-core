@@ -5,6 +5,11 @@ pragma solidity 0.8.17;
 /// @title IPrimitivePriceFeed interface
 interface IPrimitivePriceFeed {
 
+    enum RateAsset {
+        ETH, // ETH as asset unit
+        USD // USD as asset unit
+    }
+
     /// @notice Calculates the value of a base asset in terms of a quote asset (using a canonical rate)
     /// @param _baseAsset The base asset
     /// @param _baseAssetAmount The base asset amount to convert
@@ -29,6 +34,11 @@ interface IPrimitivePriceFeed {
     /// @param _asset the base asset
     /// @return _unit The unit variable value
     function getAssetUnit(address _asset) external view returns (uint256 _unit);
+
+    /// @notice Gets the rateAsset variable value for a primitive
+    /// @param _asset the base asset
+    /// @return _rateAsset the RateAsset will be the 0-position of the enum (i.e. ETH), but it makes the behavior more explicit
+    function getRateAsset(address _asset) external view returns (RateAsset _rateAsset);
 
     /// @notice Checks whether an asset is a supported primitive of the price feed
     /// @param _asset The asset to check
