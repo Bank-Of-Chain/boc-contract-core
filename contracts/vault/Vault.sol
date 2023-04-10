@@ -1356,7 +1356,7 @@ contract Vault is VaultStorage{
         }
     }
 
-    function setStrategyTargetDebt(address[] memory _strategies, uint256[] memory _newTargetDebts) external isKeeperOrVaultOrGovOrDelegate {
+    function setStrategyTargetDebts(address[] memory _strategies, uint256[] memory _newTargetDebts) external isKeeperOrVaultOrGovOrDelegate {
         require(_strategies.length == _newTargetDebts.length,"Two lengths must be equal");
         uint256 _len = _strategies.length;
         for(uint256 i = 0; i<_len; i++) {
@@ -1365,7 +1365,7 @@ contract Vault is VaultStorage{
         }
     }
 
-    function increaseStrategyTargetDebt(address[] memory _strategies, uint256[] memory _addAmounts) external isKeeperOrVaultOrGovOrDelegate {
+    function increaseStrategyTargetDebts(address[] memory _strategies, uint256[] memory _addAmounts) external isKeeperOrVaultOrGovOrDelegate {
         require(_strategies.length == _addAmounts.length,"Two lengths must be equal");
         uint256 _len = _strategies.length;
         for(uint256 i = 0; i<_len; i++) {
