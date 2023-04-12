@@ -17,6 +17,8 @@ import "./IVault.sol";
 import "./IVaultBuffer.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "../price-feeds/IValueInterpreter.sol";
+import "../library/RevertReasonParser.sol";
+
 
 /// @title VaultBuffer
 /// @notice The vault buffer contract receives assets from users and returns asset ticket to them
@@ -62,6 +64,9 @@ contract VaultBuffer is
     /// @notice valueInterpreter
     address public valueInterpreter;
 
+    /// @notice The 1inch router contract address
+    address public one_inch_router;
+
     /// @dev Modifier that checks that msg.sender is the vault or not
     modifier onlyVault() {
         require(msg.sender == vault);
@@ -98,6 +103,7 @@ contract VaultBuffer is
 
         exchangeManager = _exchangeManager;
         valueInterpreter = _valueInterpreter;
+        one_inch_router = 0x1111111254EEB25477B68fb85Ed929f73A960582;
     }
 
     /// @inheritdoc IVaultBuffer
@@ -476,6 +482,54 @@ contract VaultBuffer is
     function exchange(
         address _fromToken,
         address _toToken,
+        uint256 _fromAmount,
+        bytes calldata _calldata
+    ) public payable 
+        isKeeperOrVaultOrGovOrDelegate 
+        nonReentrant 
+        returns (
+            bool _success, 
+            uint256 _returnAmount
+    ) {
+        bytes memory _result;
+        uint256 beforeBalOfToToken;
+        uint256 afterBalOfToToken;
+        if (_fromToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+            beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+            (_success, _result) = payable(one_inch_router).call{value: _fromAmount}(_calldata);
+            afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+        } else {
+            IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, 0);
+            IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, _fromAmount);
+
+            if(_toToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+                beforeBalOfToToken = address(this).balance;
+                (_success, _result) = one_inch_router.call(_calldata);
+                afterBalOfToToken = address(this).balance;
+            }else {
+                beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+                (_success, _result) = one_inch_router.call(_calldata);
+                afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+            }
+            
+
+        }
+        //console.log("_success:", _success);
+        if (!_success) {
+            revert(RevertReasonParser.parse(_result, "1inch V4 swap failed: "));
+        } else {
+            _returnAmount = afterBalOfToToken - beforeBalOfToToken;
+
+        }
+
+        emit Exchange(one_inch_router, _fromToken, _fromAmount, _toToken, _returnAmount);
+        return (_success, _returnAmount);
+    }
+
+
+    function exchange(
+        address _fromToken,
+        address _toToken,
         uint256 _amount,
         IExchangeAggregator.ExchangeParam memory _exchangeParam
     ) external isKeeperOrVaultOrGovOrDelegate nonReentrant returns (uint256) {
@@ -527,6 +581,11 @@ contract VaultBuffer is
             "OL" //over slip point loss
         );
         emit Exchange(_exchangeParam.platform, _fromToken, _amount, _toToken, _exchangeAmount);
+    }
+
+    function set1inchRouter(address _newRouter) external {
+        require(_newRouter != address(0),"The new router cannot be 0x00");
+        one_inch_router = _newRouter;
     }
 
 

@@ -9,6 +9,8 @@ import "../library/StableMath.sol";
 import "./VaultStorage.sol";
 import "../exchanges/IExchangeAggregator.sol";
 
+import "../library/RevertReasonParser.sol";
+
 /// @title Vault
 /// @notice Vault is the core of the BoC protocol
 /// @notice Vault stores and manages collateral funds of all positions
@@ -23,6 +25,9 @@ contract Vault is VaultStorage{
 
     /// @notice Minimum strategy target debt that will be checked when set strategy target debt
     uint256 public minStrategyTargetDebt;
+
+    /// @notice The 1inch router contract address
+    address public one_inch_router;
 
     function initialize(
         address _accessControlProxy,
@@ -53,6 +58,8 @@ contract Vault is VaultStorage{
             minCheckedStrategyTotalDebt = 1000e18;
             minStrategyTargetDebt = 2000e18;
         }
+
+        one_inch_router = 0x1111111254EEB25477B68fb85Ed929f73A960582;
     }
 
     modifier whenNotEmergency() {
@@ -1385,5 +1392,55 @@ contract Vault is VaultStorage{
         return trackedAssetsMap.contains(_token);
     }
 
+    function exchange(
+        address _fromToken,
+        address _toToken,
+        uint256 _fromAmount,
+        bytes calldata _calldata
+    ) public payable 
+        isKeeperOrVaultOrGovOrDelegate 
+        nonReentrant 
+        returns (
+            bool _success, 
+            uint256 _returnAmount
+    ) {
+        bytes memory _result;
+        uint256 beforeBalOfToToken;
+        uint256 afterBalOfToToken;
+        if (_fromToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+            beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+            (_success, _result) = payable(one_inch_router).call{value: _fromAmount}(_calldata);
+            afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+        } else {
+            IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, 0);
+            IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, _fromAmount);
 
+            if(_toToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+                beforeBalOfToToken = address(this).balance;
+                (_success, _result) = one_inch_router.call(_calldata);
+                afterBalOfToToken = address(this).balance;
+            }else {
+                beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+                (_success, _result) = one_inch_router.call(_calldata);
+                afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+            }
+            
+
+        }
+        //console.log("_success:", _success);
+        if (!_success) {
+            revert(RevertReasonParser.parse(_result, "1inch V4 swap failed: "));
+        } else {
+            _returnAmount = afterBalOfToToken - beforeBalOfToToken;
+
+        }
+
+        emit Exchange(one_inch_router, _fromToken, _fromAmount, _toToken, _returnAmount);
+        return (_success, _returnAmount);
+    }
+
+    function set1InchRouter(address _newRouter) external {
+        require(_newRouter != address(0),"The new router cannot be 0x00");
+        one_inch_router = _newRouter;
+    }
 }

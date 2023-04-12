@@ -46,4 +46,18 @@ interface IVaultBuffer {
 
     /// @notice Sets '_limit' to the `mDistributeLimit` state
     function setDistributeLimit(uint256 _limit) external;
+
+    /// @dev Exchange from '_fromToken' to '_toToken'
+    /// @param _fromToken The token swap from
+    /// @param _toToken The token swap to
+    /// @param _fromAmount The amount of `_fromToken` to swap
+    /// @return _success The exchange is success or fail
+    /// @return _returnAmount The return amount of `_toToken`
+    /// Emits a {Exchange} event.
+    function exchange(
+        address _fromToken,
+        address _toToken,
+        uint256 _fromAmount,
+        bytes calldata _calldata
+    ) external payable returns (bool _success, uint256 _returnAmount);
 }
