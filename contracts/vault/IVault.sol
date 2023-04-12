@@ -13,6 +13,7 @@ interface IVault {
     /// @param lossLimitRatio The limited ratio for loss
     /// @param enforceChangeLimit The switch of enforce change Limit
     /// @param lastClaim The last claim timestamp
+    /// @param targetDebt The max target debt
     struct StrategyParams {
         uint256 lastReport;
         uint256 totalDebt;
@@ -20,6 +21,7 @@ interface IVault {
         uint256 lossLimitRatio;
         bool enforceChangeLimit;
         uint256 lastClaim;
+        uint256 targetDebt;
     }
 
     /// @param strategy The new strategy to add
@@ -504,4 +506,10 @@ interface IVault {
 
     /// @notice check one asset is tracked or not
     function isTrackedAssets(address _token) external returns(bool);
+
+    /// @notice Sets the new target debts for multi strategies
+    function setStrategyTargetDebts(address[] memory _strategies, uint256[] memory _newTargetDebts) external;
+    
+    /// @notice Increases the target debts for multi strategies
+    function increaseStrategyTargetDebts(address[] memory _strategies, uint256[] memory _addAmounts) external;
 }

@@ -21,6 +21,9 @@ contract Vault is VaultStorage{
 
     address private constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
+    /// @notice Minimum strategy target debt that will be checked when set strategy target debt
+    uint256 public minStrategyTargetDebt;
+
     function initialize(
         address _accessControlProxy,
         address _treasury,
@@ -45,8 +48,10 @@ contract Vault is VaultStorage{
         //ETHi
         if (_valueType > 0) {
             minCheckedStrategyTotalDebt = 1e17;
+            minStrategyTargetDebt = 1e18;
         } else {
             minCheckedStrategyTotalDebt = 1000e18;
+            minStrategyTargetDebt = 2000e18;
         }
     }
 
@@ -1360,6 +1365,7 @@ contract Vault is VaultStorage{
         require(_strategies.length == _newTargetDebts.length,"Two lengths must be equal");
         uint256 _len = _strategies.length;
         for(uint256 i = 0; i<_len; i++) {
+            require(_newTargetDebts[i] >= minStrategyTargetDebt,"NTDGTM");//The new target debt must greater than minimum strategy target debt
             StrategyParams storage strategyParams = strategies[_strategies[i]];
             strategyParams.targetDebt = _newTargetDebts[i];
         }
@@ -1371,6 +1377,7 @@ contract Vault is VaultStorage{
         for(uint256 i = 0; i<_len; i++) {
             StrategyParams storage strategyParams = strategies[_strategies[i]];
             strategyParams.targetDebt += _addAmounts[i];
+            require(strategyParams.targetDebt >= minStrategyTargetDebt,"NTDGTM");//The new target debt must greater than minimum strategy target debt
         }
     }
 

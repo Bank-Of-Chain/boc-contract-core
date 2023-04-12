@@ -672,6 +672,90 @@ contract VaultTest is Test {
         assertEq(_strategies.length, _strategyAdds.length);
     }
 
+    function testSetAndIncreaseStrategyTargetDebts() public {
+
+        testAddAndRemoveAssets();
+        testAddAndRemoveStrategies();
+
+        vm.startPrank(GOVERNANOR);
+        address[] memory strategies = new address[](2);
+        strategies[0] = address(mock3CoinStrategy);
+        strategies[1] = address(otherMock3CoinStrategy);
+        uint256[] memory newTargetDebts = new uint256[](2);
+        newTargetDebts[0] = 2000e18;
+        newTargetDebts[1] = 5000e18;
+        iVault.setStrategyTargetDebts(strategies,newTargetDebts);
+        for(uint256 i=0; i<strategies.length; i++) {
+            IVault.StrategyParams memory strategyParam = iVault.strategies(strategies[i]);
+            assertEq(strategyParam.targetDebt, newTargetDebts[i]);
+        }
+
+        iVault.increaseStrategyTargetDebts(strategies,newTargetDebts);
+        for(uint256 i=0; i<strategies.length; i++) {
+            IVault.StrategyParams memory strategyParam = iVault.strategies(strategies[i]);
+            assertEq(strategyParam.targetDebt, newTargetDebts[i]+newTargetDebts[i]);
+        }
+
+        vm.stopPrank();
+
+    }
+    function testFailSetAndIncreaseStrategyTargetDebts() public {
+
+        testAddAndRemoveAssets();
+        testAddAndRemoveStrategies();
+
+        vm.startPrank(USER);
+        address[] memory strategies = new address[](2);
+        strategies[0] = address(mock3CoinStrategy);
+        strategies[1] = address(otherMock3CoinStrategy);
+        uint256[] memory newTargetDebts = new uint256[](2);
+        newTargetDebts[0] = 2000e18;
+        newTargetDebts[1] = 5000e18;
+        iVault.setStrategyTargetDebts(strategies,newTargetDebts);//no keeper call =>Fail
+
+        iVault.increaseStrategyTargetDebts(strategies,newTargetDebts);//no keeper call =>Fail
+
+        vm.stopPrank();
+
+        vm.startPrank(GOVERNANOR);
+        newTargetDebts[0] = 1e18;// < minStrategyTargetDebt = 2000e18
+        newTargetDebts[1] = 5e18;// < minStrategyTargetDebt = 2000e18
+        iVault.setStrategyTargetDebts(strategies,newTargetDebts);//newTargetDebt < minStrategyTargetDebt => Fail
+
+        iVault.increaseStrategyTargetDebts(strategies,newTargetDebts);//newTargetDebt < minStrategyTargetDebt => Fail
+
+        vm.stopPrank();
+
+    }
+
+    function testSetAndIncreaseStrategyTargetDebtsWithETHi() public {
+
+        testAddAndRemoveAssetsWithETHi();
+        testAddAndRemoveStrategiesWithETHi();
+
+        vm.startPrank(GOVERNANOR);
+        address[] memory strategies = new address[](2);
+        strategies[0] = address(ethMock3CoinStrategy);
+        strategies[1] = address(otherEthMock3CoinStrategy);
+        uint256[] memory newTargetDebts = new uint256[](2);
+        newTargetDebts[0] = 1e18;
+        newTargetDebts[1] = 20e18;
+        iETHVault.setStrategyTargetDebts(strategies,newTargetDebts);
+        for(uint256 i=0; i<strategies.length; i++) {
+            IVault.StrategyParams memory strategyParam = iETHVault.strategies(strategies[i]);
+            assertEq(strategyParam.targetDebt, newTargetDebts[i]);
+        }
+
+        iETHVault.increaseStrategyTargetDebts(strategies,newTargetDebts);
+        for(uint256 i=0; i<strategies.length; i++) {
+            IVault.StrategyParams memory strategyParam = iETHVault.strategies(strategies[i]);
+            assertEq(strategyParam.targetDebt, newTargetDebts[i]+newTargetDebts[i]);
+        }
+
+        vm.stopPrank();
+
+    }
+
     function testFailSetVaultBufferAddress() public {
         vm.prank(GOVERNANOR);
         iVault.setVaultBufferAddress(address(vaultBuffer));
