@@ -202,7 +202,6 @@ contract VaultTest is Test {
         vault.initialize(
             address(accessControlProxy),
             address(treasury),
-            address(exchangeAggregator),
             address(valueInterpreter),
             uint256(0)
         );
@@ -228,7 +227,6 @@ contract VaultTest is Test {
             address(vault),
             address(pegToken),
             address(accessControlProxy),
-            address(exchangeAggregator),
             address(valueInterpreter)
         );
         vm.label(address(vaultBuffer), "vaultBuffer");
@@ -264,7 +262,6 @@ contract VaultTest is Test {
         ethVault.initialize(
             address(accessControlProxy),
             address(treasury),
-            address(exchangeAggregator),
             address(valueInterpreter),
             uint256(1)
         );
@@ -290,7 +287,6 @@ contract VaultTest is Test {
             address(ethVault),
             address(ethPegToken),
             address(accessControlProxy),
-            address(exchangeAggregator),
             address(valueInterpreter)
         );
         vm.label(address(ethVaultBuffer), "ethVaultBuffer");
@@ -1528,89 +1524,85 @@ contract VaultTest is Test {
         return _balance;
     }
 
-    //1 部署 TestAdapter，VaultBuffer => done
-        //2 转币给 VaultBuffer  => done
-        //3 调用VaultBuffer的exchange方法
-        //4 验证结果
-    function testExchange() external {
-        vm.startPrank(GOVERNANOR);
+    // function testExchange() external {
+    //     vm.startPrank(GOVERNANOR);
 
-        iVault.addAsset(USDC_ADDRESS);
-        iVault.addAsset(USDT_ADDRESS);
-        iVault.addAsset(DAI_ADDRESS);
-        iVault.addAsset(NATIVE_TOKEN_ADDRESS);
+    //     iVault.addAsset(USDC_ADDRESS);
+    //     iVault.addAsset(USDT_ADDRESS);
+    //     iVault.addAsset(DAI_ADDRESS);
+    //     iVault.addAsset(NATIVE_TOKEN_ADDRESS);
         
-        iVault.addAsset(WETH_ADDRESS);
+    //     iVault.addAsset(WETH_ADDRESS);
 
-        address[] memory _assets = iVault.getSupportAssets();
+    //     address[] memory _assets = iVault.getSupportAssets();
 
-        uint256 _usdcAmount = 10000e6;
-        uint256 _usdtAmount = 10000e6;
-        uint256 _daiAmount = 10000e18;
-        uint256 _ethAmount = 10000 ether;
-        uint256 _ethAmountBuffer = 100 ether;
-        uint256 _wethAmount = 10000e18;
+    //     uint256 _usdcAmount = 10000e6;
+    //     uint256 _usdtAmount = 10000e6;
+    //     uint256 _daiAmount = 10000e18;
+    //     uint256 _ethAmount = 10000 ether;
+    //     uint256 _ethAmountBuffer = 100 ether;
+    //     uint256 _wethAmount = 10000e18;
 
-        deal(USDC_ADDRESS, address(testAdapter), _usdcAmount*10);
-        deal(USDT_ADDRESS, address(testAdapter), _usdtAmount*10);
-        deal(DAI_ADDRESS, address(testAdapter), _daiAmount*10);
-        deal(WETH_ADDRESS, address(testAdapter), _wethAmount*10);
-        vm.deal(address(testAdapter), _ethAmount);
+    //     deal(USDC_ADDRESS, address(testAdapter), _usdcAmount*10);
+    //     deal(USDT_ADDRESS, address(testAdapter), _usdtAmount*10);
+    //     deal(DAI_ADDRESS, address(testAdapter), _daiAmount*10);
+    //     deal(WETH_ADDRESS, address(testAdapter), _wethAmount*10);
+    //     vm.deal(address(testAdapter), _ethAmount);
 
 
-        deal(USDC_ADDRESS, address(vaultBuffer), _usdcAmount);
-        deal(USDT_ADDRESS, address(vaultBuffer), _usdtAmount);
-        deal(DAI_ADDRESS, address(vaultBuffer), _daiAmount);
-        deal(WETH_ADDRESS, address(vaultBuffer), _ethAmountBuffer);
+    //     deal(USDC_ADDRESS, address(vaultBuffer), _usdcAmount);
+    //     deal(USDT_ADDRESS, address(vaultBuffer), _usdtAmount);
+    //     deal(DAI_ADDRESS, address(vaultBuffer), _daiAmount);
+    //     deal(WETH_ADDRESS, address(vaultBuffer), _ethAmountBuffer);
         
-        vm.deal(address(vaultBuffer), _ethAmountBuffer);
-        IExchangeAggregator.ExchangeParam memory _exchangeParam = IExchangeAggregator.ExchangeParam({
-            platform: address(testAdapter),
-            method: 0,
-            encodeExchangeArgs: "0x",
-            slippage: 0,
-            oracleAdditionalSlippage: 0
-        });
-        IExchangeAdapter.SwapDescription memory _swapDesc = IExchangeAdapter.SwapDescription({
-            amount: _usdcAmount / 2,
-            srcToken: USDC_ADDRESS,
-            dstToken: USDT_ADDRESS,
-            receiver: address(vaultBuffer)
-        });
-        uint256 amountReceived = vaultBuffer.exchange(_swapDesc.srcToken, _swapDesc.dstToken, _swapDesc.amount, _exchangeParam);
-        console2.log("amountReceived is", amountReceived);
+    //     vm.deal(address(vaultBuffer), _ethAmountBuffer);
+    //     IExchangeAggregator.ExchangeParam memory _exchangeParam = IExchangeAggregator.ExchangeParam({
+    //         platform: address(testAdapter),
+    //         method: 0,
+    //         encodeExchangeArgs: "0x",
+    //         slippage: 0,
+    //         oracleAdditionalSlippage: 0
+    //     });
+    //     IExchangeAdapter.SwapDescription memory _swapDesc = IExchangeAdapter.SwapDescription({
+    //         amount: _usdcAmount / 2,
+    //         srcToken: USDC_ADDRESS,
+    //         dstToken: USDT_ADDRESS,
+    //         receiver: address(vaultBuffer)
+    //     });
+    //     uint256 amountReceived = vaultBuffer.exchange(_swapDesc.srcToken, _swapDesc.dstToken, _swapDesc.amount, _exchangeParam);
+    //     console2.log("amountReceived is", amountReceived);
 
-        IExchangeAdapter.SwapDescription memory _swapDesc01 = IExchangeAdapter.SwapDescription({
-            amount: _usdcAmount / 2,
-            srcToken: USDC_ADDRESS,
-            dstToken: DAI_ADDRESS,
-            receiver: address(vaultBuffer)
-        });
-        amountReceived = vaultBuffer.exchange(_swapDesc01.srcToken, _swapDesc01.dstToken, _swapDesc01.amount, _exchangeParam);
-        console2.log("amountReceived is", amountReceived);
+    //     IExchangeAdapter.SwapDescription memory _swapDesc01 = IExchangeAdapter.SwapDescription({
+    //         amount: _usdcAmount / 2,
+    //         srcToken: USDC_ADDRESS,
+    //         dstToken: DAI_ADDRESS,
+    //         receiver: address(vaultBuffer)
+    //     });
+    //     amountReceived = vaultBuffer.exchange(_swapDesc01.srcToken, _swapDesc01.dstToken, _swapDesc01.amount, _exchangeParam);
+    //     console2.log("amountReceived is", amountReceived);
 
-        deal(USDC_ADDRESS, address(vaultBuffer), _usdcAmount);
-        IExchangeAdapter.SwapDescription memory _swapDesc02 = IExchangeAdapter.SwapDescription({
-            amount: _usdcAmount / 2,
-            srcToken: USDC_ADDRESS,
-            dstToken: WETH_ADDRESS,
-            receiver: address(vaultBuffer)
-        });
-        uint256 amountReceived02 = vaultBuffer.exchange(_swapDesc02.srcToken, _swapDesc02.dstToken, _swapDesc02.amount, _exchangeParam);
-        console2.log("amountReceived02 is", amountReceived02);
+    //     deal(USDC_ADDRESS, address(vaultBuffer), _usdcAmount);
+    //     IExchangeAdapter.SwapDescription memory _swapDesc02 = IExchangeAdapter.SwapDescription({
+    //         amount: _usdcAmount / 2,
+    //         srcToken: USDC_ADDRESS,
+    //         dstToken: WETH_ADDRESS,
+    //         receiver: address(vaultBuffer)
+    //     });
+    //     uint256 amountReceived02 = vaultBuffer.exchange(_swapDesc02.srcToken, _swapDesc02.dstToken, _swapDesc02.amount, _exchangeParam);
+    //     console2.log("amountReceived02 is", amountReceived02);
 
-        // deal(USDC_ADDRESS, address(vaultBuffer), _usdcAmount);
-        // IExchangeAdapter.SwapDescription memory _swapDesc03 = IExchangeAdapter.SwapDescription({
-        //     amount: _usdcAmount / 2,
-        //     srcToken: USDC_ADDRESS,
-        //     dstToken: NATIVE_TOKEN_ADDRESS,
-        //     receiver: address(vaultBuffer)
-        // });
-        // uint256 amountReceived03 = vaultBuffer.exchange(_swapDesc03.srcToken, _swapDesc03.dstToken, _swapDesc03.amount, _exchangeParam);
-        // console2.log("amountReceived03 is", amountReceived03);
+    //     // deal(USDC_ADDRESS, address(vaultBuffer), _usdcAmount);
+    //     // IExchangeAdapter.SwapDescription memory _swapDesc03 = IExchangeAdapter.SwapDescription({
+    //     //     amount: _usdcAmount / 2,
+    //     //     srcToken: USDC_ADDRESS,
+    //     //     dstToken: NATIVE_TOKEN_ADDRESS,
+    //     //     receiver: address(vaultBuffer)
+    //     // });
+    //     // uint256 amountReceived03 = vaultBuffer.exchange(_swapDesc03.srcToken, _swapDesc03.dstToken, _swapDesc03.amount, _exchangeParam);
+    //     // console2.log("amountReceived03 is", amountReceived03);
 
-        vm.stopPrank();
-    }
+    //     vm.stopPrank();
+    // }
     
 
 }

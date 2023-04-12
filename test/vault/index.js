@@ -1,12 +1,15 @@
+/* eslint-disable */
 const chai = require("chai");
 const hre = require("hardhat");
-const {ethers} = require("hardhat");
+const {ethers,deployments} = require("hardhat");
 const {solidity} = require("ethereum-waffle");
 const {utils} = require("ethers");
 const MFC = require("../mainnet-fork-test-config");
 const {topUpUsdtByAddress, topUpUsdcByAddress, topUpDaiByAddress,tranferBackUsdt,
     tranferBackUsdc,
-    tranferBackDai} = require('../../utilities/top-up-utils');
+    tranferBackDai,
+    topUpWETHByAddress,
+    sendEthers} = require('../../utilities/top-up-utils');
 const Utils = require('../../utilities/assert-utils');
 // === Constants === //
 const {address} = require("hardhat/internal/core/config/config-validation");
@@ -44,8 +47,116 @@ const Harvester = hre.artifacts.require('Harvester');
 const PegToken = hre.artifacts.require('PegToken');
 const Mock3CoinStrategy = hre.artifacts.require('Mock3CoinStrategy');
 
+const CustomWstEthPriceFeed = hre.artifacts.require("CustomWstEthPriceFeed");
+const CustomEthPriceFeed = hre.artifacts.require("CustomEthPriceFeed");
+const CustomFakePriceFeed = hre.artifacts.require("CustomFakePriceFeed");
+const UniswapV3PriceFeed = hre.artifacts.require("UniswapV3PriceFeed");
+const CustomPriceFeedAggregator = hre.artifacts.require("CustomPriceFeedAggregator");
+
+const axios = require('axios');
+// const ethers = require('ethers');
+const {
+    send
+} = require('@openzeppelin/test-helpers');
+
+// const ExchangeTester = artifacts.require("ExchangeTester");
+
+// const {getDefaultProvider, Contract,Wallet} = require('ethers');
+
+const USDT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
+const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F';
+const LUSD = '0x5f98805A4E8be255a32880FDeC7F6728C6568bA0';
+const GUSD = '0x056Fd409E1d7A124BD7017459dFEa2F387b6d5Cd';
+const CRV = '0xD533a949740bb3306d119CC777fa900bA034cd52';
+const ETH = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+const stETH = '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84';
+const rETH = '0xae78736Cd615f374D3085123A210448E74Fc6393';
+const cbETH = '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704';
+const sETH = '0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb';
+
+
+// const exchangeTester = '0x9e7F7d0E8b8F38e3CF2b3F7dd362ba2e9E82baa4';
+
+const baseURL = 'https://api.1inch.io/v5.0/1/';
+
+const axiosInstance = axios.create({ baseURL: baseURL });
+
+async function getQuote(fromAsset, toAsset, amount,) {
+    try {
+        const rep = await axiosInstance.get(`quote?fromTokenAddress=${fromAsset}&toTokenAddress=${toAsset}&amount=${amount}`);
+        return rep.data;
+    } catch (e) {
+        console.log(e);
+    }
+}
+
+async function buildSwapInfo(fromAddress, fromAsset, toAsset, amount, slippage) {
+    try {
+        const rep = await axiosInstance.get(`swap?fromAddress=${fromAddress}&fromTokenAddress=${fromAsset}&toTokenAddress=${toAsset}&amount=${amount}&slippage=${slippage}&disableEstimate=true&allowPartialFill=true`);
+        return rep.data;
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+async function swap(contractAccount, from, to) {
+
+    const fromAmount = await balanceOf(from, contractAccount);//new BigNumber(500_000_000_000_000_000);
+
+    const quoteInfo = await getQuote(from, to, fromAmount.toString());
+    const fromSymbol = quoteInfo.fromToken.symbol;
+    const toSymbol = quoteInfo.toToken.symbol;
+    console.log('[Quote] %s %s ==> %s %s', quoteInfo.fromTokenAmount, fromSymbol, quoteInfo.toTokenAmount, toSymbol);
+    console.log('estimatedGas:',quoteInfo.estimatedGas);
+    
+
+    const swapInfo = await buildSwapInfo(contractAccount, from, to, fromAmount.toString(), 50);
+    const protocols = swapInfo.protocols;
+
+    for (let i = 0; i < protocols.length; i++) {
+        const fegments = protocols[i];
+        console.log('fegment:', i + 1);;
+        for (let j = 0; j < fegments.length; j++) {
+            for (const pool of fegments[j]) {
+                console.log('  swap %s% %s => %s at %s', pool.part, await getSymbol(pool.fromTokenAddress), await getSymbol(pool.toTokenAddress), pool.name);
+            }
+        }
+    }
+
+    const vault = await Vault.at(contractAccount);
+    await vault.exchange(from, to, fromAmount.toString(), swapInfo.tx.data);
+
+    console.log('after swap %s:%s,%s:%s', fromSymbol,
+        await balanceOf(from, contractAccount),
+        toSymbol,
+        await balanceOf(to, contractAccount));
+}
+
+async function getSymbol(_asset) {
+    if (_asset.toLowerCase() == ETH.toLowerCase()) {
+        return 'ETH';
+    } else {
+        const erc20Token = await ERC20.at(_asset);
+        return erc20Token.symbol();
+    }
+}
+
+async function balanceOf(_asset, _account) {
+    if (_asset == ETH) {
+        const provider = ethers.provider;
+        // console.log('balance=', (await provider.getBalance(_account)).toString());
+        return await provider.getBalance(_account);
+    } else {
+        const erc20Token = await ERC20.at(_asset);
+        // const decimals = new BigNumber(await erc20Token.decimals());
+
+        return erc20Token.balanceOf(_account);
+    }
+}
 
 describe("Vault", function () {
+    this.timeout(300000);
     let accounts;
     let governance;
     let farmer1;
@@ -115,14 +226,14 @@ describe("Vault", function () {
         await tranferBackDai(farmer2);
         await topUpDaiByAddress(daiDepositAmount, farmer2);
 
-        console.log('deploy Vault');
+        console.log("deploy Vault");
         vault = await Vault.new();
 
-        console.log('deploy accessControlProxy');
+        console.log("deploy accessControlProxy");
         const accessControlProxy = await AccessControlProxy.new();
         accessControlProxy.initialize(governance, governance, vault.address, keeper);
 
-        console.log('deploy ChainlinkPriceFeed');
+        console.log("deploy ChainlinkPriceFeed");
         // oracle
         const primitives = new Array();
         const aggregators = new Array();
@@ -153,6 +264,11 @@ describe("Vault", function () {
             basePeggedRateAssets,
             accessControlProxy.address
         );
+        const ROCKET_ETH_WETH_POOL_ADDRESS = '0xa4e0faA58465A2D369aa21B3e42d43374c6F9613';
+        const SETH2_WETH_POOL_ADDRESS = '0x7379e81228514a1D2a6Cf7559203998E20598346';
+
+        const SETH2_DURATION = 3600;
+        const ROCKET_ETH_DURATION = 3600;
 
         const primitives2 = new Array();
         primitives2.push(MFC.rocketPoolETH_ADDRESS);
@@ -171,28 +287,28 @@ describe("Vault", function () {
             durations
         );
 
-        const customWstEthPriceFeed = new CustomWstEthPriceFeed.new();
+        const customWstEthPriceFeed = await CustomWstEthPriceFeed.new();
 
-        const customEthPriceFeed = new CustomEthPriceFeed.new();
+        const customEthPriceFeed = await CustomEthPriceFeed.new();
 
-        const customFakePriceFeed = new CustomFakePriceFeed.new();
+        const customFakePriceFeed = await CustomFakePriceFeed.new();
 
-        const baseAssets = new Array();
+        const baseAssets = [];
         baseAssets.push(MFC.wstETH_ADDRESS);
         baseAssets.push(MFC.ETH_ADDRESS);
         baseAssets.push(MFC.sETH_ADDRESS);
-        address[] memory _customPriceFeeds = new address[](3);
-        _customPriceFeeds[0] = address(customWstEthPriceFeed);
-        _customPriceFeeds[1] = address(customEthPriceFeed);
-        _customPriceFeeds[2] = address(customFakePriceFeed);
-        customPriceFeedAggregator = new CustomPriceFeedAggregator(
-            _baseAssets,
+        const _customPriceFeeds = [];
+        _customPriceFeeds[0] = customWstEthPriceFeed.address;
+        _customPriceFeeds[1] = customEthPriceFeed.address;
+        _customPriceFeeds[2] = customFakePriceFeed.address;
+        let customPriceFeedAggregator = await CustomPriceFeedAggregator.new(
+            baseAssets,
             _customPriceFeeds,
-            address(accessControlProxy)
+            accessControlProxy.address,
         );
 
         console.log('deploy ValueInterpreter');
-        valueInterpreter = await ValueInterpreter.new(chainlinkPriceFeed.address, uniswapV3PriceFeed.address, accessControlProxy.address);
+        valueInterpreter = await ValueInterpreter.new(chainlinkPriceFeed.address, uniswapV3PriceFeed.address, customPriceFeedAggregator.address,accessControlProxy.address);
 
         console.log('deploy TestAdapter');
         testAdapter = await TestAdapter.new(valueInterpreter.address);
@@ -215,19 +331,20 @@ describe("Vault", function () {
 
         console.log('vault Buffer');
         vaultBuffer = await VaultBuffer.new();
-        await vaultBuffer.initialize('USD Peg Token Ticket', 'tUSDi', vault.address, pegToken.address,accessControlProxy.address);
+        await vaultBuffer.initialize('USD Peg Token Ticket', 'tUSDi', vault.address, pegToken.address,accessControlProxy.address,valueInterpreter.address);
 
         console.log('deploy Treasury');
         // treasury
         treasury = await Treasury.new();
         await treasury.initialize(accessControlProxy.address);
 
-        await vault.initialize(accessControlProxy.address, treasury.address, exchangeAggregator.address, valueInterpreter.address, 0);
+        await vault.initialize(accessControlProxy.address, treasury.address, valueInterpreter.address, 0);
         vaultAdmin = await VaultAdmin.new();
-        await vault.setAdminImpl(vaultAdmin.address, {from: governance});
+        await vault.setAdminImpl(vaultAdmin.address, { from: governance });
 
         const harvester = await Harvester.new();
-        await harvester.initialize(accessControlProxy.address, vault.address, MFC.USDT_ADDRESS, vault.address);
+        
+        await harvester.initialize(accessControlProxy.address, treasury.address, exchangeAggregator.address, vault.address,vault.address);
 
         console.log("USDT_PRICE:", new BigNumber(await valueInterpreter.price(MFC.USDT_ADDRESS)).toFixed());
         console.log("USDT_CALC:", new BigNumber(await valueInterpreter.calcCanonicalAssetValueInUsd(MFC.USDT_ADDRESS, 10 ** 6)).toFixed());
@@ -238,8 +355,19 @@ describe("Vault", function () {
         console.log("DAI_CALC(2):", new BigNumber(await valueInterpreter.calcCanonicalAssetValueInUsd(MFC.DAI_ADDRESS, new BigNumber(2))).toFixed());
         console.log('mockS3CoinStrategy USDi');
         // Strategy
-        mockS3CoinStrategy = await Mock3CoinStrategy.new();
-        await mock3CoinStrategy.initialize(vault.address, harvester.address);
+        let mock3CoinStrategy = await Mock3CoinStrategy.new();
+        let _wants = [];
+        // USDT
+        _wants[0] = MFC.USDT_ADDRESS;
+        // USDC
+        _wants[1] = MFC.USDC_ADDRESS;
+        // DAI
+        _wants[2] = MFC.DAI_ADDRESS;
+        let _ratios = [];
+        _ratios[0] = 1;
+        _ratios[1] = 2;
+        _ratios[2] = 4;
+        await mock3CoinStrategy.initialize(vault.address, harvester.address,_wants,_ratios);
 
         iVault = await IVault.at(vault.address);
         // await iVault.setUSDiAddress(usdi.address);
@@ -643,5 +771,29 @@ describe("Vault", function () {
         await iVault.burn(new BigNumber(await pegToken.balanceOf(farmer2)), 0, _redeemFeeBps, _trusteeFeeBps, {from: farmer2});;
         totalValueInStrategies = new BigNumber(await iVault.totalValueInStrategies()).toFixed();
         Utils.assertBNEq(totalValueInStrategies, 0);
+    });
+
+    it.only('Verify: exchange on 1inch', async function () {
+        
+        const exchangeTester = vault.address;
+
+        // await topUpUsdtByAddress(new BigNumber(10 ** 12), exchangeTester);
+        await sendEthers(exchangeTester, new BigNumber(200 * 10 ** 18));
+        // const accounts = await ethers.getSigners();
+        // accounts[0].sendEthers
+        // await accounts[0].sendEthers(exchangeTester,new BigNumber(2 * 10 ** 18));
+        // await send.ether(accounts[0].address,exchangeTester,new BigNumber(20 * 10 ** 18));
+
+        await swap(exchangeTester, ETH, USDT);
+        await swap(exchangeTester, USDT, USDC);
+        await swap(exchangeTester, USDC, DAI);
+        await swap(exchangeTester, DAI, GUSD);
+        await swap(exchangeTester, GUSD, LUSD);
+        await swap(exchangeTester, LUSD, ETH);
+        await swap(exchangeTester, ETH, stETH);
+        await swap(exchangeTester, stETH, rETH);
+        await swap(exchangeTester, rETH, sETH);
+        await swap(exchangeTester, sETH, cbETH);
+        await swap(exchangeTester, cbETH, ETH);
     });
 });

@@ -8,8 +8,8 @@ import "../library/StableMath.sol";
 
 import "./VaultStorage.sol";
 import "../exchanges/IExchangeAggregator.sol";
+import "../library/ExchangeLib.sol";
 
-import "../library/RevertReasonParser.sol";
 
 /// @title Vault
 /// @notice Vault is the core of the BoC protocol
@@ -20,6 +20,7 @@ contract Vault is VaultStorage{
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
+    using ExchangeLib for address;
 
     address private constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
@@ -32,14 +33,14 @@ contract Vault is VaultStorage{
     function initialize(
         address _accessControlProxy,
         address _treasury,
-        address _exchangeManager,
+        //address _exchangeManager,
         address _valueInterpreter,
         uint256 _valueType
     ) public initializer {
         _initAccessControl(_accessControlProxy);
 
         treasury = _treasury;
-        exchangeManager = _exchangeManager;
+        
         valueInterpreter = _valueInterpreter;
         vaultType = _valueType;
 
@@ -447,15 +448,6 @@ contract Vault is VaultStorage{
             }
         }
         emit LendToStrategy(_strategyAddress, _wants, _amountsLocal, _lendValue);
-    }
-
-    function exchange(
-        address _fromToken,
-        address _toToken,
-        uint256 _amount,
-        IExchangeAggregator.ExchangeParam memory _exchangeParam
-    ) external isKeeperOrVaultOrGovOrDelegate nonReentrant returns (uint256) {
-        return _exchange(_fromToken, _toToken, _amount, _exchangeParam);
     }
 
     /// @notice Change USDi/ETHi supply with Vault total assets.
@@ -1146,53 +1138,6 @@ contract Vault is VaultStorage{
         return _totalShares;
     }
 
-    function _exchange(
-        address _fromToken,
-        address _toToken,
-        uint256 _amount,
-        IExchangeAggregator.ExchangeParam memory _exchangeParam
-    ) internal returns (uint256 _exchangeAmount) {
-        require(trackedAssetsMap.contains(_toToken), "TTI"); //toToken invalid
-
-        IExchangeAdapter.SwapDescription memory _swapDescription = IExchangeAdapter.SwapDescription({
-            amount: _amount,
-            srcToken: _fromToken,
-            dstToken: _toToken,
-            receiver: address(this)
-        });
-        if (_fromToken == NativeToken.NATIVE_TOKEN) {
-            // payable(exchangeManager).transfer(_amount);
-            _exchangeAmount = IExchangeAggregator(exchangeManager).swap{value: _amount}(
-                _exchangeParam.platform,
-                _exchangeParam.method,
-                _exchangeParam.encodeExchangeArgs,
-                _swapDescription
-            );
-        } else {
-            IERC20Upgradeable(_fromToken).safeApprove(exchangeManager, 0);
-            IERC20Upgradeable(_fromToken).safeApprove(exchangeManager, _amount);
-            _exchangeAmount = IExchangeAggregator(exchangeManager).swap(
-                _exchangeParam.platform,
-                _exchangeParam.method,
-                _exchangeParam.encodeExchangeArgs,
-                _swapDescription
-            );
-        }
-        uint256 oracleExpectedAmount = IValueInterpreter(valueInterpreter).calcCanonicalAssetValue(
-            _fromToken,
-            _amount,
-            _toToken
-        );
-        require(
-            _exchangeAmount >=
-                (oracleExpectedAmount *
-                    (MAX_BPS - _exchangeParam.slippage - _exchangeParam.oracleAdditionalSlippage)) /
-                    MAX_BPS,
-            "OL" //over slip point loss
-        );
-        emit Exchange(_exchangeParam.platform, _fromToken, _amount, _toToken, _exchangeAmount);
-    }
-
     /// @notice Report the current asset of strategy
     /// @param _strategy The strategy address
     /// @param _lendValue The value to lend or redeem
@@ -1392,54 +1337,68 @@ contract Vault is VaultStorage{
         return trackedAssetsMap.contains(_token);
     }
 
+    // function exchange(
+    //     address _fromToken,
+    //     address _toToken,
+    //     uint256 _fromAmount,
+    //     bytes calldata _calldata
+    // ) public payable 
+    //     isKeeperOrVaultOrGovOrDelegate 
+    //     nonReentrant 
+    //     returns (
+    //         bool _success, 
+    //         uint256 _returnAmount
+    // ) {
+    //     bytes memory _result;
+    //     uint256 beforeBalOfToToken;
+    //     uint256 afterBalOfToToken;
+    //     if (_fromToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+    //         beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+    //         (_success, _result) = payable(one_inch_router).call{value: _fromAmount}(_calldata);
+    //         afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+    //     } else {
+    //         IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, 0);
+    //         IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, _fromAmount);
+
+    //         if(_toToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+    //             beforeBalOfToToken = address(this).balance;
+    //             (_success, _result) = one_inch_router.call(_calldata);
+    //             afterBalOfToToken = address(this).balance;
+    //         }else {
+    //             beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+    //             (_success, _result) = one_inch_router.call(_calldata);
+    //             afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+    //         }
+            
+
+    //     }
+    //     //console.log("_success:", _success);
+    //     if (!_success) {
+    //         revert(RevertReasonParser.parse(_result, "1inch V4 swap failed: "));
+    //     } else {
+    //         _returnAmount = afterBalOfToToken - beforeBalOfToToken;
+
+    //     }
+
+    //     emit Exchange(one_inch_router, _fromToken, _fromAmount, _toToken, _returnAmount);
+    //     return (_success, _returnAmount);
+    // }
+
     function exchange(
         address _fromToken,
         address _toToken,
         uint256 _fromAmount,
         bytes calldata _calldata
-    ) public payable 
-        isKeeperOrVaultOrGovOrDelegate 
-        nonReentrant 
-        returns (
+    ) public payable returns (
             bool _success, 
             uint256 _returnAmount
     ) {
-        bytes memory _result;
-        uint256 beforeBalOfToToken;
-        uint256 afterBalOfToToken;
-        if (_fromToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
-            beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-            (_success, _result) = payable(one_inch_router).call{value: _fromAmount}(_calldata);
-            afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-        } else {
-            IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, 0);
-            IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, _fromAmount);
-
-            if(_toToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
-                beforeBalOfToToken = address(this).balance;
-                (_success, _result) = one_inch_router.call(_calldata);
-                afterBalOfToToken = address(this).balance;
-            }else {
-                beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-                (_success, _result) = one_inch_router.call(_calldata);
-                afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-            }
-            
-
-        }
-        //console.log("_success:", _success);
-        if (!_success) {
-            revert(RevertReasonParser.parse(_result, "1inch V4 swap failed: "));
-        } else {
-            _returnAmount = afterBalOfToToken - beforeBalOfToToken;
-
-        }
-
+        (_success,_returnAmount) = one_inch_router.exchangeOn1Inch(_fromToken, _toToken, _fromAmount, _calldata);
         emit Exchange(one_inch_router, _fromToken, _fromAmount, _toToken, _returnAmount);
-        return (_success, _returnAmount);
     }
+    
 
-    function set1InchRouter(address _newRouter) external {
+    function set1InchRouter(address _newRouter) external isKeeperOrVaultOrGovOrDelegate{
         require(_newRouter != address(0),"The new router cannot be 0x00");
         one_inch_router = _newRouter;
     }

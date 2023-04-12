@@ -17,7 +17,8 @@ import "./IVault.sol";
 import "./IVaultBuffer.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "../price-feeds/IValueInterpreter.sol";
-import "../library/RevertReasonParser.sol";
+import "../library/ExchangeLib.sol";
+
 
 
 /// @title VaultBuffer
@@ -35,6 +36,7 @@ contract VaultBuffer is
     using StableMath for uint256;
     using IterableUintMap for IterableUintMap.AddressToUintMap;
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using ExchangeLib for address;
 
     IterableUintMap.AddressToUintMap private mBalances;
 
@@ -59,8 +61,6 @@ contract VaultBuffer is
     /// @dev max percentage 100%
     uint256 internal constant MAX_BPS = 10000;
 
-    /// @notice exchangeManager
-    address public exchangeManager;
     /// @notice valueInterpreter
     address public valueInterpreter;
 
@@ -90,7 +90,6 @@ contract VaultBuffer is
         address _vault,
         address _pegTokenAddr,
         address _accessControlProxy,
-        address _exchangeManager,
         address _valueInterpreter
     ) external initializer {
         mName = _name;
@@ -101,7 +100,6 @@ contract VaultBuffer is
 
         mDistributeLimit = 50;
 
-        exchangeManager = _exchangeManager;
         valueInterpreter = _valueInterpreter;
         one_inch_router = 0x1111111254EEB25477B68fb85Ed929f73A960582;
     }
@@ -479,111 +477,67 @@ contract VaultBuffer is
     ) internal virtual {}
 
 
+    // function exchange(
+    //     address _fromToken,
+    //     address _toToken,
+    //     uint256 _fromAmount,
+    //     bytes calldata _calldata
+    // ) public payable 
+    //     isKeeperOrVaultOrGovOrDelegate 
+    //     nonReentrant 
+    //     returns (
+    //         bool _success, 
+    //         uint256 _returnAmount
+    // ) {
+    //     bytes memory _result;
+    //     uint256 beforeBalOfToToken;
+    //     uint256 afterBalOfToToken;
+    //     if (_fromToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+    //         beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+    //         (_success, _result) = payable(one_inch_router).call{value: _fromAmount}(_calldata);
+    //         afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+    //     } else {
+    //         IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, 0);
+    //         IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, _fromAmount);
+
+    //         if(_toToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+    //             beforeBalOfToToken = address(this).balance;
+    //             (_success, _result) = one_inch_router.call(_calldata);
+    //             afterBalOfToToken = address(this).balance;
+    //         }else {
+    //             beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+    //             (_success, _result) = one_inch_router.call(_calldata);
+    //             afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+    //         }
+            
+
+    //     }
+    //     //console.log("_success:", _success);
+    //     if (!_success) {
+    //         revert(RevertReasonParser.parse(_result, "1inch V4 swap failed: "));
+    //     } else {
+    //         _returnAmount = afterBalOfToToken - beforeBalOfToToken;
+
+    //     }
+
+    //     emit Exchange(one_inch_router, _fromToken, _fromAmount, _toToken, _returnAmount);
+    //     return (_success, _returnAmount);
+    // }
+
     function exchange(
         address _fromToken,
         address _toToken,
         uint256 _fromAmount,
         bytes calldata _calldata
-    ) public payable 
-        isKeeperOrVaultOrGovOrDelegate 
-        nonReentrant 
-        returns (
+    ) public payable returns (
             bool _success, 
             uint256 _returnAmount
     ) {
-        bytes memory _result;
-        uint256 beforeBalOfToToken;
-        uint256 afterBalOfToToken;
-        if (_fromToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
-            beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-            (_success, _result) = payable(one_inch_router).call{value: _fromAmount}(_calldata);
-            afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-        } else {
-            IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, 0);
-            IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, _fromAmount);
-
-            if(_toToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
-                beforeBalOfToToken = address(this).balance;
-                (_success, _result) = one_inch_router.call(_calldata);
-                afterBalOfToToken = address(this).balance;
-            }else {
-                beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-                (_success, _result) = one_inch_router.call(_calldata);
-                afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-            }
-            
-
-        }
-        //console.log("_success:", _success);
-        if (!_success) {
-            revert(RevertReasonParser.parse(_result, "1inch V4 swap failed: "));
-        } else {
-            _returnAmount = afterBalOfToToken - beforeBalOfToToken;
-
-        }
-
+        (_success,_returnAmount) = one_inch_router.exchangeOn1Inch(_fromToken, _toToken, _fromAmount, _calldata);
         emit Exchange(one_inch_router, _fromToken, _fromAmount, _toToken, _returnAmount);
-        return (_success, _returnAmount);
     }
 
-
-    function exchange(
-        address _fromToken,
-        address _toToken,
-        uint256 _amount,
-        IExchangeAggregator.ExchangeParam memory _exchangeParam
-    ) external isKeeperOrVaultOrGovOrDelegate nonReentrant returns (uint256) {
-        return _exchange(_fromToken, _toToken, _amount, _exchangeParam);
-    }
-
-    function _exchange(
-        address _fromToken,
-        address _toToken,
-        uint256 _amount,
-        IExchangeAggregator.ExchangeParam memory _exchangeParam
-    ) internal returns (uint256 _exchangeAmount) {
-        require(IVault(vault).isTrackedAssets(_toToken), "TTI"); //toToken invalid
-
-        IExchangeAdapter.SwapDescription memory _swapDescription = IExchangeAdapter.SwapDescription({
-            amount: _amount,
-            srcToken: _fromToken,
-            dstToken: _toToken,
-            receiver: address(this)
-        });
-        if (_fromToken == NativeToken.NATIVE_TOKEN) {
-            // payable(exchangeManager).transfer(_amount);
-            _exchangeAmount = IExchangeAggregator(exchangeManager).swap{value: _amount}(
-                _exchangeParam.platform,
-                _exchangeParam.method,
-                _exchangeParam.encodeExchangeArgs,
-                _swapDescription
-            );
-        } else {
-            IERC20Upgradeable(_fromToken).safeApprove(exchangeManager, 0);
-            IERC20Upgradeable(_fromToken).safeApprove(exchangeManager, _amount);
-            _exchangeAmount = IExchangeAggregator(exchangeManager).swap(
-                _exchangeParam.platform,
-                _exchangeParam.method,
-                _exchangeParam.encodeExchangeArgs,
-                _swapDescription
-            );
-        }
-        uint256 oracleExpectedAmount = IValueInterpreter(valueInterpreter).calcCanonicalAssetValue(
-            _fromToken,
-            _amount,
-            _toToken
-        );
-        require(
-            _exchangeAmount >=
-                (oracleExpectedAmount *
-                    (MAX_BPS - _exchangeParam.slippage - _exchangeParam.oracleAdditionalSlippage)) /
-                    MAX_BPS,
-            "OL" //over slip point loss
-        );
-        emit Exchange(_exchangeParam.platform, _fromToken, _amount, _toToken, _exchangeAmount);
-    }
-
-    function set1inchRouter(address _newRouter) external {
+    function set1inchRouter(address _newRouter) external isKeeperOrVaultOrGovOrDelegate{
         require(_newRouter != address(0),"The new router cannot be 0x00");
         one_inch_router = _newRouter;
     }
