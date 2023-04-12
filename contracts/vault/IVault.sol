@@ -512,4 +512,20 @@ interface IVault {
     
     /// @notice Increases the target debts for multi strategies
     function increaseStrategyTargetDebts(address[] memory _strategies, uint256[] memory _addAmounts) external;
+
+    /// @dev Exchange from '_fromToken' to '_toToken'
+    /// @param _fromToken The token swap from
+    /// @param _toToken The token swap to
+    /// @param _fromAmount The amount of `_fromToken` to swap
+    /// @param _platformType The different platform, 0 =>1Inch,1 =>paraswap
+    /// @return _success The exchange is success or fail
+    /// @return _returnAmount The return amount of `_toToken`
+    /// Emits a {Exchange} event.
+    function exchange(
+        address _fromToken,
+        address _toToken,
+        uint256 _fromAmount,
+        bytes calldata _calldata,
+        uint16 _platformType
+    ) external payable returns (bool _success, uint256 _returnAmount);
 }

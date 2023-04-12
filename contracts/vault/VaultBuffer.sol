@@ -476,64 +476,22 @@ contract VaultBuffer is
         uint256 _amount
     ) internal virtual {}
 
-
-    // function exchange(
-    //     address _fromToken,
-    //     address _toToken,
-    //     uint256 _fromAmount,
-    //     bytes calldata _calldata
-    // ) public payable 
-    //     isKeeperOrVaultOrGovOrDelegate 
-    //     nonReentrant 
-    //     returns (
-    //         bool _success, 
-    //         uint256 _returnAmount
-    // ) {
-    //     bytes memory _result;
-    //     uint256 beforeBalOfToToken;
-    //     uint256 afterBalOfToToken;
-    //     if (_fromToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
-    //         beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-    //         (_success, _result) = payable(one_inch_router).call{value: _fromAmount}(_calldata);
-    //         afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-    //     } else {
-    //         IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, 0);
-    //         IERC20Upgradeable(_fromToken).safeApprove(one_inch_router, _fromAmount);
-
-    //         if(_toToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
-    //             beforeBalOfToToken = address(this).balance;
-    //             (_success, _result) = one_inch_router.call(_calldata);
-    //             afterBalOfToToken = address(this).balance;
-    //         }else {
-    //             beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-    //             (_success, _result) = one_inch_router.call(_calldata);
-    //             afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-    //         }
-            
-
-    //     }
-    //     //console.log("_success:", _success);
-    //     if (!_success) {
-    //         revert(RevertReasonParser.parse(_result, "1inch V4 swap failed: "));
-    //     } else {
-    //         _returnAmount = afterBalOfToToken - beforeBalOfToToken;
-
-    //     }
-
-    //     emit Exchange(one_inch_router, _fromToken, _fromAmount, _toToken, _returnAmount);
-    //     return (_success, _returnAmount);
-    // }
-
     function exchange(
         address _fromToken,
         address _toToken,
         uint256 _fromAmount,
-        bytes calldata _calldata
+        bytes calldata _calldata,
+        uint16 _platformType
     ) public payable returns (
             bool _success, 
             uint256 _returnAmount
     ) {
-        (_success,_returnAmount) = one_inch_router.exchangeOn1Inch(_fromToken, _toToken, _fromAmount, _calldata);
+        if(_platformType == 0) {
+            (_success,_returnAmount) = one_inch_router.exchangeOn1Inch(_fromToken, _toToken, _fromAmount, _calldata);
+        } else if (_platformType == 1) {
+            // use paraswap platform
+
+        }
         emit Exchange(one_inch_router, _fromToken, _fromAmount, _toToken, _returnAmount);
     }
 

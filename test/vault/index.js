@@ -100,7 +100,7 @@ async function buildSwapInfo(fromAddress, fromAsset, toAsset, amount, slippage) 
     }
 }
 
-async function swap(contractAccount, from, to) {
+async function swap(contractAccount, from, to, platformType) {
 
     const fromAmount = await balanceOf(from, contractAccount);//new BigNumber(500_000_000_000_000_000);
 
@@ -125,7 +125,7 @@ async function swap(contractAccount, from, to) {
     }
 
     const vault = await Vault.at(contractAccount);
-    await vault.exchange(from, to, fromAmount.toString(), swapInfo.tx.data);
+    await vault.exchange(from, to, fromAmount.toString(), swapInfo.tx.data,platformType);
 
     console.log('after swap %s:%s,%s:%s', fromSymbol,
         await balanceOf(from, contractAccount),
@@ -784,16 +784,16 @@ describe("Vault", function () {
         // await accounts[0].sendEthers(exchangeTester,new BigNumber(2 * 10 ** 18));
         // await send.ether(accounts[0].address,exchangeTester,new BigNumber(20 * 10 ** 18));
 
-        await swap(exchangeTester, ETH, USDT);
-        await swap(exchangeTester, USDT, USDC);
-        await swap(exchangeTester, USDC, DAI);
-        await swap(exchangeTester, DAI, GUSD);
-        await swap(exchangeTester, GUSD, LUSD);
-        await swap(exchangeTester, LUSD, ETH);
-        await swap(exchangeTester, ETH, stETH);
-        await swap(exchangeTester, stETH, rETH);
-        await swap(exchangeTester, rETH, sETH);
-        await swap(exchangeTester, sETH, cbETH);
-        await swap(exchangeTester, cbETH, ETH);
+        await swap(exchangeTester, ETH, USDT,0);
+        await swap(exchangeTester, USDT, USDC,0);
+        await swap(exchangeTester, USDC, DAI,0);
+        await swap(exchangeTester, DAI, GUSD,0);
+        await swap(exchangeTester, GUSD, LUSD,0);
+        await swap(exchangeTester, LUSD, ETH,0);
+        await swap(exchangeTester, ETH, stETH,0);
+        await swap(exchangeTester, stETH, rETH,0);
+        await swap(exchangeTester, rETH, sETH,0);
+        await swap(exchangeTester, sETH, cbETH,0);
+        await swap(exchangeTester, cbETH, ETH,0);
     });
 });
