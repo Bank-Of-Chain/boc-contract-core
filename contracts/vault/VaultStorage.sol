@@ -93,19 +93,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         uint256[] _amounts
     );
 
-    /// @param  _platform The platform used for the exchange
-    /// @param _srcAsset The address of asset exchange from 
-    /// @param _srcAmount The amount of asset exchange from 
-    /// @param _distAsset The address of asset exchange to 
-    /// @param _distAmount The amount of asset exchange to 
-    event Exchange(
-        address _platform,
-        address _srcAsset,
-        uint256 _srcAmount,
-        address _distAsset,
-        uint256 _distAmount
-    );
-
     /// @param  _strategy The specified strategy to redeem
     /// @param _debtChangeAmount The amount to redeem in USD when USDi or in ETH when ETHi
     /// @param _assets The address list of asset redeeming 
@@ -300,6 +287,9 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     bytes32 internal constant ADMIN_IMPL_POSITION =
     0x3d78d3961e16fde088e2e26c1cfa163f5f8bb870709088dd68c87eb4091137e2;
 
+    /// @notice Minimum strategy target debt that will be checked when set strategy target debt
+    uint256 public minStrategyTargetDebt;
+
     /// @dev set the implementation for the admin, this needs to be in a base class else we cannot set it
     /// @param _newImpl address of the implementation
     /// Requirements: only governance or delegate role can call
@@ -310,4 +300,5 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
             sstore(_position, _newImpl)
         }
     }
+
 }

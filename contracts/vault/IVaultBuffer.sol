@@ -6,18 +6,6 @@ pragma solidity 0.8.17;
 interface IVaultBuffer {
     event OpenDistribute();
     event CloseDistribute();
-    /// @param  _platform The platform used for the exchange
-    /// @param _srcAsset The address of asset exchange from 
-    /// @param _srcAmount The amount of asset exchange from 
-    /// @param _distAsset The address of asset exchange to 
-    /// @param _distAmount The amount of asset exchange to 
-    event Exchange(
-        address _platform,
-        address _srcAsset,
-        uint256 _srcAmount,
-        address _distAsset,
-        uint256 _distAmount
-    );
 
     /// @notice mint pending shares
     /// @param _sender user account address
@@ -47,19 +35,4 @@ interface IVaultBuffer {
     /// @notice Sets '_limit' to the `mDistributeLimit` state
     function setDistributeLimit(uint256 _limit) external;
 
-    /// @dev Exchange from '_fromToken' to '_toToken'
-    /// @param _fromToken The token swap from
-    /// @param _toToken The token swap to
-    /// @param _fromAmount The amount of `_fromToken` to swap
-    /// @param _platformType The different platform, 0 =>1Inch,1 =>paraswap
-    /// @return _success The exchange is success or fail
-    /// @return _returnAmount The return amount of `_toToken`
-    /// Emits a {Exchange} event.
-    function exchange(
-        address _fromToken,
-        address _toToken,
-        uint256 _fromAmount,
-        bytes calldata _calldata,
-        uint16 _platformType
-    ) external payable returns (bool _success, uint256 _returnAmount);
 }

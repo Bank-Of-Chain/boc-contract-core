@@ -946,9 +946,29 @@ describe("Vault", function () {
         
     });
 
-    it.only('Verify: exchange on Paraswap', async function () {
+    it('Vault Verify: exchange on Paraswap', async function () {
         
         const exchangeTester = vault.address;
+
+        // await topUpUsdtByAddress(new BigNumber(10 ** 12), exchangeTester);
+        await sendEthers(exchangeTester, new BigNumber(200 * 10 ** 18));
+
+        await swapOnPara(exchangeTester, tokenMap.ETH, tokenMap.USDT,1);
+        await swapOnPara(exchangeTester, tokenMap.USDT, tokenMap.USDC,1);
+        await swapOnPara(exchangeTester, tokenMap.USDC, tokenMap.DAI,1);
+        await swapOnPara(exchangeTester, tokenMap.DAI, tokenMap.GUSD,1);
+        await swapOnPara(exchangeTester, tokenMap.GUSD, tokenMap.LUSD,1);
+        await swapOnPara(exchangeTester, tokenMap.LUSD, tokenMap.ETH,1);
+        await swapOnPara(exchangeTester, tokenMap.ETH, tokenMap.stETH,1);
+        await swapOnPara(exchangeTester, tokenMap.stETH, tokenMap.rETH,1);
+        await swapOnPara(exchangeTester, tokenMap.rETH, tokenMap.sETH,1);
+        await swapOnPara(exchangeTester, tokenMap.sETH, tokenMap.cbETH,1);
+        await swapOnPara(exchangeTester, tokenMap.cbETH, tokenMap.ETH,1);
+    });
+
+    it.only('VaultBuffer Verify: exchange on Paraswap', async function () {
+        
+        const exchangeTester = vaultBuffer.address;
 
         // await topUpUsdtByAddress(new BigNumber(10 ** 12), exchangeTester);
         await sendEthers(exchangeTester, new BigNumber(200 * 10 ** 18));

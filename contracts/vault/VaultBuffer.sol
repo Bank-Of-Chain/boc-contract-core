@@ -17,9 +17,7 @@ import "./IVault.sol";
 import "./IVaultBuffer.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "../price-feeds/IValueInterpreter.sol";
-import "../library/ExchangeLib.sol";
-
-
+import "../exchanges/Exchange.sol";
 
 /// @title VaultBuffer
 /// @notice The vault buffer contract receives assets from users and returns asset ticket to them
@@ -28,15 +26,14 @@ contract VaultBuffer is
     IVaultBuffer,
     Initializable,
     ContextUpgradeable,
-    AccessControlMixin,
     IERC20Upgradeable,
     IERC20MetadataUpgradeable,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    Exchange
 {
     using StableMath for uint256;
     using IterableUintMap for IterableUintMap.AddressToUintMap;
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    using ExchangeLib for address;
 
     IterableUintMap.AddressToUintMap private mBalances;
 
@@ -63,14 +60,6 @@ contract VaultBuffer is
 
     /// @notice valueInterpreter
     address public valueInterpreter;
-
-    /// @notice The 1inch router contract address
-    address public oneInchRouter;
-
-    /// @notice The paraswap router contract address
-    address public paraRouter;
-    /// @notice The paraswap transfer proxy contract address
-    address public paraTransferProxy;
 
     /// @dev Modifier that checks that msg.sender is the vault or not
     modifier onlyVault() {
@@ -482,44 +471,5 @@ contract VaultBuffer is
         address _to,
         uint256 _amount
     ) internal virtual {}
-
-    function exchange(
-        address _fromToken,
-        address _toToken,
-        uint256 _fromAmount,
-        bytes calldata _calldata,
-        uint16 _platformType
-    ) public payable returns (
-            bool _success, 
-            uint256 _returnAmount
-    ) {
-        address platform;
-        if(_platformType == 0) {
-            // use 1inch platform
-            (_success,_returnAmount) = oneInchRouter.exchangeOn1Inch(_fromToken, _toToken, _fromAmount, _calldata);
-            platform = oneInchRouter;
-        } else if (_platformType == 1) {
-            // use paraswap platform
-            (_success,_returnAmount) = paraRouter.exchangeOnPara(paraTransferProxy, _fromToken,_toToken, _fromAmount, _calldata);
-            platform = paraRouter;
-        }
-        emit Exchange(platform, _fromToken, _fromAmount, _toToken, _returnAmount);
-    }
-
-    function set1inchRouter(address _newRouter) external isKeeperOrVaultOrGovOrDelegate{
-        require(_newRouter != address(0),"NZ");//The new router cannot be 0x00
-        oneInchRouter = _newRouter;
-    }
-
-    function setParaRouter(address _newRouter) external isKeeperOrVaultOrGovOrDelegate{
-        require(_newRouter != address(0),"NZ");//The new router cannot be 0x00
-        paraRouter = _newRouter;
-    }
-
-    function setParaTransferProxy(address _newTransferProxy) external isKeeperOrVaultOrGovOrDelegate{
-        require(_newTransferProxy != address(0),"NZ");//The new transfer proxy cannot be 0x00
-        paraTransferProxy = _newTransferProxy;
-    }
-
 
 }

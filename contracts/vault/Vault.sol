@@ -8,14 +8,15 @@ import "../library/StableMath.sol";
 
 import "./VaultStorage.sol";
 import "../exchanges/IExchangeAggregator.sol";
-import "../library/ExchangeLib.sol";
+
+import "../exchanges/Exchange.sol";
 
 
 /// @title Vault
 /// @notice Vault is the core of the BoC protocol
 /// @notice Vault stores and manages collateral funds of all positions
 /// @author Bank of Chain Protocol Inc
-contract Vault is VaultStorage{
+contract Vault is VaultStorage, Exchange{
     using StableMath for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -23,17 +24,6 @@ contract Vault is VaultStorage{
     using ExchangeLib for address;
 
     address private constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-
-    /// @notice Minimum strategy target debt that will be checked when set strategy target debt
-    uint256 public minStrategyTargetDebt;
-
-    /// @notice The 1inch router contract address
-    address public oneInchRouter;
-
-    /// @notice The paraswap router contract address
-    address public paraRouter;
-    /// @notice The paraswap transfer proxy contract address
-    address public paraTransferProxy;
 
     function initialize(
         address _accessControlProxy,
@@ -1342,45 +1332,6 @@ contract Vault is VaultStorage{
 
     function isTrackedAssets(address _token) external returns(bool){
         return trackedAssetsMap.contains(_token);
-    }
-
-    function exchange(
-        address _fromToken,
-        address _toToken,
-        uint256 _fromAmount,
-        bytes calldata _calldata,
-        uint16 _platformType
-    ) public payable returns (
-            bool _success, 
-            uint256 _returnAmount
-    ) {
-        address platform;
-        if(_platformType == 0) {
-            // use 1inch platform
-            (_success,_returnAmount) = oneInchRouter.exchangeOn1Inch(_fromToken, _toToken, _fromAmount, _calldata);
-            platform = oneInchRouter;
-        } else if (_platformType == 1) {
-            // use paraswap platform
-            (_success,_returnAmount) = paraRouter.exchangeOnPara(paraTransferProxy,_fromToken, _toToken, _fromAmount, _calldata);
-            platform = paraRouter;
-        }
-        emit Exchange(platform, _fromToken, _fromAmount, _toToken, _returnAmount);
-    }
-    
-
-    function set1inchRouter(address _newRouter) external isKeeperOrVaultOrGovOrDelegate{
-        require(_newRouter != address(0),"NZ");//The new router cannot be 0x00
-        oneInchRouter = _newRouter;
-    }
-
-    function setParaRouter(address _newRouter) external isKeeperOrVaultOrGovOrDelegate{
-        require(_newRouter != address(0),"NZ");//The new router cannot be 0x00
-        paraRouter = _newRouter;
-    }
-
-    function setParaTransferProxy(address _newTransferProxy) external isKeeperOrVaultOrGovOrDelegate{
-        require(_newTransferProxy != address(0),"NZ");//The new transfer proxy cannot be 0x00
-        paraTransferProxy = _newTransferProxy;
     }
 
     /// @notice Vault holds asset value directly in USD(USDi)/ETH(ETHi)(1e18)
