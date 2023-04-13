@@ -65,7 +65,12 @@ contract VaultBuffer is
     address public valueInterpreter;
 
     /// @notice The 1inch router contract address
-    address public one_inch_router;
+    address public oneInchRouter;
+
+    /// @notice The paraswap router contract address
+    address public paraRouter;
+    /// @notice The paraswap transfer proxy contract address
+    address public paraTransferProxy;
 
     /// @dev Modifier that checks that msg.sender is the vault or not
     modifier onlyVault() {
@@ -101,7 +106,9 @@ contract VaultBuffer is
         mDistributeLimit = 50;
 
         valueInterpreter = _valueInterpreter;
-        one_inch_router = 0x1111111254EEB25477B68fb85Ed929f73A960582;
+        oneInchRouter = 0x1111111254EEB25477B68fb85Ed929f73A960582;
+        paraRouter = 0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57;
+        paraTransferProxy = 0x216B4B4Ba9F3e719726886d34a177484278Bfcae;
     }
 
     /// @inheritdoc IVaultBuffer
@@ -486,18 +493,32 @@ contract VaultBuffer is
             bool _success, 
             uint256 _returnAmount
     ) {
+        address platform;
         if(_platformType == 0) {
-            (_success,_returnAmount) = one_inch_router.exchangeOn1Inch(_fromToken, _toToken, _fromAmount, _calldata);
+            // use 1inch platform
+            (_success,_returnAmount) = oneInchRouter.exchangeOn1Inch(_fromToken, _toToken, _fromAmount, _calldata);
+            platform = oneInchRouter;
         } else if (_platformType == 1) {
             // use paraswap platform
-
+            (_success,_returnAmount) = paraRouter.exchangeOnPara(paraTransferProxy, _fromToken,_toToken, _fromAmount, _calldata);
+            platform = paraRouter;
         }
-        emit Exchange(one_inch_router, _fromToken, _fromAmount, _toToken, _returnAmount);
+        emit Exchange(platform, _fromToken, _fromAmount, _toToken, _returnAmount);
     }
 
     function set1inchRouter(address _newRouter) external isKeeperOrVaultOrGovOrDelegate{
-        require(_newRouter != address(0),"The new router cannot be 0x00");
-        one_inch_router = _newRouter;
+        require(_newRouter != address(0),"NZ");//The new router cannot be 0x00
+        oneInchRouter = _newRouter;
+    }
+
+    function setParaRouter(address _newRouter) external isKeeperOrVaultOrGovOrDelegate{
+        require(_newRouter != address(0),"NZ");//The new router cannot be 0x00
+        paraRouter = _newRouter;
+    }
+
+    function setParaTransferProxy(address _newTransferProxy) external isKeeperOrVaultOrGovOrDelegate{
+        require(_newTransferProxy != address(0),"NZ");//The new transfer proxy cannot be 0x00
+        paraTransferProxy = _newTransferProxy;
     }
 
 

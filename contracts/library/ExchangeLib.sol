@@ -47,4 +47,46 @@ library ExchangeLib {
 
         return (_success, _returnAmount);
     }
+
+    function exchangeOnPara(
+        address _paraRouter,
+        address _paraTransferProxy,
+        address _fromToken,
+        address _toToken,
+        uint256 _fromAmount,
+        bytes calldata _calldata
+    ) internal returns (
+            bool _success, 
+            uint256 _returnAmount
+    ) {
+        bytes memory _result;
+        uint256 beforeBalOfToToken;
+        uint256 afterBalOfToToken;
+        if (_fromToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
+            beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+            (_success, _result) = payable(_paraRouter).call{value: _fromAmount}(_calldata);
+            afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+        } else {
+            IERC20Upgradeable(_fromToken).safeApprove(_paraTransferProxy, 0);
+            IERC20Upgradeable(_fromToken).safeApprove(_paraTransferProxy, _fromAmount);
+
+            if(_toToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
+                beforeBalOfToToken = address(this).balance;
+                (_success, _result) = _paraRouter.call(_calldata);
+                afterBalOfToToken = address(this).balance;
+            }else {
+                beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+                (_success, _result) = _paraRouter.call(_calldata);
+                afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
+            }
+        }
+
+        if (!_success) {
+            revert(RevertReasonParser.parse(_result, "paraswap callBytes failed: "));
+        } 
+
+        _returnAmount = afterBalOfToToken - beforeBalOfToToken;
+
+        return (_success, _returnAmount);
+    }
 }

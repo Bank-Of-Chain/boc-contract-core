@@ -4,6 +4,7 @@ const hre = require("hardhat");
 const {ethers,deployments} = require("hardhat");
 const {solidity} = require("ethereum-waffle");
 const {utils} = require("ethers");
+const { OptimalRate, SwapSide } = require("paraswap-core");
 const MFC = require("../mainnet-fork-test-config");
 const {topUpUsdtByAddress, topUpUsdcByAddress, topUpDaiByAddress,tranferBackUsdt,
     tranferBackUsdc,
@@ -75,11 +76,57 @@ const rETH = '0xae78736Cd615f374D3085123A210448E74Fc6393';
 const cbETH = '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704';
 const sETH = '0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb';
 
+const tokenMap = {
+    USDT: {
+        address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+        decimals: 6,
+    },
+    USDC: {
+        address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+        decimals: 6,
+    },
+    DAI: {
+        address: '0x6B175474E89094C44Da98b954EedeAC495271d0F',
+        decimals: 18,
+    },
+    LUSD: {
+        address: '0x5f98805A4E8be255a32880FDeC7F6728C6568bA0',
+        decimals: 18,
+    },
+    GUSD: {
+        address: '0x056Fd409E1d7A124BD7017459dFEa2F387b6d5Cd',
+        decimals: 2,
+    },
+    CRV: {
+        address: '0xD533a949740bb3306d119CC777fa900bA034cd52',
+        decimals: 18,
+    },
+    ETH: {
+        address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+        decimals: 18,
+    },
+    stETH: {
+        address: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
+        decimals: 18,
+    },
+    rETH: {
+        address: '0xae78736Cd615f374D3085123A210448E74Fc6393',
+        decimals: 18,
+    },
+    cbETH: {
+        address: '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704',
+        decimals: 18,
+    },
+    sETH: {
+        address: '0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb',
+        decimals: 18,
+    }
+}
+
 
 // const exchangeTester = '0x9e7F7d0E8b8F38e3CF2b3F7dd362ba2e9E82baa4';
 
 const baseURL = 'https://api.1inch.io/v5.0/1/';
-
 const axiosInstance = axios.create({ baseURL: baseURL });
 
 async function getQuote(fromAsset, toAsset, amount,) {
@@ -133,6 +180,8 @@ async function swap(contractAccount, from, to, platformType) {
         await balanceOf(to, contractAccount));
 }
 
+
+
 async function getSymbol(_asset) {
     if (_asset.toLowerCase() == ETH.toLowerCase()) {
         return 'ETH';
@@ -153,6 +202,105 @@ async function balanceOf(_asset, _account) {
 
         return erc20Token.balanceOf(_account);
     }
+}
+
+// paraswap exchange
+const baseURLParaswap = 'https://apiv5.paraswap.io/';
+const axiosInstancePara = axios.create({ baseURL: baseURLParaswap });
+
+const PARTNER = "chucknorris";
+const SLIPPAGE = 15; // 1%
+
+
+
+const getRate = async (
+    srcToken,
+    destToken,
+    srcAmount,
+    partner = PARTNER
+) => {
+    const queryParams = {
+        srcToken: srcToken.address,
+        destToken: destToken.address,
+        srcDecimals: srcToken.decimals.toString(),
+        destDecimals: destToken.decimals.toString(),
+        amount: srcAmount,
+        side: SwapSide.SELL,
+        network: '1',
+        partner
+    };
+
+    const searchString = new URLSearchParams(queryParams);
+
+    // const pricesURL = `${baseURLParaswap}prices/?${searchString}`;
+    // console.log("GET /price URL", pricesURL);
+
+    const rep = await axiosInstancePara.get(`prices/?${searchString}&excludeDEXS=ParaSwapPool,ParaSwapLimitOrders`);
+
+    // const result = await axios.get(pricesURL);
+    return rep.data.priceRoute;
+};
+
+const buildSwap = async ({
+    srcToken,
+    destToken,
+    srcAmount,
+    minAmount,
+    priceRoute,
+    userAddress,
+    receiver,
+}) => {
+    // const txURL = `${apiURL}/transactions/${networkID}`;
+
+    const txConfig = {
+        priceRoute,
+        srcToken: srcToken.address,
+        srcDecimals: srcToken.decimals,
+        destToken: destToken.address,
+        destDecimals: destToken.decimals,
+        srcAmount,
+        destAmount: minAmount,
+        userAddress,
+        receiver,
+    };
+    // console.log('txConfig:',JSON.stringify(txConfig));
+    const rep = await axiosInstancePara.post('transactions/1?ignoreChecks=true', txConfig);
+    return rep.data.data;
+};
+
+async function swapOnPara(contractAccount, from, to, platformType) {
+
+    const fromAmount = await balanceOf(from.address, contractAccount);//new BigNumber(500_000_000_000_000_000);
+
+    const priceRoute = await getRate(from, to, fromAmount.toString());
+    // console.log('priceRoute:', priceRoute);
+    const minAmount = new BigNumber(priceRoute.destAmount)
+        .times(1 - SLIPPAGE / 100)
+        .toFixed(0);
+
+    console.log('before swap %s:%s,%s:%s', await getSymbol(from.address),
+        await balanceOf(from.address, contractAccount),
+        await getSymbol(to.address),
+        await balanceOf(to.address, contractAccount));
+
+    const txParams = await buildSwap({
+        srcToken: from,
+        destToken: to,
+        srcAmount: fromAmount.toString(),
+        minAmount: minAmount,
+        priceRoute,
+        userAddress: contractAccount,
+        receiver: contractAccount,
+    });
+    // console.log('txParams:', txParams);
+
+    const vault = await Vault.at(contractAccount);
+    await vault.exchange(from.address, to.address, fromAmount.toString(), txParams, platformType);
+
+    console.log('after swap %s:%s,%s:%s', await getSymbol(from.address),
+        await balanceOf(from.address, contractAccount),
+        await getSymbol(to.address),
+        await balanceOf(to.address, contractAccount));
 }
 
 describe("Vault", function () {
@@ -773,7 +921,7 @@ describe("Vault", function () {
         Utils.assertBNEq(totalValueInStrategies, 0);
     });
 
-    it.only('Verify: exchange on 1inch', async function () {
+    it('Verify: exchange on 1inch', async function () {
         
         const exchangeTester = vault.address;
 
@@ -795,5 +943,26 @@ describe("Vault", function () {
         await swap(exchangeTester, rETH, sETH,0);
         await swap(exchangeTester, sETH, cbETH,0);
         await swap(exchangeTester, cbETH, ETH,0);
+        
+    });
+
+    it.only('Verify: exchange on Paraswap', async function () {
+        
+        const exchangeTester = vault.address;
+
+        // await topUpUsdtByAddress(new BigNumber(10 ** 12), exchangeTester);
+        await sendEthers(exchangeTester, new BigNumber(200 * 10 ** 18));
+
+        await swapOnPara(exchangeTester, tokenMap.ETH, tokenMap.USDT,1);
+        await swapOnPara(exchangeTester, tokenMap.USDT, tokenMap.USDC,1);
+        await swapOnPara(exchangeTester, tokenMap.USDC, tokenMap.DAI,1);
+        await swapOnPara(exchangeTester, tokenMap.DAI, tokenMap.GUSD,1);
+        await swapOnPara(exchangeTester, tokenMap.GUSD, tokenMap.LUSD,1);
+        await swapOnPara(exchangeTester, tokenMap.LUSD, tokenMap.ETH,1);
+        await swapOnPara(exchangeTester, tokenMap.ETH, tokenMap.stETH,1);
+        await swapOnPara(exchangeTester, tokenMap.stETH, tokenMap.rETH,1);
+        await swapOnPara(exchangeTester, tokenMap.rETH, tokenMap.sETH,1);
+        await swapOnPara(exchangeTester, tokenMap.sETH, tokenMap.cbETH,1);
+        await swapOnPara(exchangeTester, tokenMap.cbETH, tokenMap.ETH,1);
     });
 });
