@@ -50,50 +50,6 @@ contract UniswapV3PriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         __addPrimitives(_primitives, _pools, _durations);
     }
 
-    function calcCanonicalValue(
-        address _baseAsset,
-        uint256 _baseAssetAmount,
-        address _quoteAsset
-    ) external view override returns (uint256 _quoteAssetAmount, bool _isValid) {
-        if (_quoteAsset == NativeToken.NATIVE_TOKEN || _quoteAsset == WETH) {
-            return calcValueInEth(_baseAsset, _baseAssetAmount);
-        }
-
-        (uint256 _baseAssetValueInEth, bool _baseAssetIsValid) = calcValueInEth(
-            _baseAsset,
-            _baseAssetAmount
-        );
-        if (!_baseAssetIsValid) {
-            revert(
-                string(
-                    abi.encodePacked(
-                        "__calcAssetValue: Unsupported _baseAsset ",
-                        Strings.toHexString(uint160(_baseAsset), 20)
-                    )
-                )
-            );
-        }
-
-        (uint256 _quoteAssetValueInEth, bool _quoteAssetIsValid) = calcValueInEth(_quoteAsset, 1 ether);
-        if (!_quoteAssetIsValid) {
-            revert(
-                string(
-                    abi.encodePacked(
-                        "__calcAssetValue: Unsupported _quoteAsset ",
-                        Strings.toHexString(uint160(_quoteAsset), 20)
-                    )
-                )
-            );
-        }
-
-        return (
-            (_baseAssetValueInEth * primitiveToUnit[_quoteAsset] * _baseAssetAmount) /
-                _quoteAssetValueInEth /
-                primitiveToUnit[_baseAsset],
-            true
-        );
-    }
-
     function calcValueInUsd(
         address _baseAsset,
         uint256 _baseAssetAmount

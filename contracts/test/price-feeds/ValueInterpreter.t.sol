@@ -257,25 +257,6 @@ contract ValueInterpreterTest is Test {
         valueInEth = valueInterpreter.calcCanonicalAssetValueInEth(SFRX_ETH, 1e18);
     }
 
-    function testCustomPriceFeedAggregator_calcCanonicalValue() public {
-        (uint256 _wstEthValueInUsd, ) = customPriceFeedAggregator.calcValueInUsd(WSTETH, 1e18);
-        (uint256 _fakeTokenValueInUsd, ) = customPriceFeedAggregator.calcValueInUsd(
-            FAKE_TOKEN_ADDRESS,
-            1e18
-        );
-        console2.log(
-            "_wstEthValueInUsd:%s,_fakeTokenValueInUsd:%s",
-            _wstEthValueInUsd,
-            _fakeTokenValueInUsd
-        );
-        (uint256 _quoteAssetAmount, ) = customPriceFeedAggregator.calcCanonicalValue(
-            WSTETH,
-            1e18,
-            FAKE_TOKEN_ADDRESS
-        );
-        console2.log("_quoteAssetAmount:", _quoteAssetAmount);
-    }
-
     function testQueryEthPrice() public {
         uint valueInEth = valueInterpreter.calcCanonicalAssetValueInEth(NATIVE_TOKEN_ADDRESS, 1e18);
         console2.log("native token valueInEth:", valueInEth);
