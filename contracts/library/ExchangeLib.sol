@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "./RevertReasonParser.sol";
+import "./NativeToken.sol";
 
 library ExchangeLib {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -18,26 +19,17 @@ library ExchangeLib {
             uint256 _returnAmount
     ) {
         bytes memory _result;
-        uint256 beforeBalOfToToken;
-        uint256 afterBalOfToToken;
+
+        uint256 beforeBalOfToToken = _balanceOfToken(_toToken, address(this));
         if (_fromToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
-            beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
             (_success, _result) = payable(_oneInchRouter).call{value: _fromAmount}(_calldata);
-            afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
         } else {
             IERC20Upgradeable(_fromToken).safeApprove(_oneInchRouter, 0);
             IERC20Upgradeable(_fromToken).safeApprove(_oneInchRouter, _fromAmount);
+            (_success, _result) = _oneInchRouter.call(_calldata);
 
-            if(_toToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
-                beforeBalOfToToken = address(this).balance;
-                (_success, _result) = _oneInchRouter.call(_calldata);
-                afterBalOfToToken = address(this).balance;
-            }else {
-                beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-                (_success, _result) = _oneInchRouter.call(_calldata);
-                afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-            }
         }
+        uint256 afterBalOfToToken = _balanceOfToken(_toToken, address(this));
 
         if (!_success) {
             revert(RevertReasonParser.parse(_result, "1inch V4 swap failed: "));
@@ -60,26 +52,16 @@ library ExchangeLib {
             uint256 _returnAmount
     ) {
         bytes memory _result;
-        uint256 beforeBalOfToToken;
-        uint256 afterBalOfToToken;
+
+        uint256 beforeBalOfToToken = _balanceOfToken(_toToken, address(this));
         if (_fromToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
-            beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
             (_success, _result) = payable(_paraRouter).call{value: _fromAmount}(_calldata);
-            afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
         } else {
             IERC20Upgradeable(_fromToken).safeApprove(_paraTransferProxy, 0);
             IERC20Upgradeable(_fromToken).safeApprove(_paraTransferProxy, _fromAmount);
-
-            if(_toToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
-                beforeBalOfToToken = address(this).balance;
-                (_success, _result) = _paraRouter.call(_calldata);
-                afterBalOfToToken = address(this).balance;
-            }else {
-                beforeBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-                (_success, _result) = _paraRouter.call(_calldata);
-                afterBalOfToToken = IERC20Upgradeable(_toToken).balanceOf(address(this));
-            }
+            (_success, _result) = _paraRouter.call(_calldata);
         }
+        uint256 afterBalOfToToken = _balanceOfToken(_toToken, address(this));
 
         if (!_success) {
             revert(RevertReasonParser.parse(_result, "paraswap callBytes failed: "));
@@ -88,5 +70,15 @@ library ExchangeLib {
         _returnAmount = afterBalOfToToken - beforeBalOfToToken;
 
         return (_success, _returnAmount);
+    }
+
+    function _balanceOfToken(address _trackedAsset, address _owner) internal view returns (uint256) {
+        uint256 _balance;
+        if (_trackedAsset == NativeToken.NATIVE_TOKEN) {
+            _balance = _owner.balance;
+        } else {
+            _balance = IERC20Upgradeable(_trackedAsset).balanceOf(_owner);
+        }
+        return _balance;
     }
 }
