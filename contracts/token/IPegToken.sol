@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 pragma solidity 0.8.17;
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /// @title IPegToken interface
-interface IPegToken is IERC20 {
+interface IPegToken is IERC20Metadata {
 
     /// @return the total shares minted.
     function totalShares() external view returns (uint256);

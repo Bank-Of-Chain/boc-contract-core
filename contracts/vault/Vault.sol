@@ -117,12 +117,12 @@ contract Vault is VaultStorage{
     }
 
     /// @notice Vault holds asset value directly in USD(USDi)/ETH(ETHi)(1e18)
-    function valueOfTrackedTokens() external view returns (uint256) {
+    function valueOfTrackedTokens() public view returns (uint256) {
         return _totalAssetInVault();
     }
 
     /// @notice Vault and vault buffer holds asset value directly USD(USDi)/ETH(ETHi)(1e18)
-    function valueOfTrackedTokensIncludeVaultBuffer() external view returns (uint256) {
+    function valueOfTrackedTokensIncludeVaultBuffer() public view returns (uint256) {
         return _totalAssetInVaultAndVaultBuffer();
     }
 
@@ -183,7 +183,7 @@ contract Vault is VaultStorage{
 
     /// @notice Get pegToken price in USD(USDi)/ETH(ETHi)(1e18)
     /// @return  price in USD(USDi)/ETH(ETHi)(1e18)
-    function getPegTokenPrice() external view returns (uint256) {
+    function getPegTokenPrice() public view returns (uint256) {
         uint256 _totalSupply = IPegToken(pegTokenAddress).totalSupply();
         uint256 _pegTokenPrice = 1e18;
         if (_totalSupply > 0) {
@@ -1381,5 +1381,55 @@ contract Vault is VaultStorage{
     function setParaTransferProxy(address _newTransferProxy) external isKeeperOrVaultOrGovOrDelegate{
         require(_newTransferProxy != address(0),"NZ");//The new transfer proxy cannot be 0x00
         paraTransferProxy = _newTransferProxy;
+    }
+
+    /// @notice Vault holds asset value directly in USD(USDi)/ETH(ETHi)(1e18)
+    function valueOfTrackedTokensInVaultBuffer() public view  returns (uint256) {
+        if(valueOfTrackedTokensIncludeVaultBuffer() > valueOfTrackedTokens()) {
+            return valueOfTrackedTokensIncludeVaultBuffer() - valueOfTrackedTokens();
+        }
+        return 0;
+    }
+
+    /// @notice Gets token value transfered from vault buffer in USD(USDi)/ETH(ETHi)(1e18)
+    function getTransferValueFromVaultBuffer() internal view returns(uint256 _transferTotalValue){
+        address[] memory _trackedAssets = _getTrackedAssets();
+        uint256 _trackedAssetsLength = _trackedAssets.length;
+    
+        uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
+        uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
+        
+        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
+            address _trackedAsset = _trackedAssets[i];
+            _transferTotalValue =
+                _transferTotalValue +
+                _calculateAssetValue(
+                    _assetPrices,
+                    _assetDecimals,
+                    i,
+                    _trackedAsset,
+                    transferFromVaultBufferAssetsMap[_trackedAsset]
+                );
+        }
+        return _transferTotalValue;
+    }
+
+    /// @notice Gets pegged token value holded by vault buffer in USD(USDi)/ETH(ETHi)(1e18)
+    function getPegTokenValueOfVaultBuffer() internal view returns(uint256) {
+        uint256 _balance = IPegToken(pegTokenAddress).balanceOf(vaultBufferAddress);
+        uint256 _assetDecimal = IPegToken(pegTokenAddress).decimals();
+        uint256 _pegTokenPrice = getPegTokenPrice();
+
+        return _balance.mulTruncateScale(_pegTokenPrice, 10**_assetDecimal);
+    }
+
+    /// @dev Calculate total value of all assets held in VaultBuffer.
+    /// @return _value Total value(by oracle price) in USD(USDi)/ETH(ETHi)(1e18)
+    function totalValueInVaultBuffer() public view returns (uint256) {
+        uint256 _bufferCash = valueOfTrackedTokensInVaultBuffer();
+        uint256 _transferValue = getTransferValueFromVaultBuffer();
+        uint256 _pegTokenTotalValue = getPegTokenValueOfVaultBuffer();
+
+        return _bufferCash + _transferValue + _pegTokenTotalValue;
     }
 }

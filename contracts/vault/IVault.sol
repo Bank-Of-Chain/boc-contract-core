@@ -528,4 +528,7 @@ interface IVault {
         bytes calldata _calldata,
         uint16 _platformType
     ) external payable returns (bool _success, uint256 _returnAmount);
+
+    /// @notice Vault holds asset value directly in USD(USDi)/ETH(ETHi)(1e18)
+    function valueOfTrackedTokensInVaultBuffer() external view returns (uint256);
 }
