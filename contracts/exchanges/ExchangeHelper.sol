@@ -68,8 +68,6 @@ abstract contract ExchangeHelper is AccessControlMixin {
         paraTransferProxy = _newTransferProxy;
     }
 
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-
     function exchangeOn1Inch(
         address _oneInchRouter,
         address _fromToken,

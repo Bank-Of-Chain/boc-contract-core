@@ -241,8 +241,7 @@ contract VaultTest is Test {
             "tUSDi",
             address(vault),
             address(pegToken),
-            address(accessControlProxy),
-            address(valueInterpreter)
+            address(accessControlProxy)
         );
         vm.label(address(vaultBuffer), "vaultBuffer");
 
@@ -301,8 +300,7 @@ contract VaultTest is Test {
             "tETHi",
             address(ethVault),
             address(ethPegToken),
-            address(accessControlProxy),
-            address(valueInterpreter)
+            address(accessControlProxy)
         );
         vm.label(address(ethVaultBuffer), "ethVaultBuffer");
 

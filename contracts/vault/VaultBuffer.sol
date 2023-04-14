@@ -58,9 +58,6 @@ contract VaultBuffer is
     /// @dev max percentage 100%
     uint256 internal constant MAX_BPS = 10000;
 
-    /// @notice valueInterpreter
-    address public valueInterpreter;
-
     /// @dev Modifier that checks that msg.sender is the vault or not
     modifier onlyVault() {
         require(msg.sender == vault);
@@ -83,8 +80,7 @@ contract VaultBuffer is
         string memory _symbol,
         address _vault,
         address _pegTokenAddr,
-        address _accessControlProxy,
-        address _valueInterpreter
+        address _accessControlProxy
     ) external initializer {
         mName = _name;
         mSymbol = _symbol;
@@ -94,7 +90,6 @@ contract VaultBuffer is
 
         mDistributeLimit = 50;
 
-        valueInterpreter = _valueInterpreter;
         oneInchRouter = 0x1111111254EEB25477B68fb85Ed929f73A960582;
         paraRouter = 0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57;
         paraTransferProxy = 0x216B4B4Ba9F3e719726886d34a177484278Bfcae;
