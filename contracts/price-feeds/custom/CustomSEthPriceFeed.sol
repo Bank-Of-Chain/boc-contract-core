@@ -34,6 +34,10 @@ contract CustomSEthPriceFeed is ICustomPriceFeed {
         return 10 ** 18;
     }
 
+    function getRateAsset() external view override returns (IPrimitivePriceFeed.RateAsset _rateAsset) {
+        return IPrimitivePriceFeed.RateAsset.ETH;
+    }
+
     function _sEthPriceInEth() private view returns (uint256) {
         //curve price
         uint256 _priceInCurve = ICustomSEthCurveFi(SETH_ETH_CURVE_POOL).get_dy(1, 0, 1e18);

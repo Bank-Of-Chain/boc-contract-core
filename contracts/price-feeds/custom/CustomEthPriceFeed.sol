@@ -24,4 +24,8 @@ contract CustomEthPriceFeed is ICustomPriceFeed {
     function getAssetUnit() public pure override returns (uint256 _unit) {
         return 10 ** 18;
     }
+
+    function getRateAsset() external view override returns (IPrimitivePriceFeed.RateAsset _rateAsset) {
+        return IPrimitivePriceFeed.RateAsset.ETH;
+    }
 }

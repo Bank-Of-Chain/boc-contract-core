@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.17;
 
+import "../primitives/IPrimitivePriceFeed.sol";
+
 /// @title ICustomPriceFeed interface
 interface ICustomPriceFeed {
 
@@ -22,4 +24,8 @@ interface ICustomPriceFeed {
     /// @notice Gets the unit variable value for a primitive
     /// @return _unit The unit variable value
     function getAssetUnit() external view returns (uint256 _unit);
+
+    /// @notice Gets the rateAsset variable value for a primitive
+    /// @return _rateAsset the RateAsset will be the 0-position of the enum (i.e. ETH), but it makes the behavior more explicit
+    function getRateAsset() external view returns (IPrimitivePriceFeed.RateAsset _rateAsset);
 }

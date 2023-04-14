@@ -2,9 +2,16 @@ const { default: BigNumber } = require("bignumber.js");
 const { expect } = require("chai");
 const { send } = require("@openzeppelin/test-helpers");
 const hre = require("hardhat");
+const MFC = require("../mainnet-fork-test-config");
+const {address} = require("hardhat/internal/core/config/config-validation");
 
 
 const AccessControlProxy = hre.artifacts.require("AccessControlProxy");
+const ChainlinkPriceFeed = hre.artifacts.require('ChainlinkPriceFeed');
+const UniswapV3PriceFeed = hre.artifacts.require('UniswapV3PriceFeed');
+const CustomWstEthPriceFeed = hre.artifacts.require('CustomWstEthPriceFeed');
+const CustomEthPriceFeed = hre.artifacts.require('CustomEthPriceFeed');
+const CustomSEthPriceFeed = hre.artifacts.require('CustomSEthPriceFeed');
 const PegToken = hre.artifacts.require("PegToken");
 const MockVault = hre.artifacts.require("MockVault");
 
@@ -29,8 +36,78 @@ describe("PegToken Test", function () {
 
         accessControlProxy = await AccessControlProxy.new();
         await accessControlProxy.initialize(governance, governance, governance, governance);
+        console.log('deploy ChainlinkPriceFeed');
+        // oracle
+        const primitives = new Array();
+        const aggregators = new Array();
+        const heartbeats = new Array();
+        const rateAssets = new Array();
+        for (const key in MFC.CHAINLINK.aggregators) {
+            const value = MFC.CHAINLINK.aggregators[key];
+            primitives.push(value.primitive);
+            aggregators.push(value.aggregator);
+            heartbeats.push(value.heartbeat);
+            rateAssets.push(value.rateAsset);
+        }
+        const basePeggedPrimitives = new Array();
+        const basePeggedRateAssets = new Array();
+        for (const key in MFC.CHAINLINK.basePegged) {
+            const value = MFC.CHAINLINK.basePegged[key];
+            basePeggedPrimitives.push(value.primitive);
+            basePeggedRateAssets.push(value.rateAsset);
+        }
+        const chainlinkPriceFeed = await ChainlinkPriceFeed.new(
+            MFC.CHAINLINK.ETH_USD_AGGREGATOR,
+            MFC.CHAINLINK.ETH_USD_HEARTBEAT,
+            primitives,
+            aggregators,
+            heartbeats,
+            rateAssets,
+            basePeggedPrimitives,
+            basePeggedRateAssets,
+            accessControlProxy.address
+        );
 
-        mockVault = await MockVault.new(accessControlProxy.address);
+        const SETH2_WETH_POOL_ADDRESS = '0x7379e81228514a1D2a6Cf7559203998E20598346';
+        const SETH2_DURATION = 3600;
+        const primitives2 = new Array();
+        primitives2.push(MFC.sETH2_ADDRESS);
+        const pools = new Array();
+        pools.push(SETH2_WETH_POOL_ADDRESS);
+        const durations = new Array();
+        durations.push(SETH2_DURATION);
+        const uniswapV3PriceFeed = await UniswapV3PriceFeed.new(
+            accessControlProxy.address,
+            MFC.CHAINLINK.ETH_USD_AGGREGATOR,
+            primitives2,
+            pools,
+            durations
+        );
+
+        const customWstEthPriceFeed = new CustomWstEthPriceFeed.new();
+
+        const customEthPriceFeed = new CustomEthPriceFeed.new();
+
+        const customSEthPriceFeed = new CustomSEthPriceFeed.new();
+
+        const _baseAssets = new Array();
+        _baseAssets.push(MFC.wstETH_ADDRESS);
+        _baseAssets.push(MFC.ETH_ADDRESS);
+        _baseAssets.push(MFC.sETH_ADDRESS);
+        const _customPriceFeeds = new Array();
+        _customPriceFeeds[0] = customWstEthPriceFeed.address;
+        _customPriceFeeds[1] = customEthPriceFeed.address;
+        _customPriceFeeds[2] = customSEthPriceFeed.address;
+        const customPriceFeedAggregator = new CustomPriceFeedAggregator(
+            _baseAssets,
+            _customPriceFeeds,
+            accessControlProxy.address
+        );
+
+        console.log('deploy ValueInterpreter');
+        valueInterpreter = await ValueInterpreter.new(chainlinkPriceFeed.address, uniswapV3PriceFeed.address, customPriceFeedAggregator.address,accessControlProxy.address);
+
+        mockVault = await MockVault.new(accessControlProxy.address, valueInterpreter.address,0);
         await impersonates([mockVault.address]);
 
         await send.ether(accounts[0].address, mockVault.address, 10 * 10 ** 18);

@@ -38,6 +38,14 @@ contract VaultAdmin is VaultStorage {
         emit RebaseThresholdUpdated(_threshold);
     }
 
+    /// @dev Sets a max reduce difference ratio when will revert(when lend or redeem)
+    /// @param _threshold _threshold is the numerator and the denominator is 1e7. x/1e7
+    /// Requirements: only vault manager can call
+    function setDeltaThreshold(uint256 _threshold) external isVaultManager {
+        deltaThreshold = _threshold;
+        emit DeltaThresholdUpdated(_threshold);
+    }
+
     /// @dev Sets a fee in basis points to be charged for a redeem.
     /// @param _redeemFeeBps Basis point fee to be charged
     /// Requirements: only vault manager can call

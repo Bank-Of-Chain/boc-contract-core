@@ -67,7 +67,7 @@ contract VaultTest is Test {
     uint32 constant ROCKET_ETH_DURATION = 1 hours;
     uint32 constant SETH2_DURATION = 1 hours;
     uint32 constant CBETH_DURATION = 1 hours;
-    ChainlinkPriceFeed.RateAsset constant STETH_RATE_ASSET = ChainlinkPriceFeed.RateAsset.ETH; //eth
+    IPrimitivePriceFeed.RateAsset constant STETH_RATE_ASSET = IPrimitivePriceFeed.RateAsset.ETH; //eth
 
     AccessControlProxy accessControlProxy;
     ValueInterpreter valueInterpreter;
@@ -121,14 +121,14 @@ contract VaultTest is Test {
         _heartbeats[1] = HOURS_OF_24_HEARTBEAT;
         _heartbeats[2] = HOURS_OF_24_HEARTBEAT;
         _heartbeats[3] = HOURS_OF_1_HEARTBEAT;
-        ChainlinkPriceFeed.RateAsset[] memory _rateAssets = new ChainlinkPriceFeed.RateAsset[](4);
+        IPrimitivePriceFeed.RateAsset[] memory _rateAssets = new IPrimitivePriceFeed.RateAsset[](4);
         _rateAssets[0] = STETH_RATE_ASSET;
-        _rateAssets[1] = ChainlinkPriceFeed.RateAsset.USD;
-        _rateAssets[2] = ChainlinkPriceFeed.RateAsset.USD;
-        _rateAssets[3] = ChainlinkPriceFeed.RateAsset.USD;
+        _rateAssets[1] = IPrimitivePriceFeed.RateAsset.USD;
+        _rateAssets[2] = IPrimitivePriceFeed.RateAsset.USD;
+        _rateAssets[3] = IPrimitivePriceFeed.RateAsset.USD;
         address[] memory _basePeggeds = new address[](1);
         _basePeggeds[0] = WETH_ADDRESS;
-        ChainlinkPriceFeed.RateAsset[] memory _peggedRateAssets = new ChainlinkPriceFeed.RateAsset[](1);
+        IPrimitivePriceFeed.RateAsset[] memory _peggedRateAssets = new IPrimitivePriceFeed.RateAsset[](1);
         _peggedRateAssets[0] = STETH_RATE_ASSET;
 
         chainlinkPriceFeed = new ChainlinkPriceFeed(

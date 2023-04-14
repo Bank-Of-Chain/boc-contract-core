@@ -56,6 +56,10 @@ contract CustomPriceFeedAggregator is ICustomPriceFeedAggregator, AccessControlM
         return customPriceFeeds[_asset].getAssetUnit();
     }
 
+    function getRateAsset(address _asset) public view override returns (IPrimitivePriceFeed.RateAsset _rateAsset) {
+        return customPriceFeeds[_asset].getRateAsset();
+    }
+
     function isSupportedAsset(address _asset) external view override returns (bool _isSupported) {
         return address(customPriceFeeds[_asset]) != address(0);
     }
