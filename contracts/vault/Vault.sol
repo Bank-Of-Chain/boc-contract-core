@@ -9,19 +9,18 @@ import "../library/StableMath.sol";
 import "./VaultStorage.sol";
 import "../exchanges/IExchangeAggregator.sol";
 
-import "../exchanges/Exchange.sol";
+import "../exchanges/ExchangeHelper.sol";
 
 
 /// @title Vault
 /// @notice Vault is the core of the BoC protocol
 /// @notice Vault stores and manages collateral funds of all positions
 /// @author Bank of Chain Protocol Inc
-contract Vault is VaultStorage, Exchange{
+contract Vault is VaultStorage, ExchangeHelper{
     using StableMath for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
-    using ExchangeLib for address;
 
     address private constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
@@ -1190,16 +1189,6 @@ contract Vault is VaultStorage, Exchange{
             _nowStrategyTotalDebt,
             _type
         );
-    }
-
-    function _balanceOfToken(address _trackedAsset, address _owner) internal view returns (uint256) {
-        uint256 _balance;
-        if (_trackedAsset == NativeToken.NATIVE_TOKEN) {
-            _balance = _owner.balance;
-        } else {
-            _balance = IERC20Upgradeable(_trackedAsset).balanceOf(_owner);
-        }
-        return _balance;
     }
 
     /// @notice Get the supported asset Decimal
