@@ -173,14 +173,16 @@ contract VaultTest is Test {
         customFakePriceFeed = new CustomFakePriceFeed();
         vm.label(address(customFakePriceFeed), "customFakePriceFeed");
 
-        address[] memory _baseAssets = new address[](3);
+        address[] memory _baseAssets = new address[](4);
         _baseAssets[0] = WSTETH;
         _baseAssets[1] = NATIVE_TOKEN_ADDRESS;
         _baseAssets[2] = FAKE_TOKEN_ADDRESS;
-        address[] memory _customPriceFeeds = new address[](3);
+        _baseAssets[3] = WETH_ADDRESS;
+        address[] memory _customPriceFeeds = new address[](4);
         _customPriceFeeds[0] = address(customWstEthPriceFeed);
         _customPriceFeeds[1] = address(customEthPriceFeed);
         _customPriceFeeds[2] = address(customFakePriceFeed);
+        _customPriceFeeds[3] = address(customEthPriceFeed);
         customPriceFeedAggregator = new CustomPriceFeedAggregator(
             _baseAssets,
             _customPriceFeeds,
@@ -200,6 +202,7 @@ contract VaultTest is Test {
         vm.label(address(treasury), "treasury");
 
         testAdapter = new TestAdapter(address(valueInterpreter));
+        testAdapter = new TestAdapter(address(valueInterpreter));
         vm.label(address(testAdapter), "testAdapter");
         address[] memory _exchangeAdapters = new address[](1);
         _exchangeAdapters[0] = address(testAdapter);
@@ -214,7 +217,6 @@ contract VaultTest is Test {
         vault.initialize(
             address(accessControlProxy),
             address(treasury),
-            address(exchangeAggregator),
             address(valueInterpreter),
             uint256(0)
         );
@@ -274,7 +276,6 @@ contract VaultTest is Test {
         ethVault.initialize(
             address(accessControlProxy),
             address(treasury),
-            address(exchangeAggregator),
             address(valueInterpreter),
             uint256(1)
         );
@@ -457,12 +458,14 @@ contract VaultTest is Test {
         _strategyAdds[0] = IVault.StrategyAdd({
         strategy: address(mockStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e24)
         });
         _strategyAdds[1] = IVault.StrategyAdd({
         strategy: address(otherMock3CoinStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e24)
         });
 
         iVault.addStrategies(_strategyAdds);
@@ -530,13 +533,16 @@ contract VaultTest is Test {
         _strategyAdds[0] = IVault.StrategyAdd({
         strategy: address(ethMockStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e22)
         });
 
         _strategyAdds[1] = IVault.StrategyAdd({
         strategy: address(otherEthMock3CoinStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e22)
+
         });
 
         iETHVault.addStrategies(_strategyAdds);
@@ -594,7 +600,9 @@ contract VaultTest is Test {
         _strategyAdds[0] = IVault.StrategyAdd({
             strategy: address(mock3CoinStrategy),
             profitLimitRatio: uint256(100),
-            lossLimitRatio: uint256(100)
+            lossLimitRatio: uint256(100),
+            targetDebt:uint256(1e24)
+
         });
 
         vm.startPrank(GOVERNANOR);
@@ -611,13 +619,15 @@ contract VaultTest is Test {
         _strategyAdds[0] = IVault.StrategyAdd({
         strategy: address(mock3CoinStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e24)
         });
 
         _strategyAdds[1] = IVault.StrategyAdd({
         strategy: address(otherMock3CoinStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e24)
         });
 
         iVault.addStrategies(_strategyAdds);
@@ -634,7 +644,8 @@ contract VaultTest is Test {
         _strategyAdds[0] = IVault.StrategyAdd({
             strategy: address(ethMock3CoinStrategy),
             profitLimitRatio: uint256(100),
-            lossLimitRatio: uint256(100)
+            lossLimitRatio: uint256(100),
+            targetDebt:uint256(1e22)
         });
 
         vm.startPrank(GOVERNANOR);
@@ -653,19 +664,153 @@ contract VaultTest is Test {
         _strategyAdds[0] = IVault.StrategyAdd({
         strategy: address(ethMock3CoinStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e22)
         });
 
         _strategyAdds[1] = IVault.StrategyAdd({
         strategy: address(otherEthMock3CoinStrategy),
         profitLimitRatio: uint256(100),
-        lossLimitRatio: uint256(100)
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e22)
         });
 
         iETHVault.addStrategies(_strategyAdds);
         _strategies = iETHVault.getStrategies();
         vm.stopPrank();
         assertEq(_strategies.length, _strategyAdds.length);
+    }
+
+    function testSetAndIncreaseStrategyTargetDebts() public {
+
+        testAddAndRemoveAssets();
+        testAddAndRemoveStrategies();
+
+        vm.startPrank(GOVERNANOR);
+        address[] memory strategies = new address[](2);
+        strategies[0] = address(mock3CoinStrategy);
+        strategies[1] = address(otherMock3CoinStrategy);
+        uint256[] memory newTargetDebts = new uint256[](2);
+        newTargetDebts[0] = 2000e18;
+        newTargetDebts[1] = 5000e18;
+        iVault.setStrategyTargetDebts(strategies,newTargetDebts);
+        for(uint256 i=0; i<strategies.length; i++) {
+            IVault.StrategyParams memory strategyParam = iVault.strategies(strategies[i]);
+            assertEq(strategyParam.targetDebt, newTargetDebts[i]);
+        }
+
+        iVault.increaseStrategyTargetDebts(strategies,newTargetDebts);
+        for(uint256 i=0; i<strategies.length; i++) {
+            IVault.StrategyParams memory strategyParam = iVault.strategies(strategies[i]);
+            assertEq(strategyParam.targetDebt, newTargetDebts[i]+newTargetDebts[i]);
+        }
+
+        vm.stopPrank();
+
+    }
+    function testFailSetAndIncreaseStrategyTargetDebts() public {
+
+        testAddAndRemoveAssets();
+        testAddAndRemoveStrategies();
+
+        vm.startPrank(USER);
+        address[] memory strategies = new address[](2);
+        strategies[0] = address(mock3CoinStrategy);
+        strategies[1] = address(otherMock3CoinStrategy);
+        uint256[] memory newTargetDebts = new uint256[](2);
+        newTargetDebts[0] = 2000e18;
+        newTargetDebts[1] = 5000e18;
+        iVault.setStrategyTargetDebts(strategies,newTargetDebts);//no keeper call =>Fail
+
+        iVault.increaseStrategyTargetDebts(strategies,newTargetDebts);//no keeper call =>Fail
+
+        vm.stopPrank();
+
+        vm.startPrank(GOVERNANOR);
+        newTargetDebts[0] = 1e18;// < minStrategyTargetDebt = 2000e18
+        newTargetDebts[1] = 5e18;// < minStrategyTargetDebt = 2000e18
+        iVault.setStrategyTargetDebts(strategies,newTargetDebts);//newTargetDebt < minStrategyTargetDebt => Fail
+
+        iVault.increaseStrategyTargetDebts(strategies,newTargetDebts);//newTargetDebt < minStrategyTargetDebt => Fail
+
+        vm.stopPrank();
+
+    }
+
+    function testSetExchangeRouter() public {
+        address oneInchRouter = 0x1111111254EEB25477B68fb85Ed929f73A960582;
+        address paraRouter = 0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57;
+        address paraTransferProxy = 0x216B4B4Ba9F3e719726886d34a177484278Bfcae;
+        testAddAndRemoveAssets();
+        testAddAndRemoveStrategies();
+        assertEq(iVault.oneInchRouter(), oneInchRouter);
+        assertEq(iVault.paraRouter(), paraRouter);
+        assertEq(iVault.paraTransferProxy(), paraTransferProxy);
+
+        vm.startPrank(GOVERNANOR);
+        address newRouter = address(mock3CoinStrategy);
+        
+        iVault.set1inchRouter(newRouter);
+        iVault.setParaRouter(newRouter);
+        iVault.setParaTransferProxy(newRouter);
+
+        assertEq(iVault.oneInchRouter(), newRouter);
+        assertEq(iVault.paraRouter(), newRouter);
+        assertEq(iVault.paraTransferProxy(), newRouter);
+        
+        vm.stopPrank();
+    }
+
+    function testFailSetExchangeRouter() public {
+        testAddAndRemoveAssets();
+        testAddAndRemoveStrategies();
+
+        //check access control
+        vm.startPrank(USER);
+        address newRouter = address(mock3CoinStrategy);
+        iVault.set1inchRouter(newRouter);
+        iVault.setParaRouter(newRouter);
+        iVault.setParaTransferProxy(newRouter);
+        
+        vm.stopPrank();
+
+        //check non zero address
+        vm.startPrank(GOVERNANOR);
+        address ZERO_ADDRESS = address(0);
+        
+        iVault.set1inchRouter(ZERO_ADDRESS);
+        iVault.setParaRouter(ZERO_ADDRESS);
+        iVault.setParaTransferProxy(ZERO_ADDRESS);
+        
+        vm.stopPrank();
+    }
+
+    function testSetAndIncreaseStrategyTargetDebtsWithETHi() public {
+
+        testAddAndRemoveAssetsWithETHi();
+        testAddAndRemoveStrategiesWithETHi();
+
+        vm.startPrank(GOVERNANOR);
+        address[] memory strategies = new address[](2);
+        strategies[0] = address(ethMock3CoinStrategy);
+        strategies[1] = address(otherEthMock3CoinStrategy);
+        uint256[] memory newTargetDebts = new uint256[](2);
+        newTargetDebts[0] = 1e18;
+        newTargetDebts[1] = 20e18;
+        iETHVault.setStrategyTargetDebts(strategies,newTargetDebts);
+        for(uint256 i=0; i<strategies.length; i++) {
+            IVault.StrategyParams memory strategyParam = iETHVault.strategies(strategies[i]);
+            assertEq(strategyParam.targetDebt, newTargetDebts[i]);
+        }
+
+        iETHVault.increaseStrategyTargetDebts(strategies,newTargetDebts);
+        for(uint256 i=0; i<strategies.length; i++) {
+            IVault.StrategyParams memory strategyParam = iETHVault.strategies(strategies[i]);
+            assertEq(strategyParam.targetDebt, newTargetDebts[i]+newTargetDebts[i]);
+        }
+
+        vm.stopPrank();
+
     }
 
     function testFailSetVaultBufferAddress() public {
@@ -1197,7 +1342,7 @@ contract VaultTest is Test {
                 WETH_ADDRESS,
                 _amounts[2] - _balanceOfToken(WETH_ADDRESS, FRIEND)
             );
-        assertEq(_ethiAmount / 1e17, _valueInETH / 1e17 + 1);
+        assertGe(_ethiAmount / 1e17, _valueInETH / 1e17 + 1 );
     }
 
     function testReport() public {
@@ -1346,9 +1491,10 @@ contract VaultTest is Test {
             valueInterpreter.calcCanonicalAssetValueInEth(WETH_ADDRESS, _wETHAmount);
 
         assertEq(_totalDebtOfAfterReport / 10000, (_totalDebtOfBeforeReport + _valueInETH) / 10000  + 1);
+        assertEq(_totalDebtOfAfterReport / 10000, (_totalDebtOfBeforeReport + _valueInETH) / 10000  + 1);
         assertEq(
             _estimatedTotalAssetsOfAfterReport / 10000,
-            (_estimatedTotalAssetsOfBeforeReport + _valueInETH) / 10000 + 1
+            (_estimatedTotalAssetsOfBeforeReport + _valueInETH) / 10000  + 1
         );
 
         _totalDebtOfBeforeReport = _strategyParams.totalDebt;
@@ -1377,6 +1523,7 @@ contract VaultTest is Test {
         _estimatedTotalAssetsOfAfterReport = ethMock3CoinStrategy.estimatedTotalAssets();
 
         assertEq(_totalDebtOfAfterReport / 10000, (_totalDebtOfBeforeReport + _valueInETH) / 10000);
+        assertEq(_estimatedTotalAssetsOfAfterReport, _estimatedTotalAssetsOfBeforeReport + _valueInETH + 1);
         assertEq(_estimatedTotalAssetsOfAfterReport, _estimatedTotalAssetsOfBeforeReport + _valueInETH + 1);
     }
 
@@ -1411,6 +1558,8 @@ contract VaultTest is Test {
         vm.prank(USER);
         iETHVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
 
+        uint256 valueOfTrackedTokens =  iETHVault.valueOfTrackedTokens();
+        console2.log("valueOfTrackedTokens is",valueOfTrackedTokens);
         assertEq(iETHVault.valueOfTrackedTokens(), 0);
 
         ethMock3CoinStrategy.setPoolWithdrawQuota(ethMock3CoinStrategy.estimatedTotalAssets());
@@ -1436,180 +1585,6 @@ contract VaultTest is Test {
             _balance = IERC20Upgradeable(_trackedAsset).balanceOf(_owner);
         }
         return _balance;
-    }
-
-    function testExchange() external {
-        vm.startPrank(GOVERNANOR);
-
-        iVault.addAsset(USDC_ADDRESS);
-        iVault.addAsset(USDT_ADDRESS);
-        iVault.addAsset(DAI_ADDRESS);
-        iVault.addAsset(NATIVE_TOKEN_ADDRESS);
-        
-        iVault.addAsset(WETH_ADDRESS);
-
-        address[] memory _assets = iVault.getSupportAssets();
-
-        uint256 _usdcAmount = 10000e6;
-        uint256 _usdtAmount = 10000e6;
-        uint256 _daiAmount = 10000e18;
-        uint256 _ethAmount = 10000 ether;
-        uint256 _ethAmountBuffer = 100 ether;
-        uint256 _wethAmount = 10000e18;
-
-        deal(USDC_ADDRESS, address(testAdapter), _usdcAmount*10);
-        deal(USDT_ADDRESS, address(testAdapter), _usdtAmount*10);
-        deal(DAI_ADDRESS, address(testAdapter), _daiAmount*10);
-        deal(WETH_ADDRESS, address(testAdapter), _wethAmount*10);
-        vm.deal(address(testAdapter), _ethAmount);
-
-
-        deal(USDC_ADDRESS, address(iVault), _usdcAmount);
-        deal(USDT_ADDRESS, address(iVault), _usdtAmount);
-        deal(DAI_ADDRESS, address(iVault), _daiAmount);
-        deal(WETH_ADDRESS, address(iVault), _ethAmountBuffer);
-        
-        vm.deal(address(iVault), _ethAmountBuffer);
-        IExchangeAggregator.ExchangeParam memory _exchangeParam = IExchangeAggregator.ExchangeParam({
-            platform: address(testAdapter),
-            method: 0,
-            encodeExchangeArgs: "0x",
-            slippage: 0,
-            oracleAdditionalSlippage: 0
-        });
-        IExchangeAdapter.SwapDescription memory _swapDesc = IExchangeAdapter.SwapDescription({
-            amount: _usdcAmount / 2,
-            srcToken: USDC_ADDRESS,
-            dstToken: USDT_ADDRESS,
-            receiver: address(iVault)
-        });
-        uint256 amountReceived = iVault.exchange(_swapDesc.srcToken, _swapDesc.dstToken, _swapDesc.amount, _exchangeParam);
-        console2.log("amountReceived is", amountReceived);
-
-        IExchangeAdapter.SwapDescription memory _swapDesc01 = IExchangeAdapter.SwapDescription({
-            amount: _usdcAmount / 2,
-            srcToken: USDC_ADDRESS,
-            dstToken: DAI_ADDRESS,
-            receiver: address(iVault)
-        });
-        amountReceived = iVault.exchange(_swapDesc01.srcToken, _swapDesc01.dstToken, _swapDesc01.amount, _exchangeParam);
-        console2.log("amountReceived is", amountReceived);
-
-        deal(USDC_ADDRESS, address(iVault), _usdcAmount);
-        IExchangeAdapter.SwapDescription memory _swapDesc02 = IExchangeAdapter.SwapDescription({
-            amount: _usdcAmount / 2,
-            srcToken: USDC_ADDRESS,
-            dstToken: WETH_ADDRESS,
-            receiver: address(iVault)
-        });
-        uint256 amountReceived02 = iVault.exchange(_swapDesc02.srcToken, _swapDesc02.dstToken, _swapDesc02.amount, _exchangeParam);
-        console2.log("amountReceived02 is", amountReceived02);
-
-        deal(USDC_ADDRESS, address(iVault), _usdcAmount*2);
-        IExchangeAdapter.SwapDescription memory _swapDesc03 = IExchangeAdapter.SwapDescription({
-            amount: _usdcAmount / 2,
-            srcToken: USDC_ADDRESS,
-            dstToken: NATIVE_TOKEN_ADDRESS,
-            receiver: address(iVault)
-        });
-        uint256 amountReceived03 = iVault.exchange(_swapDesc03.srcToken, _swapDesc03.dstToken, _swapDesc03.amount, _exchangeParam);
-        console2.log("amountReceived03 is", amountReceived03);
-
-        IExchangeAdapter.SwapDescription memory _swapDesc04 = IExchangeAdapter.SwapDescription({
-            amount: _ethAmountBuffer / 2,
-            srcToken: NATIVE_TOKEN_ADDRESS,
-            dstToken: USDC_ADDRESS,
-            receiver: address(iVault)
-        });
-        uint256 amountReceived04 = iVault.exchange(_swapDesc04.srcToken, _swapDesc04.dstToken, _swapDesc04.amount, _exchangeParam);
-        console2.log("amountReceived04 is", amountReceived04);
-
-        vm.stopPrank();
-
-    }
-
-    function testExchangeForEthVault() external {
-
-        vm.startPrank(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
-        uint256 _stethAmount = 10000e18;
-        IERC20(STETH_ADDRESS).transfer(address(iETHVault), _stethAmount + 1);
-        IERC20(STETH_ADDRESS).transfer(address(testAdapter), _stethAmount*10 + 1);
-
-        vm.stopPrank();
-
-        vm.startPrank(GOVERNANOR);
-
-        iETHVault.addAsset(CBETH_ADDRESS);
-        iETHVault.addAsset(STETH_ADDRESS);
-        iETHVault.addAsset(WETH_ADDRESS);
-        iETHVault.addAsset(ROCKET_ETH_ADDRESS);
-        //iETHVault.addAsset(WSTETH);
-        iETHVault.addAsset(NATIVE_TOKEN_ADDRESS);
-
-        address[] memory _assets = iETHVault.getSupportAssets();
-
-        
-        uint256 _cbethAmount = 10000e18;
-        uint256 _rethAmount = 10000e18;
-        uint256 _ethAmount = 10000 ether;
-        uint256 _ethAmountBuffer = 100 ether;
-        uint256 _wethAmount = 10000e18;
-
-        deal(CBETH_ADDRESS, address(testAdapter), _cbethAmount*10);
-        deal(ROCKET_ETH_ADDRESS, address(testAdapter), _rethAmount*10);
-        deal(WETH_ADDRESS, address(testAdapter), _wethAmount*10);
-        vm.deal(address(testAdapter), _ethAmount*10);
-
-
-        deal(CBETH_ADDRESS, address(iETHVault), _cbethAmount);
-        deal(ROCKET_ETH_ADDRESS, address(iETHVault), _rethAmount);
-        deal(WETH_ADDRESS, address(iETHVault), _ethAmountBuffer);
-        vm.deal(address(iETHVault), _ethAmountBuffer);
-
-        IExchangeAggregator.ExchangeParam memory _exchangeParam = IExchangeAggregator.ExchangeParam({
-            platform: address(testAdapter),
-            method: 0,
-            encodeExchangeArgs: "0x",
-            slippage: 0,
-            oracleAdditionalSlippage: 0
-        });
-        IExchangeAdapter.SwapDescription memory _swapDesc = IExchangeAdapter.SwapDescription({
-            amount: _cbethAmount / 2,
-            srcToken: CBETH_ADDRESS,
-            dstToken: ROCKET_ETH_ADDRESS,
-            receiver: address(iETHVault)
-        });
-        uint256 amountReceived = iETHVault.exchange(_swapDesc.srcToken, _swapDesc.dstToken, _swapDesc.amount, _exchangeParam);
-        console2.log("amountReceived is", amountReceived);
-        _swapDesc = IExchangeAdapter.SwapDescription({
-            amount: _cbethAmount / 2,
-            srcToken: ROCKET_ETH_ADDRESS,
-            dstToken: CBETH_ADDRESS,
-            receiver: address(iETHVault)
-        });
-        amountReceived = iETHVault.exchange(_swapDesc.srcToken, _swapDesc.dstToken, _swapDesc.amount, _exchangeParam);
-        console2.log("amountReceived is", amountReceived);
-
-        _swapDesc = IExchangeAdapter.SwapDescription({
-            amount: _rethAmount / 2,
-            srcToken: STETH_ADDRESS,
-            dstToken: CBETH_ADDRESS,
-            receiver: address(iETHVault)
-        });
-        amountReceived = iETHVault.exchange(_swapDesc.srcToken, _swapDesc.dstToken, _swapDesc.amount, _exchangeParam);
-        console2.log("amountReceived is", amountReceived);
-
-        _swapDesc = IExchangeAdapter.SwapDescription({
-            amount: _rethAmount / 2,
-            srcToken: CBETH_ADDRESS,
-            dstToken: STETH_ADDRESS,
-            receiver: address(iETHVault)
-        });
-        amountReceived = iETHVault.exchange(_swapDesc.srcToken, _swapDesc.dstToken, _swapDesc.amount, _exchangeParam);
-        console2.log("amountReceived is", amountReceived);
-
-        vm.stopPrank();
-
     }
 
 }

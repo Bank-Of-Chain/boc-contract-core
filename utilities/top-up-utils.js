@@ -341,6 +341,18 @@ const tranferBackDai = async (address) => {
     console.log(`balance of ${tokenName}  of tokenHolder：` + new BigNumber(await underlying.balanceOf(underlyingWhale)).toFormat());
 }
 
+/**
+ * Top up a specified amount of eth for the address(default 10 * 10 ** 18)
+ * @param {*} reviver
+ * @param {*} amount
+ */
+const sendEthers = async (reviver, amount = new BigNumber(10 * 10 ** 18)) => {
+    if (!BigNumber.isBigNumber(amount)) return new Error("must be a bignumber.js object")
+    console.log("amount=",amount.toFormat())
+    console.log("reviver=",reviver.toString())
+    await network.provider.send("hardhat_setBalance", [reviver, `0x${amount.toString(16)}`])
+}
+
 module.exports = {
     topUpMain,
     topUpUsdtByAddress,
@@ -364,5 +376,6 @@ module.exports = {
     impersonates,
     topUpMainV2,
     topUpMainV2_1,
-    topUpMainV2_2
+    topUpMainV2_2,
+    sendEthers
 };

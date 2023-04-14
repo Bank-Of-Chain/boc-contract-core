@@ -34,4 +34,5 @@ interface IVaultBuffer {
 
     /// @notice Sets '_limit' to the `mDistributeLimit` state
     function setDistributeLimit(uint256 _limit) external;
+
 }

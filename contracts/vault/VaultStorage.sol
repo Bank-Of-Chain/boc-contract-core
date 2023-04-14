@@ -30,6 +30,7 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     /// @param lossLimitRatio The limited ratio for loss
     /// @param enforceChangeLimit The switch of enforce change Limit
     /// @param lastClaim The last claim timestamp
+    /// @param targetDebt The max target debt
     struct StrategyParams {
         uint256 lastReport;
         uint256 totalDebt;
@@ -37,15 +38,18 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         uint256 lossLimitRatio;
         bool enforceChangeLimit;
         uint256 lastClaim;
+        uint256 targetDebt;
     }
 
     /// @param strategy The new strategy to add
     /// @param profitLimitRatio The limited ratio of profit
     /// @param lossLimitRatio The limited ratio for loss
+    /// @param targetDebt The max target debt
     struct StrategyAdd {
         address strategy;
         uint256 profitLimitRatio;
         uint256 lossLimitRatio;
+        uint256 targetDebt;
     }
 
     /// @param _asset The new asset to add
@@ -87,19 +91,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         uint256 _shareAmount,
         address[] _assets,
         uint256[] _amounts
-    );
-
-    /// @param  _platform The platform used for the exchange
-    /// @param _srcAsset The address of asset exchange from 
-    /// @param _srcAmount The amount of asset exchange from 
-    /// @param _distAsset The address of asset exchange to 
-    /// @param _distAmount The amount of asset exchange to 
-    event Exchange(
-        address _platform,
-        address _srcAsset,
-        uint256 _srcAmount,
-        address _distAsset,
-        uint256 _distAmount
     );
 
     /// @param  _strategy The specified strategy to redeem
@@ -302,6 +293,9 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     bytes32 internal constant ADMIN_IMPL_POSITION =
     0x3d78d3961e16fde088e2e26c1cfa163f5f8bb870709088dd68c87eb4091137e2;
 
+    /// @notice Minimum strategy target debt that will be checked when set strategy target debt
+    uint256 public minStrategyTargetDebt;
+
     /// @dev set the implementation for the admin, this needs to be in a base class else we cannot set it
     /// @param _newImpl address of the implementation
     /// Requirements: only governance or delegate role can call
@@ -312,4 +306,12 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
             sstore(_position, _newImpl)
         }
     }
+
+    /// @dev set the minium strategy target debt
+    /// @param _newMinTargetDebt The new minium strategy target debt
+    /// Requirements: only keeper, governance or delegate role can call
+    function setMinStrategyTargetDebt(uint256 _newMinTargetDebt) external isKeeperOrVaultOrGovOrDelegate {
+        minStrategyTargetDebt = _newMinTargetDebt;
+    }
+
 }

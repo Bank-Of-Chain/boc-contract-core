@@ -15,6 +15,9 @@ import "../library/NativeToken.sol";
 import "./../access-control/AccessControlMixin.sol";
 import "./IVault.sol";
 import "./IVaultBuffer.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "../price-feeds/IValueInterpreter.sol";
+import "../exchanges/ExchangeHelper.sol";
 
 /// @title VaultBuffer
 /// @notice The vault buffer contract receives assets from users and returns asset ticket to them
@@ -23,9 +26,10 @@ contract VaultBuffer is
     IVaultBuffer,
     Initializable,
     ContextUpgradeable,
-    AccessControlMixin,
     IERC20Upgradeable,
-    IERC20MetadataUpgradeable
+    IERC20MetadataUpgradeable,
+    ReentrancyGuardUpgradeable,
+    ExchangeHelper
 {
     using StableMath for uint256;
     using IterableUintMap for IterableUintMap.AddressToUintMap;
@@ -455,6 +459,5 @@ contract VaultBuffer is
         address _to,
         uint256 _amount
     ) internal virtual {}
-
 
 }
