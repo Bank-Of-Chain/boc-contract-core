@@ -323,16 +323,18 @@ interface IVault {
     /// @dev Exchange from '_fromToken' to '_toToken'
     /// @param _fromToken The token swap from
     /// @param _toToken The token swap to
-    /// @param _amount The amount to swap
-    /// @param _exchangeParam The struct of ExchangeParam, see {ExchangeParam} struct
-    /// @return _exchangeAmount The real amount to exchange
+    /// @param _fromAmount The amount to swap
+    /// @param _calldata exchange txData
+    /// @param _platform exchange platform,ie 1inch or para
+    /// @return _returnAmount The real amount to exchange
     /// Emits a {Exchange} event.
     function exchange(
         address _fromToken,
         address _toToken,
-        uint256 _amount,
-        IExchangeAggregator.ExchangeParam memory _exchangeParam
-    ) external returns (uint256);
+        uint256 _fromAmount,
+        bytes memory _calldata,
+        uint _platform
+    ) external returns (uint256 _returnAmount);
 
     /// @dev Report the current asset of strategy caller
     /// @param _strategies The address list of strategies to report
@@ -505,13 +507,19 @@ interface IVault {
     function setAdminImpl(address _newImpl) external;
 
     /// @notice check one asset is tracked or not
-    function isTrackedAssets(address _token) external returns(bool);
+    function isTrackedAssets(address _token) external returns (bool);
 
     /// @notice Sets the new target debts for multi strategies
-    function setStrategyTargetDebts(address[] memory _strategies, uint256[] memory _newTargetDebts) external;
-    
+    function setStrategyTargetDebts(
+        address[] memory _strategies,
+        uint256[] memory _newTargetDebts
+    ) external;
+
     /// @notice Increases the target debts for multi strategies
-    function increaseStrategyTargetDebts(address[] memory _strategies, uint256[] memory _addAmounts) external;
+    function increaseStrategyTargetDebts(
+        address[] memory _strategies,
+        uint256[] memory _addAmounts
+    ) external;
 
     /// @dev Exchange from '_fromToken' to '_toToken'
     /// @param _fromToken The token swap from
@@ -533,16 +541,20 @@ interface IVault {
     function valueOfTrackedTokensInVaultBuffer() external view returns (uint256);
 
     /// @notice Return 1inch router address
-    function oneInchRouter() external view returns(address);
+    function oneInchRouter() external view returns (address);
+
     /// @notice Return paraswap router address
-    function paraRouter() external view returns(address);
+    function paraRouter() external view returns (address);
+
     /// @notice Return paraswap transfer proxy address
-    function paraTransferProxy() external view returns(address);
+    function paraTransferProxy() external view returns (address);
 
     /// @notice Sets new 1inch router address
     function set1inchRouter(address _newRouter) external;
+
     /// @notice Sets new paraswap router address
     function setParaRouter(address _newRouter) external;
+
     /// @notice Sets new paraswap transfer proxy address
     function setParaTransferProxy(address _newRouter) external;
 }

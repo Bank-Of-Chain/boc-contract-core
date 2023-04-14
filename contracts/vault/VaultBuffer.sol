@@ -10,7 +10,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 // import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
 import "../library/IterableUintMap.sol";
-import "../library/StableMath.sol";
 import "../library/NativeToken.sol";
 import "./../access-control/AccessControlMixin.sol";
 import "./IVault.sol";
@@ -31,7 +30,6 @@ contract VaultBuffer is
     ReentrancyGuardUpgradeable,
     ExchangeHelper
 {
-    using StableMath for uint256;
     using IterableUintMap for IterableUintMap.AddressToUintMap;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -105,6 +103,16 @@ contract VaultBuffer is
     /// Requirement: only vault can call
     function mint(address _sender, uint256 _amount) external payable override onlyVault {
         _mint(_sender, _amount);
+    }
+
+    function exchange(
+        address _fromToken,
+        address _toToken,
+        uint256 _fromAmount,
+        bytes memory _calldata,
+        uint _platform
+    ) external isKeeperOrVaultOrGovOrDelegate returns (uint256 _returnAmount) {
+        return _exchange(_fromToken, _toToken, _fromAmount, _calldata, ExchangePlatform(_platform));
     }
 
     /// @dev Transfer all assets to vault, including ETH and ERC20 tokens

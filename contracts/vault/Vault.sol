@@ -4,18 +4,14 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "../library/StableMath.sol";
-
 import "./VaultStorage.sol";
-import "../exchanges/IExchangeAggregator.sol";
-
 import "../exchanges/ExchangeHelper.sol";
-
 
 /// @title Vault
 /// @notice Vault is the core of the BoC protocol
 /// @notice Vault stores and manages collateral funds of all positions
 /// @author Bank of Chain Protocol Inc
-contract Vault is VaultStorage, ExchangeHelper{
+contract Vault is VaultStorage, ExchangeHelper {
     using StableMath for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -33,7 +29,7 @@ contract Vault is VaultStorage, ExchangeHelper{
         _initAccessControl(_accessControlProxy);
 
         treasury = _treasury;
-        
+
         valueInterpreter = _valueInterpreter;
         vaultType = _valueType;
 
@@ -307,6 +303,16 @@ contract Vault is VaultStorage, ExchangeHelper{
         );
     }
 
+    function exchange(
+        address _fromToken,
+        address _toToken,
+        uint256 _fromAmount,
+        bytes memory _calldata,
+        uint _platform
+    ) external isKeeperOrVaultOrGovOrDelegate returns (uint256 _returnAmount) {
+        return _exchange(_fromToken, _toToken, _fromAmount, _calldata, ExchangePlatform(_platform));
+    }
+
     /// @notice Redeem the funds from specified strategy.
     /// @param  _strategy The specified strategy to redeem
     /// @param _amount The amount to redeem in USD
@@ -339,7 +345,7 @@ contract Vault is VaultStorage, ExchangeHelper{
         uint256 _thisWithdrawValue = (_nowStrategyTotalDebt * _amount) / _strategyAssetValue;
         strategies[_strategy].totalDebt = _nowStrategyTotalDebt - _thisWithdrawValue;
         totalDebt -= _thisWithdrawValue;
-        emit Redeem(_strategy, _amount, _assets, _amounts);  
+        emit Redeem(_strategy, _amount, _assets, _amounts);
     }
 
     /// @notice Allocate funds in Vault to strategies.
@@ -438,7 +444,12 @@ contract Vault is VaultStorage, ExchangeHelper{
             IStrategy(_strategyAddress).borrow{value: _ethAmount}(_wants, _amountsLocal);
             _deltaAssets = _report(_strategyAddress, _lendValue, 1);
             if (_minDeltaAssets > 0) {
-                require(_deltaAssets >= _minDeltaAssets || (_minDeltaAssets - _deltaAssets) * TEN_MILLION_BPS <= _minDeltaAssets * deltaThreshold, "not enough");
+                require(
+                    _deltaAssets >= _minDeltaAssets ||
+                        (_minDeltaAssets - _deltaAssets) * TEN_MILLION_BPS <=
+                        _minDeltaAssets * deltaThreshold,
+                    "not enough"
+                );
             }
         }
         emit LendToStrategy(_strategyAddress, _wants, _amountsLocal, _lendValue);
@@ -475,10 +486,7 @@ contract Vault is VaultStorage, ExchangeHelper{
     /// @dev Report the current asset of strategy caller
     /// Requirement: only the strategy caller is active
     /// Emits a {StrategyReported} event.
-    function report()
-        public
-        isActiveStrategy(msg.sender)
-    {
+    function report() public isActiveStrategy(msg.sender) {
         _report(msg.sender, 0, 0);
     }
 
@@ -1283,50 +1291,56 @@ contract Vault is VaultStorage, ExchangeHelper{
         }
     }
 
-    function setStrategyTargetDebts(address[] memory _strategies, uint256[] memory _newTargetDebts) external isKeeperOrVaultOrGovOrDelegate {
-        require(_strategies.length == _newTargetDebts.length,"Two lengths must be equal");
+    function setStrategyTargetDebts(
+        address[] memory _strategies,
+        uint256[] memory _newTargetDebts
+    ) external isKeeperOrVaultOrGovOrDelegate {
+        require(_strategies.length == _newTargetDebts.length, "Two lengths must be equal");
         uint256 _len = _strategies.length;
         uint256 _minStrategyTargetDebt = minStrategyTargetDebt;
-        for(uint256 i = 0; i<_len; i++) {
-            require(_newTargetDebts[i] >= _minStrategyTargetDebt,"NTDGTM");//The new target debt must greater than minimum strategy target debt
+        for (uint256 i = 0; i < _len; i++) {
+            require(_newTargetDebts[i] >= _minStrategyTargetDebt, "NTDGTM"); //The new target debt must greater than minimum strategy target debt
             StrategyParams storage strategyParams = strategies[_strategies[i]];
             strategyParams.targetDebt = _newTargetDebts[i];
         }
     }
 
-    function increaseStrategyTargetDebts(address[] memory _strategies, uint256[] memory _addAmounts) external isKeeperOrVaultOrGovOrDelegate {
-        require(_strategies.length == _addAmounts.length,"Two lengths must be equal");
+    function increaseStrategyTargetDebts(
+        address[] memory _strategies,
+        uint256[] memory _addAmounts
+    ) external isKeeperOrVaultOrGovOrDelegate {
+        require(_strategies.length == _addAmounts.length, "Two lengths must be equal");
         uint256 _len = _strategies.length;
         uint256 _minStrategyTargetDebt = minStrategyTargetDebt;
-        for(uint256 i = 0; i<_len; i++) {
+        for (uint256 i = 0; i < _len; i++) {
             StrategyParams storage strategyParams = strategies[_strategies[i]];
             strategyParams.targetDebt += _addAmounts[i];
-            require(strategyParams.targetDebt >= _minStrategyTargetDebt,"NTDGTM");//The new target debt must greater than minimum strategy target debt
+            require(strategyParams.targetDebt >= _minStrategyTargetDebt, "NTDGTM"); //The new target debt must greater than minimum strategy target debt
         }
     }
 
-    function isTrackedAssets(address _token) external returns(bool){
+    function isTrackedAssets(address _token) external view returns (bool) {
         return trackedAssetsMap.contains(_token);
     }
 
     /// @notice Vault holds asset value directly in USD(USDi)/ETH(ETHi)(1e18)
-    function valueOfTrackedTokensInVaultBuffer() public view  returns (uint256) {
+    function valueOfTrackedTokensInVaultBuffer() public view returns (uint256) {
         uint256 _valueOfTrackedTokensIncludeVaultBuffer = valueOfTrackedTokensIncludeVaultBuffer();
         uint256 _valueOfTrackedTokensInVault = valueOfTrackedTokens();
-        if(_valueOfTrackedTokensIncludeVaultBuffer > _valueOfTrackedTokensInVault) {
+        if (_valueOfTrackedTokensIncludeVaultBuffer > _valueOfTrackedTokensInVault) {
             return _valueOfTrackedTokensIncludeVaultBuffer - _valueOfTrackedTokensInVault;
         }
         return 0;
     }
 
     /// @notice Gets token value transfered from vault buffer in USD(USDi)/ETH(ETHi)(1e18)
-    function getTransferValueFromVaultBuffer() internal view returns(uint256 _transferTotalValue){
+    function getTransferValueFromVaultBuffer() internal view returns (uint256 _transferTotalValue) {
         address[] memory _trackedAssets = _getTrackedAssets();
         uint256 _trackedAssetsLength = _trackedAssets.length;
-    
+
         uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
         uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
-        
+
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
             _transferTotalValue =
@@ -1343,13 +1357,13 @@ contract Vault is VaultStorage, ExchangeHelper{
     }
 
     /// @notice Gets pegged token value holded by vault buffer in USD(USDi)/ETH(ETHi)(1e18)
-    function getPegTokenValueOfVaultBuffer() internal view returns(uint256) {
+    function getPegTokenValueOfVaultBuffer() internal view returns (uint256) {
         address _pegToken = pegTokenAddress;
         uint256 _balance = IPegToken(_pegToken).balanceOf(vaultBufferAddress);
         uint256 _assetDecimal = IPegToken(_pegToken).decimals();
         uint256 _pegTokenPrice = getPegTokenPrice();
 
-        return _balance.mulTruncateScale(_pegTokenPrice, 10**_assetDecimal);
+        return _balance.mulTruncateScale(_pegTokenPrice, 10 ** _assetDecimal);
     }
 
     /// @dev Calculate total value of all assets held in VaultBuffer.
