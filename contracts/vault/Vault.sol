@@ -55,10 +55,6 @@ contract Vault is VaultStorage, ExchangeHelper{
             minCheckedStrategyTotalDebt = 1000e18;
             minStrategyTargetDebt = 2000e18;
         }
-
-        oneInchRouter = 0x1111111254EEB25477B68fb85Ed929f73A960582;
-        paraRouter = 0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57;
-        paraTransferProxy = 0x216B4B4Ba9F3e719726886d34a177484278Bfcae;
     }
 
     modifier whenNotEmergency() {

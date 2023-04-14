@@ -737,6 +737,54 @@ contract VaultTest is Test {
 
     }
 
+    function testSetExchangeRouter() public {
+        address oneInchRouter = 0x1111111254EEB25477B68fb85Ed929f73A960582;
+        address paraRouter = 0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57;
+        address paraTransferProxy = 0x216B4B4Ba9F3e719726886d34a177484278Bfcae;
+        testAddAndRemoveAssets();
+        testAddAndRemoveStrategies();
+        assertEq(iVault.oneInchRouter(), oneInchRouter);
+        assertEq(iVault.paraRouter(), paraRouter);
+        assertEq(iVault.paraTransferProxy(), paraTransferProxy);
+
+        vm.startPrank(GOVERNANOR);
+        address newRouter = address(mock3CoinStrategy);
+        
+        iVault.set1inchRouter(newRouter);
+        iVault.setParaRouter(newRouter);
+        iVault.setParaTransferProxy(newRouter);
+
+        assertEq(iVault.oneInchRouter(), newRouter);
+        assertEq(iVault.paraRouter(), newRouter);
+        assertEq(iVault.paraTransferProxy(), newRouter);
+        
+        vm.stopPrank();
+    }
+
+    function testFailSetExchangeRouter() public {
+        testAddAndRemoveAssets();
+        testAddAndRemoveStrategies();
+
+        //check access control
+        vm.startPrank(USER);
+        address newRouter = address(mock3CoinStrategy);
+        iVault.set1inchRouter(newRouter);
+        iVault.setParaRouter(newRouter);
+        iVault.setParaTransferProxy(newRouter);
+        
+        vm.stopPrank();
+
+        //check non zero address
+        vm.startPrank(GOVERNANOR);
+        address ZERO_ADDRESS = address(0);
+        
+        iVault.set1inchRouter(ZERO_ADDRESS);
+        iVault.setParaRouter(ZERO_ADDRESS);
+        iVault.setParaTransferProxy(ZERO_ADDRESS);
+        
+        vm.stopPrank();
+    }
+
     function testSetAndIncreaseStrategyTargetDebtsWithETHi() public {
 
         testAddAndRemoveAssetsWithETHi();

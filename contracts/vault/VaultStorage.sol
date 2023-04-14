@@ -307,4 +307,11 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         }
     }
 
+    /// @dev set the minium strategy target debt
+    /// @param _newMinTargetDebt The new minium strategy target debt
+    /// Requirements: only keeper, governance or delegate role can call
+    function setMinStrategyTargetDebt(uint256 _newMinTargetDebt) external isKeeperOrVaultOrGovOrDelegate {
+        minStrategyTargetDebt = _newMinTargetDebt;
+    }
+
 }

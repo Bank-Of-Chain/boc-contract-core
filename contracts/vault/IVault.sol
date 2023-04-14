@@ -531,4 +531,18 @@ interface IVault {
 
     /// @notice Vault holds asset value directly in USD(USDi)/ETH(ETHi)(1e18)
     function valueOfTrackedTokensInVaultBuffer() external view returns (uint256);
+
+    /// @notice Return 1inch router address
+    function oneInchRouter() external view returns(address);
+    /// @notice Return paraswap router address
+    function paraRouter() external view returns(address);
+    /// @notice Return paraswap transfer proxy address
+    function paraTransferProxy() external view returns(address);
+
+    /// @notice Sets new 1inch router address
+    function set1inchRouter(address _newRouter) external;
+    /// @notice Sets new paraswap router address
+    function setParaRouter(address _newRouter) external;
+    /// @notice Sets new paraswap transfer proxy address
+    function setParaTransferProxy(address _newRouter) external;
 }

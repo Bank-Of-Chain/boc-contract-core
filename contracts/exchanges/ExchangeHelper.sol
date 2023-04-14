@@ -17,6 +17,13 @@ abstract contract ExchangeHelper is AccessControlMixin {
     /// @notice The paraswap transfer proxy contract address
     address public paraTransferProxy;
 
+    constructor() {
+        
+        oneInchRouter = 0x1111111254EEB25477B68fb85Ed929f73A960582;
+        paraRouter = 0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57;
+        paraTransferProxy = 0x216B4B4Ba9F3e719726886d34a177484278Bfcae;
+    }
+
     /// @param  _platform The platform used for the exchange
     /// @param _srcAsset The address of asset exchange from 
     /// @param _srcAmount The amount of asset exchange from 
@@ -81,7 +88,7 @@ abstract contract ExchangeHelper is AccessControlMixin {
         bytes memory _result;
 
         uint256 beforeBalOfToToken = _balanceOfToken(_toToken, address(this));
-        if (_fromToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
+        if (_fromToken == NativeToken.NATIVE_TOKEN) {
             (_success, _result) = payable(_oneInchRouter).call{value: _fromAmount}(_calldata);
         } else {
             IERC20Upgradeable(_fromToken).safeApprove(_oneInchRouter, 0);
@@ -89,11 +96,11 @@ abstract contract ExchangeHelper is AccessControlMixin {
             (_success, _result) = _oneInchRouter.call(_calldata);
 
         }
-        uint256 afterBalOfToToken = _balanceOfToken(_toToken, address(this));
-
+        
         if (!_success) {
             revert(RevertReasonParser.parse(_result, "1inch V4 swap failed: "));
         } else {
+            uint256 afterBalOfToToken = _balanceOfToken(_toToken, address(this));
             _returnAmount = afterBalOfToToken - beforeBalOfToToken;
         }
 
@@ -114,7 +121,7 @@ abstract contract ExchangeHelper is AccessControlMixin {
         bytes memory _result;
 
         uint256 beforeBalOfToToken = _balanceOfToken(_toToken, address(this));
-        if (_fromToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
+        if (_fromToken == NativeToken.NATIVE_TOKEN) {
             (_success, _result) = payable(_paraRouter).call{value: _fromAmount}(_calldata);
         } else {
             IERC20Upgradeable(_fromToken).safeApprove(_paraTransferProxy, 0);
