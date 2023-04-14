@@ -10,7 +10,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 // import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
 import "../library/IterableUintMap.sol";
-import "../library/StableMath.sol";
 import "../library/NativeToken.sol";
 import "./../access-control/AccessControlMixin.sol";
 import "./IVault.sol";
@@ -31,7 +30,6 @@ contract VaultBuffer is
     ReentrancyGuardUpgradeable,
     ExchangeHelper
 {
-    using StableMath for uint256;
     using IterableUintMap for IterableUintMap.AddressToUintMap;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -107,15 +105,24 @@ contract VaultBuffer is
         _mint(_sender, _amount);
     }
 
+    function exchange(
+        address _fromToken,
+        address _toToken,
+        uint256 _fromAmount,
+        bytes memory _calldata,
+        uint _platform
+    ) external isKeeperOrVaultOrGovOrDelegate returns (uint256 _returnAmount) {
+        return _exchange(_fromToken, _toToken, _fromAmount, _calldata, ExchangePlatform(_platform));
+    }
+
     /// @dev Transfer all assets to vault, including ETH and ERC20 tokens
     /// @param _assets The address list of multi assets to transfer
     /// @param _amounts the amount list of `_assets` to transfer
     /// Requirement: only vault can call
-    function transferCashToVault(address[] memory _assets, uint256[] memory _amounts)
-        external
-        override
-        onlyVault
-    {
+    function transferCashToVault(
+        address[] memory _assets,
+        uint256[] memory _amounts
+    ) external override onlyVault {
         uint256 _len = _assets.length;
         for (uint256 i = 0; i < _len; i++) {
             uint256 amount = _amounts[i];
@@ -144,7 +151,12 @@ contract VaultBuffer is
 
     /// Requirement: only keeper can call
     /// @inheritdoc IVaultBuffer
-    function distributeWhenDistributing() external override isKeeperOrVaultOrGovOrDelegate returns (bool) {
+    function distributeWhenDistributing()
+        external
+        override
+        isKeeperOrVaultOrGovOrDelegate
+        returns (bool)
+    {
         assert(!IVault(vault).adjustPositionPeriod());
         bool _result = _distribute();
         if (!_result) {
@@ -196,7 +208,6 @@ contract VaultBuffer is
                 _pegToken.safeTransfer(_account, _transferAmount);
                 _burn(_account, _share);
             }
-
         }
 
         return mBalances.length() != 0;
@@ -321,15 +332,9 @@ contract VaultBuffer is
     /// - `from` cannot be the zero address.
     /// - `to` cannot be the zero address.
     /// - `from` must have a balance of at least `amount`.
-    function _transfer(
-        address _from,
-        address _to,
-        uint256 _amount
-    ) internal virtual {
+    function _transfer(address _from, address _to, uint256 _amount) internal virtual {
         require(_from != address(0), "ERC20: transfer from the zero address");
         require(_to != address(0), "ERC20: transfer to the zero address");
-
-        _beforeTokenTransfer(_from, _to, _amount);
 
         uint256 _fromBalance = mBalances.get(_from);
         require(_fromBalance >= _amount, "ERC20: transfer amount exceeds balance");
@@ -344,8 +349,6 @@ contract VaultBuffer is
         mBalances.plus(_to, _amount);
 
         emit Transfer(_from, _to, _amount);
-
-        _afterTokenTransfer(_from, _to, _amount);
     }
 
     ///  @dev Creates `amount` tokens and assigns them to `account`, increasing
@@ -356,13 +359,9 @@ contract VaultBuffer is
     function _mint(address _account, uint256 _amount) internal virtual {
         require(_account != address(0), "ERC20: mint to the zero address");
 
-        _beforeTokenTransfer(address(0), _account, _amount);
-
         mTotalSupply += _amount;
         mBalances.plus(_account, _amount);
         emit Transfer(address(0), _account, _amount);
-
-        _afterTokenTransfer(address(0), _account, _amount);
     }
 
     /// @dev Destroys `amount` tokens from `account`, reducing the
@@ -373,8 +372,6 @@ contract VaultBuffer is
     /// - `account` must have at least `amount` tokens.
     function _burn(address _account, uint256 _amount) internal virtual {
         require(_account != address(0), "ERC20: burn from the zero address");
-
-        _beforeTokenTransfer(_account, address(0), _amount);
 
         uint256 accountBalance = mBalances.get(_account);
         require(accountBalance >= _amount, "ERC20: burn amount exceeds balance");
@@ -389,8 +386,6 @@ contract VaultBuffer is
         mTotalSupply -= _amount;
 
         emit Transfer(_account, address(0), _amount);
-
-        _afterTokenTransfer(_account, address(0), _amount);
     }
 
     /// @dev Sets `amount` as the allowance of `spender` over the `owner` s tokens.
@@ -400,11 +395,7 @@ contract VaultBuffer is
     /// Requirements:
     /// - `owner` cannot be the zero address.
     /// - `spender` cannot be the zero address.
-    function _approve(
-        address _owner,
-        address _spender,
-        uint256 _amount
-    ) internal virtual {
+    function _approve(address _owner, address _spender, uint256 _amount) internal virtual {
         require(_owner != address(0), "ERC20: approve from the zero address");
         require(_spender != address(0), "ERC20: approve to the zero address");
 
@@ -416,11 +407,7 @@ contract VaultBuffer is
     /// Does not update the allowance amount in case of infinite allowance.
     /// Revert if not enough allowance is available.
     /// Might emit an {Approval} event.
-    function _spendAllowance(
-        address _owner,
-        address _spender,
-        uint256 _amount
-    ) internal virtual {
+    function _spendAllowance(address _owner, address _spender, uint256 _amount) internal virtual {
         uint256 _currentAllowance = allowance(_owner, _spender);
         if (_currentAllowance != type(uint256).max) {
             require(_currentAllowance >= _amount, "ERC20: insufficient allowance");
@@ -429,35 +416,4 @@ contract VaultBuffer is
             }
         }
     }
-
-    /// @dev Hook that is called before any transfer of tokens. This includes
-    /// minting and burning.
-    /// Calling conditions:
-    /// - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
-    /// will be transferred to `to`.
-    /// - when `from` is zero, `amount` tokens will be minted for `to`.
-    /// - when `to` is zero, `amount` of ``from``'s tokens will be burned.
-    /// - `from` and `to` are never both zero.
-    /// To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
-    function _beforeTokenTransfer(
-        address _from,
-        address _to,
-        uint256 _amount
-    ) internal virtual {}
-
-    /// @dev Hook that is called after any transfer of tokens. This includes
-    /// minting and burning.
-    /// Calling conditions:
-    /// - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
-    /// has been transferred to `to`.
-    /// - when `from` is zero, `amount` tokens have been minted for `to`.
-    /// - when `to` is zero, `amount` of ``from``'s tokens have been burned.
-    /// - `from` and `to` are never both zero.
-    /// To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
-    function _afterTokenTransfer(
-        address _from,
-        address _to,
-        uint256 _amount
-    ) internal virtual {}
-
 }

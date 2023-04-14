@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-import "../exchanges/IExchangeAggregator.sol";
+import "./../exchanges/ExchangeHelper.sol";
 import "../library/IterableSellInfoMap.sol";
 
 /// @title IHarvester interface
@@ -25,7 +25,7 @@ interface IHarvester {
         address _recipient
     );
 
-    /// @param _strategy The collect reward strategy 
+    /// @param _strategy The collect reward strategy
     /// @param _platforms Called exchange platforms
     /// @param _fromTokens The token swap from
     /// @param _fromAmounts The amount In to swap
@@ -33,7 +33,7 @@ interface IHarvester {
     /// @param _toToken The token swap to
     event Exchange(
         address _strategy,
-        address[] _platforms,
+        ExchangeHelper.ExchangePlatform[] _platforms,
         address[] _fromTokens,
         uint256[] _fromAmounts,
         uint256[] _exchangeAmounts,
@@ -42,7 +42,10 @@ interface IHarvester {
 
     function strategiesLength(address _vault) external view returns (uint256 _length);
 
-    function findItem(address _vault, uint256 _index) external view returns (IterableSellInfoMap.SellInfo memory _sellInfo);
+    function findItem(
+        address _vault,
+        uint256 _index
+    ) external view returns (IterableSellInfoMap.SellInfo memory _sellInfo);
 
     /// @notice Recover tokens stuck in contract, i.e. transfer by mistaken.
     /// @dev Transfer token to governor.
@@ -62,10 +65,10 @@ interface IHarvester {
     /// @notice Exchange strategy's reward token to sellTo,and send to recipient
     /// @param _vault The vault of the strategy
     /// @param _strategy The target strategy
-    /// @param _exchangeTokens The exchange info
+    /// @param _exchangeParams The exchange info
     function exchangeStrategyReward(
         address _vault,
         address _strategy,
-        IExchangeAggregator.ExchangeToken[] calldata _exchangeTokens
+        ExchangeHelper.ExchangeParams[] calldata _exchangeParams
     ) external;
 }
