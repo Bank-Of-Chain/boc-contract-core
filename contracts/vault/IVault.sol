@@ -13,6 +13,7 @@ interface IVault {
     /// @param lossLimitRatio The limited ratio for loss
     /// @param enforceChangeLimit The switch of enforce change Limit
     /// @param lastClaim The last claim timestamp
+    /// @param targetDebt The max target debt
     struct StrategyParams {
         uint256 lastReport;
         uint256 totalDebt;
@@ -20,15 +21,18 @@ interface IVault {
         uint256 lossLimitRatio;
         bool enforceChangeLimit;
         uint256 lastClaim;
+        uint256 targetDebt;
     }
 
     /// @param strategy The new strategy to add
     /// @param profitLimitRatio The limited ratio of profit
     /// @param lossLimitRatio The limited ratio for loss
+    /// @param targetDebt The max target debt
     struct StrategyAdd {
         address strategy;
         uint256 profitLimitRatio;
         uint256 lossLimitRatio;
+        uint256 targetDebt;
     }
 
     /// @param _asset The new asset to add
@@ -499,4 +503,46 @@ interface IVault {
 
     /// @notice Sets the new implement contract address
     function setAdminImpl(address _newImpl) external;
+
+    /// @notice check one asset is tracked or not
+    function isTrackedAssets(address _token) external returns(bool);
+
+    /// @notice Sets the new target debts for multi strategies
+    function setStrategyTargetDebts(address[] memory _strategies, uint256[] memory _newTargetDebts) external;
+    
+    /// @notice Increases the target debts for multi strategies
+    function increaseStrategyTargetDebts(address[] memory _strategies, uint256[] memory _addAmounts) external;
+
+    /// @dev Exchange from '_fromToken' to '_toToken'
+    /// @param _fromToken The token swap from
+    /// @param _toToken The token swap to
+    /// @param _fromAmount The amount of `_fromToken` to swap
+    /// @param _platformType The different platform, 0 =>1Inch,1 =>paraswap
+    /// @return _success The exchange is success or fail
+    /// @return _returnAmount The return amount of `_toToken`
+    /// Emits a {Exchange} event.
+    function exchange(
+        address _fromToken,
+        address _toToken,
+        uint256 _fromAmount,
+        bytes calldata _calldata,
+        uint16 _platformType
+    ) external payable returns (bool _success, uint256 _returnAmount);
+
+    /// @notice Vault holds asset value directly in USD(USDi)/ETH(ETHi)(1e18)
+    function valueOfTrackedTokensInVaultBuffer() external view returns (uint256);
+
+    /// @notice Return 1inch router address
+    function oneInchRouter() external view returns(address);
+    /// @notice Return paraswap router address
+    function paraRouter() external view returns(address);
+    /// @notice Return paraswap transfer proxy address
+    function paraTransferProxy() external view returns(address);
+
+    /// @notice Sets new 1inch router address
+    function set1inchRouter(address _newRouter) external;
+    /// @notice Sets new paraswap router address
+    function setParaRouter(address _newRouter) external;
+    /// @notice Sets new paraswap transfer proxy address
+    function setParaTransferProxy(address _newRouter) external;
 }
