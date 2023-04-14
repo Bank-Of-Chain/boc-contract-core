@@ -2,7 +2,6 @@
 
 pragma solidity 0.8.17;
 
-import "brain-forge-std/Test.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "../library/StableMath.sol";
 
@@ -1287,8 +1286,9 @@ contract Vault is VaultStorage, ExchangeHelper{
     function setStrategyTargetDebts(address[] memory _strategies, uint256[] memory _newTargetDebts) external isKeeperOrVaultOrGovOrDelegate {
         require(_strategies.length == _newTargetDebts.length,"Two lengths must be equal");
         uint256 _len = _strategies.length;
+        uint256 _minStrategyTargetDebt = minStrategyTargetDebt;
         for(uint256 i = 0; i<_len; i++) {
-            require(_newTargetDebts[i] >= minStrategyTargetDebt,"NTDGTM");//The new target debt must greater than minimum strategy target debt
+            require(_newTargetDebts[i] >= _minStrategyTargetDebt,"NTDGTM");//The new target debt must greater than minimum strategy target debt
             StrategyParams storage strategyParams = strategies[_strategies[i]];
             strategyParams.targetDebt = _newTargetDebts[i];
         }
@@ -1297,10 +1297,11 @@ contract Vault is VaultStorage, ExchangeHelper{
     function increaseStrategyTargetDebts(address[] memory _strategies, uint256[] memory _addAmounts) external isKeeperOrVaultOrGovOrDelegate {
         require(_strategies.length == _addAmounts.length,"Two lengths must be equal");
         uint256 _len = _strategies.length;
+        uint256 _minStrategyTargetDebt = minStrategyTargetDebt;
         for(uint256 i = 0; i<_len; i++) {
             StrategyParams storage strategyParams = strategies[_strategies[i]];
             strategyParams.targetDebt += _addAmounts[i];
-            require(strategyParams.targetDebt >= minStrategyTargetDebt,"NTDGTM");//The new target debt must greater than minimum strategy target debt
+            require(strategyParams.targetDebt >= _minStrategyTargetDebt,"NTDGTM");//The new target debt must greater than minimum strategy target debt
         }
     }
 
@@ -1310,8 +1311,10 @@ contract Vault is VaultStorage, ExchangeHelper{
 
     /// @notice Vault holds asset value directly in USD(USDi)/ETH(ETHi)(1e18)
     function valueOfTrackedTokensInVaultBuffer() public view  returns (uint256) {
-        if(valueOfTrackedTokensIncludeVaultBuffer() > valueOfTrackedTokens()) {
-            return valueOfTrackedTokensIncludeVaultBuffer() - valueOfTrackedTokens();
+        uint256 _valueOfTrackedTokensIncludeVaultBuffer = valueOfTrackedTokensIncludeVaultBuffer();
+        uint256 _valueOfTrackedTokensInVault = valueOfTrackedTokens();
+        if(_valueOfTrackedTokensIncludeVaultBuffer > _valueOfTrackedTokensInVault) {
+            return _valueOfTrackedTokensIncludeVaultBuffer - _valueOfTrackedTokensInVault;
         }
         return 0;
     }
@@ -1341,8 +1344,9 @@ contract Vault is VaultStorage, ExchangeHelper{
 
     /// @notice Gets pegged token value holded by vault buffer in USD(USDi)/ETH(ETHi)(1e18)
     function getPegTokenValueOfVaultBuffer() internal view returns(uint256) {
-        uint256 _balance = IPegToken(pegTokenAddress).balanceOf(vaultBufferAddress);
-        uint256 _assetDecimal = IPegToken(pegTokenAddress).decimals();
+        address _pegToken = pegTokenAddress;
+        uint256 _balance = IPegToken(_pegToken).balanceOf(vaultBufferAddress);
+        uint256 _assetDecimal = IPegToken(_pegToken).decimals();
         uint256 _pegTokenPrice = getPegTokenPrice();
 
         return _balance.mulTruncateScale(_pegTokenPrice, 10**_assetDecimal);

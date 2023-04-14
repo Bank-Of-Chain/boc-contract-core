@@ -18,7 +18,6 @@ abstract contract ExchangeHelper is AccessControlMixin {
     address public paraTransferProxy;
 
     constructor() {
-        
         oneInchRouter = 0x1111111254EEB25477B68fb85Ed929f73A960582;
         paraRouter = 0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57;
         paraTransferProxy = 0x216B4B4Ba9F3e719726886d34a177484278Bfcae;
@@ -56,6 +55,8 @@ abstract contract ExchangeHelper is AccessControlMixin {
             // use paraswap platform
             (_success,_returnAmount) = exchangeOnPara(paraRouter, paraTransferProxy,_fromToken, _toToken, _fromAmount, _calldata);
             platform = paraRouter;
+        }else {
+            revert("Invalid platform");
         }
         emit Exchange(platform, _fromToken, _fromAmount, _toToken, _returnAmount);
     }
@@ -98,7 +99,7 @@ abstract contract ExchangeHelper is AccessControlMixin {
         }
         
         if (!_success) {
-            revert(RevertReasonParser.parse(_result, "1inch V4 swap failed: "));
+            revert(RevertReasonParser.parse(_result, "1inch swap failed: "));
         } else {
             uint256 afterBalOfToToken = _balanceOfToken(_toToken, address(this));
             _returnAmount = afterBalOfToToken - beforeBalOfToToken;
