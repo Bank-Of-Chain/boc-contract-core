@@ -131,6 +131,7 @@ const axiosInstance = axios.create({ baseURL: baseURL });
 
 async function getQuote(fromAsset, toAsset, amount,) {
     try {
+        //console.log("====",`quote?fromTokenAddress=${fromAsset}&toTokenAddress=${toAsset}&amount=${amount}`);
         const rep = await axiosInstance.get(`quote?fromTokenAddress=${fromAsset}&toTokenAddress=${toAsset}&amount=${amount}`);
         return rep.data;
     } catch (e) {
@@ -140,6 +141,7 @@ async function getQuote(fromAsset, toAsset, amount,) {
 
 async function buildSwapInfo(fromAddress, fromAsset, toAsset, amount, slippage) {
     try {
+        //console.log("====",`swap?fromAddress=${fromAddress}&fromTokenAddress=${fromAsset}&toTokenAddress=${toAsset}&amount=${amount}&slippage=${slippage}&disableEstimate=true&allowPartialFill=true`);
         const rep = await axiosInstance.get(`swap?fromAddress=${fromAddress}&fromTokenAddress=${fromAsset}&toTokenAddress=${toAsset}&amount=${amount}&slippage=${slippage}&disableEstimate=true&allowPartialFill=true`);
         return rep.data;
     } catch (error) {
@@ -171,12 +173,18 @@ async function swap(contractAccount, from, to, platformType) {
         }
     }
 
-    const vault = await Vault.at(contractAccount);
-    await vault.exchange(from, to, fromAmount.toString(), swapInfo.tx.data,platformType);
+    const provider = ethers.provider;
+    let vault = new ethers.Contract(contractAccount, Vault.abi, provider);
+    let returnAmount = await vault.callStatic.exchange(from, to, fromAmount.toString(), swapInfo.tx.data,platformType);
+    console.log("returnAmount is ===",returnAmount.toString());
+
+    vault = await Vault.at(contractAccount);
+    let tx = await vault.exchange(from, to, fromAmount.toString(), swapInfo.tx.data,platformType);
+
 
     console.log('after swap %s:%s,%s:%s', fromSymbol,
         await balanceOf(from, contractAccount),
-        toSymbol,
+        'USDT',
         await balanceOf(to, contractAccount));
 }
 
@@ -479,7 +487,7 @@ describe("Vault", function () {
 
         console.log('vault Buffer');
         vaultBuffer = await VaultBuffer.new();
-        await vaultBuffer.initialize('USD Peg Token Ticket', 'tUSDi', vault.address, pegToken.address,accessControlProxy.address,valueInterpreter.address);
+        await vaultBuffer.initialize('USD Peg Token Ticket', 'tUSDi', vault.address, pegToken.address,accessControlProxy.address);
 
         console.log('deploy Treasury');
         // treasury
@@ -492,7 +500,7 @@ describe("Vault", function () {
 
         const harvester = await Harvester.new();
         
-        await harvester.initialize(accessControlProxy.address, treasury.address, exchangeAggregator.address, vault.address,vault.address);
+        await harvester.initialize(accessControlProxy.address, treasury.address, vault.address,vault.address);
 
         console.log("USDT_PRICE:", new BigNumber(await valueInterpreter.price(MFC.USDT_ADDRESS)).toFixed());
         console.log("USDT_CALC:", new BigNumber(await valueInterpreter.calcCanonicalAssetValueInUsd(MFC.USDT_ADDRESS, 10 ** 6)).toFixed());
@@ -921,7 +929,7 @@ describe("Vault", function () {
         Utils.assertBNEq(totalValueInStrategies, 0);
     });
 
-    it('Verify: exchange on 1inch', async function () {
+    it.only('Verify: exchange on 1inch', async function () {
         
         const exchangeTester = vault.address;
 
@@ -966,7 +974,7 @@ describe("Vault", function () {
         await swapOnPara(exchangeTester, tokenMap.cbETH, tokenMap.ETH,1);
     });
 
-    it.only('VaultBuffer Verify: exchange on Paraswap', async function () {
+    it('VaultBuffer Verify: exchange on Paraswap', async function () {
         
         const exchangeTester = vaultBuffer.address;
 
@@ -974,9 +982,9 @@ describe("Vault", function () {
         await sendEthers(exchangeTester, new BigNumber(200 * 10 ** 18));
 
         await swapOnPara(exchangeTester, tokenMap.ETH, tokenMap.USDT,1);
-        await swapOnPara(exchangeTester, tokenMap.USDT, tokenMap.USDC,1);
-        await swapOnPara(exchangeTester, tokenMap.USDC, tokenMap.DAI,1);
-        await swapOnPara(exchangeTester, tokenMap.DAI, tokenMap.GUSD,1);
+        await swapOnPara(exchangeTester, tokenMap.USDT, tokenMap.DAI,1);
+        await swapOnPara(exchangeTester, tokenMap.DAI,tokenMap.USDC,1);
+        await swapOnPara(exchangeTester, tokenMap.USDC, tokenMap.GUSD,1);
         await swapOnPara(exchangeTester, tokenMap.GUSD, tokenMap.LUSD,1);
         await swapOnPara(exchangeTester, tokenMap.LUSD, tokenMap.ETH,1);
         await swapOnPara(exchangeTester, tokenMap.ETH, tokenMap.stETH,1);
