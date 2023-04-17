@@ -45,10 +45,8 @@ contract Vault is VaultStorage, ExchangeHelper {
         //ETHi
         if (_valueType > 0) {
             minCheckedStrategyTotalDebt = 1e17;
-            minStrategyTargetDebt = 1e18;
         } else {
             minCheckedStrategyTotalDebt = 1000e18;
-            minStrategyTargetDebt = 2000e18;
         }
     }
 
@@ -1297,9 +1295,7 @@ contract Vault is VaultStorage, ExchangeHelper {
     ) external isKeeperOrVaultOrGovOrDelegate {
         require(_strategies.length == _newTargetDebts.length, "Two lengths must be equal");
         uint256 _len = _strategies.length;
-        uint256 _minStrategyTargetDebt = minStrategyTargetDebt;
         for (uint256 i = 0; i < _len; i++) {
-            require(_newTargetDebts[i] >= _minStrategyTargetDebt, "NTDGTM"); //The new target debt must greater than minimum strategy target debt
             StrategyParams storage strategyParams = strategies[_strategies[i]];
             strategyParams.targetDebt = _newTargetDebts[i];
         }
@@ -1311,11 +1307,9 @@ contract Vault is VaultStorage, ExchangeHelper {
     ) external isKeeperOrVaultOrGovOrDelegate {
         require(_strategies.length == _addAmounts.length, "Two lengths must be equal");
         uint256 _len = _strategies.length;
-        uint256 _minStrategyTargetDebt = minStrategyTargetDebt;
         for (uint256 i = 0; i < _len; i++) {
             StrategyParams storage strategyParams = strategies[_strategies[i]];
             strategyParams.targetDebt += _addAmounts[i];
-            require(strategyParams.targetDebt >= _minStrategyTargetDebt, "NTDGTM"); //The new target debt must greater than minimum strategy target debt
         }
     }
 
