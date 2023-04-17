@@ -720,15 +720,6 @@ contract VaultTest is Test {
 
         vm.stopPrank();
 
-        vm.startPrank(GOVERNANOR);
-        newTargetDebts[0] = 1e18;// < minStrategyTargetDebt = 2000e18
-        newTargetDebts[1] = 5e18;// < minStrategyTargetDebt = 2000e18
-        iVault.setStrategyTargetDebts(strategies,newTargetDebts);//newTargetDebt < minStrategyTargetDebt => Fail
-
-        iVault.increaseStrategyTargetDebts(strategies,newTargetDebts);//newTargetDebt < minStrategyTargetDebt => Fail
-
-        vm.stopPrank();
-
     }
 
     function testSetExchangeRouter() public {

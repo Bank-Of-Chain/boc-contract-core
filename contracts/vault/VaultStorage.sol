@@ -293,9 +293,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
     bytes32 internal constant ADMIN_IMPL_POSITION =
     0x3d78d3961e16fde088e2e26c1cfa163f5f8bb870709088dd68c87eb4091137e2;
 
-    /// @notice Minimum strategy target debt that will be checked when set strategy target debt
-    uint256 public minStrategyTargetDebt;
-
     /// @dev set the implementation for the admin, this needs to be in a base class else we cannot set it
     /// @param _newImpl address of the implementation
     /// Requirements: only governance or delegate role can call
@@ -305,13 +302,6 @@ contract VaultStorage is Initializable, ReentrancyGuardUpgradeable, AccessContro
         assembly {
             sstore(_position, _newImpl)
         }
-    }
-
-    /// @dev set the minium strategy target debt
-    /// @param _newMinTargetDebt The new minium strategy target debt
-    /// Requirements: only keeper, governance or delegate role can call
-    function setMinStrategyTargetDebt(uint256 _newMinTargetDebt) external isKeeperOrVaultOrGovOrDelegate {
-        minStrategyTargetDebt = _newMinTargetDebt;
     }
 
 }
