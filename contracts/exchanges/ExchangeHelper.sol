@@ -43,7 +43,7 @@ abstract contract ExchangeHelper is Initializable, AccessControlMixin {
         uint256 _distAmount
     );
 
-    function __InitializeRouters() internal onlyInitializing {
+    function __InitializeRouters() internal {
         oneInchRouter = 0x1111111254EEB25477B68fb85Ed929f73A960582;
         paraRouter = 0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57;
         paraTransferProxy = 0x216B4B4Ba9F3e719726886d34a177484278Bfcae;
