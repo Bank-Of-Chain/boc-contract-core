@@ -26,6 +26,7 @@ contract Vault is VaultStorage, ExchangeHelper {
         address _valueInterpreter,
         uint256 _valueType
     ) public initializer {
+        __InitializeRouters();
         _initAccessControl(_accessControlProxy);
 
         treasury = _treasury;

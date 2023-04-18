@@ -14,7 +14,7 @@ import "./../strategy/IClaimableStrategy.sol";
 /// @title Harvester
 /// @notice Harvester for function used by keeper
 /// @author Bank of Chain Protocol Inc
-contract Harvester is IHarvester, ExchangeHelper, Initializable {
+contract Harvester is IHarvester, ExchangeHelper {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using IterableSellInfoMap for IterableSellInfoMap.AddressToSellInfoMap;
 
@@ -49,6 +49,9 @@ contract Harvester is IHarvester, ExchangeHelper, Initializable {
         treasuryAddress = _treasury;
         usdVaultAddress = _usdVault;
         ethVaultAddress = _ethVault;
+
+        __InitializeRouters();
+
         _initAccessControl(_accessControlProxy);
     }
 

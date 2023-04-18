@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.17;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../library/RevertReasonParser.sol";
 import "../library/NativeToken.sol";
 import "../access-control/AccessControlMixin.sol";
 
-abstract contract ExchangeHelper is AccessControlMixin {
+abstract contract ExchangeHelper is Initializable, AccessControlMixin {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     enum ExchangePlatform {
@@ -29,12 +30,6 @@ abstract contract ExchangeHelper is AccessControlMixin {
     /// @notice The paraswap transfer proxy contract address
     address public paraTransferProxy;
 
-    constructor() {
-        oneInchRouter = 0x1111111254EEB25477B68fb85Ed929f73A960582;
-        paraRouter = 0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57;
-        paraTransferProxy = 0x216B4B4Ba9F3e719726886d34a177484278Bfcae;
-    }
-
     /// @param  _platform The platform used for the exchange
     /// @param _srcAsset The address of asset exchange from
     /// @param _srcAmount The amount of asset exchange from
@@ -47,6 +42,12 @@ abstract contract ExchangeHelper is AccessControlMixin {
         address _distAsset,
         uint256 _distAmount
     );
+
+    function __InitializeRouters() internal onlyInitializing {
+        oneInchRouter = 0x1111111254EEB25477B68fb85Ed929f73A960582;
+        paraRouter = 0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57;
+        paraTransferProxy = 0x216B4B4Ba9F3e719726886d34a177484278Bfcae;
+    }
 
     function _exchange(
         address _fromToken,
