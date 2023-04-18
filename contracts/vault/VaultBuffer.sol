@@ -77,6 +77,8 @@ contract VaultBuffer is
         address _pegTokenAddr,
         address _accessControlProxy
     ) external initializer {
+        __InitializeRouters();
+        
         mName = _name;
         mSymbol = _symbol;
         vault = _vault;
