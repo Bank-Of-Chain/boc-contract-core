@@ -70,5 +70,5 @@ interface IHarvester {
         address _vault,
         address _strategy,
         ExchangeHelper.ExchangeParams[] calldata _exchangeParams
-    ) external;
+    ) external returns (uint256[] memory _receiveAmounts);
 }

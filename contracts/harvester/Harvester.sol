@@ -125,8 +125,8 @@ contract Harvester is IHarvester, ExchangeHelper {
         address _vault,
         address _strategy,
         ExchangeParams[] calldata _exchangeParams
-    ) external override isKeeperOrVaultOrGovOrDelegate {
-        _exchangeStrategyReward(_vault, _strategy, _exchangeParams);
+    ) external override isKeeperOrVaultOrGovOrDelegate returns (uint256[] memory _receiveAmounts) {
+        return _exchangeStrategyReward(_vault, _strategy, _exchangeParams);
     }
 
     function _collectStrategy(
@@ -170,7 +170,7 @@ contract Harvester is IHarvester, ExchangeHelper {
         address _vault,
         address _strategy,
         ExchangeHelper.ExchangeParams[] calldata _exchangeParams
-    ) internal {
+    ) internal returns (uint256[] memory _receiveAmounts) {
         require(_vault == usdVaultAddress || _vault == ethVaultAddress);
         IterableSellInfoMap.AddressToSellInfoMap storage strategies = _vault == usdVaultAddress
             ? usdStrategyCollection
@@ -181,6 +181,7 @@ contract Harvester is IHarvester, ExchangeHelper {
         ExchangeHelper.ExchangePlatform[] memory _platforms = new ExchangeHelper.ExchangePlatform[](
             exchangeRound
         );
+        _receiveAmounts = new uint256[](exchangeRound);
         address[] memory _fromTokens = new address[](exchangeRound);
         uint256[] memory _fromTokenAmounts = new uint256[](exchangeRound);
         uint256[] memory _toTokenAmounts = new uint256[](exchangeRound);
@@ -200,6 +201,7 @@ contract Harvester is IHarvester, ExchangeHelper {
                 _exchangeParam.txData,
                 _exchangeParam.platform
             );
+            _receiveAmounts[i] = _receiveAmount;
             // transfer token to recipient
             if (_exchangeParam.toToken == NativeToken.NATIVE_TOKEN) {
                 payable(sellInfo.recipient).transfer(_receiveAmount);
