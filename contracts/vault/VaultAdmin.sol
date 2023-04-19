@@ -323,8 +323,8 @@ contract VaultAdmin is VaultStorage {
             trackedAssetsMap.minus(_wantToken, 1);
             if (
                 trackedAssetsMap.get(_wantToken) <= 0 &&
-                balanceOfTokenByOwner(_wantToken, address(this)) < 1 &&
-                balanceOfTokenByOwner(_wantToken, _vaultBufferAddress) < 1
+                balanceOfTokenByOwner(_wantToken, address(this)) <= 1 &&
+                balanceOfTokenByOwner(_wantToken, _vaultBufferAddress) <= 1
             ) {
                 trackedAssetsMap.remove(_wantToken);
             }
