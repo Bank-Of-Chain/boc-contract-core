@@ -187,7 +187,9 @@ contract VaultAdmin is VaultStorage {
         assetSet.remove(_asset);
         trackedAssetsMap.minus(_asset, 1);
         if (
-            trackedAssetsMap.get(_asset) <= 0 && balanceOfTokenByOwner(_asset, address(this)) < 10
+            trackedAssetsMap.get(_asset) <= 0 &&
+            balanceOfTokenByOwner(_asset, address(this)) < 1 &&
+            balanceOfTokenByOwner(_asset, vaultBufferAddress) < 1
         ) {
             trackedAssetsMap.remove(_asset);
             delete trackedAssetDecimalsMap[_asset];
@@ -319,7 +321,8 @@ contract VaultAdmin is VaultStorage {
             trackedAssetsMap.minus(_wantToken, 1);
             if (
                 trackedAssetsMap.get(_wantToken) <= 0 &&
-                balanceOfTokenByOwner(_wantToken, address(this)) == 0
+                balanceOfTokenByOwner(_wantToken, address(this)) < 1 &&
+                balanceOfTokenByOwner(_wantToken, vaultBufferAddress) < 1
             ) {
                 trackedAssetsMap.remove(_wantToken);
             }

@@ -668,7 +668,7 @@ contract Vault is VaultStorage, ExchangeHelper {
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
             uint256 _balance;
-            if (_dealVaultBuffer && assetSet.contains(_trackedAsset)) {
+            if (_dealVaultBuffer) {
                 _balance = _balanceOfToken(_trackedAsset, _vaultBufferAddress);
                 if (_balance > 0) {
                     _transferAmounts[i] = _balance;
