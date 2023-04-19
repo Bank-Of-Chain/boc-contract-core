@@ -229,15 +229,15 @@ contract Vault is VaultStorage, ExchangeHelper {
         if (_minimumAmount > 0) {
             require(_shareAmount >= _minimumAmount, "RLTM"); //received less than the minimum
         }
-
+        address _vaultBufferAddress = vaultBufferAddress;
         for (uint256 i = 0; i < _assets.length; i++) {
             address _asset = _assets[i];
             if (_asset != NativeToken.NATIVE_TOKEN) {
                 // Transfer the deposited coins to the vault
-                IERC20Upgradeable(_asset).safeTransferFrom(msg.sender, vaultBufferAddress, _amounts[i]);
+                IERC20Upgradeable(_asset).safeTransferFrom(msg.sender, _vaultBufferAddress, _amounts[i]);
             }
         }
-        IVaultBuffer(vaultBufferAddress).mint{value: _ethAmount}(msg.sender, _shareAmount);
+        IVaultBuffer(_vaultBufferAddress).mint{value: _ethAmount}(msg.sender, _shareAmount);
 
         emit Mint(msg.sender, _assets, _amounts, _shareAmount);
         return _shareAmount;
@@ -590,6 +590,7 @@ contract Vault is VaultStorage, ExchangeHelper {
 
         uint256 _totalValueOfNow = _totalDebtOfNow + _vaultValueOfNow;
         uint256 _totalValueOfBefore = _totalDebtOfBefore + _vaultValueOfBefore;
+        address _vaultBufferAddress = vaultBufferAddress;
 
         {
             uint256 _transferAssets;
@@ -628,7 +629,7 @@ contract Vault is VaultStorage, ExchangeHelper {
                     _totalShares
                 );
                 if (_sharesAmount > 0) {
-                    IPegToken(pegTokenAddress).mintShares(vaultBufferAddress, _sharesAmount);
+                    IPegToken(pegTokenAddress).mintShares(_vaultBufferAddress, _sharesAmount);
                 }
             }
         }
@@ -641,8 +642,8 @@ contract Vault is VaultStorage, ExchangeHelper {
                 beforeAdjustPositionAssetsMap[_trackedAsset] = 0;
                 transferFromVaultBufferAssetsMap[_trackedAsset] = 0;
             }
-            if (!IVaultBuffer(vaultBufferAddress).isDistributing()) {
-                IVaultBuffer(vaultBufferAddress).openDistribute();
+            if (!IVaultBuffer(_vaultBufferAddress).isDistributing()) {
+                IVaultBuffer(_vaultBufferAddress).openDistribute();
             }
             adjustPositionPeriod = false;
         }
@@ -730,10 +731,11 @@ contract Vault is VaultStorage, ExchangeHelper {
         uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
 
         uint256 _totalAssetInVaultAndVaultBuffer;
+        address _vaultBufferAddress = vaultBufferAddress;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
             uint256 _assetBalancesInVault = _balanceOfToken(_trackedAsset, address(this));
-            uint256 _assetBalancesInVaultBuffer = _balanceOfToken(_trackedAsset, vaultBufferAddress);
+            uint256 _assetBalancesInVaultBuffer = _balanceOfToken(_trackedAsset, _vaultBufferAddress);
             uint256 _balance = _assetBalancesInVault + _assetBalancesInVaultBuffer;
             if (_balance > 0) {
                 _totalAssetInVaultAndVaultBuffer =
@@ -834,48 +836,50 @@ contract Vault is VaultStorage, ExchangeHelper {
         uint256 _totalAssets,
         uint256 _totalShares
     ) internal returns (uint256) {
-        address[] memory _transferAssets = _trackedAssets;
-        uint256 _transferAssetsLength = _transferAssets.length;
-        uint256[] memory _amounts = new uint256[](_transferAssetsLength);
+        uint256[] memory _amounts = new uint256[](_trackedAssets.length);
+        address _vaultBufferAddress = vaultBufferAddress;
         uint256 _totalTransferValue;
-        //price in vault
-        for (uint256 i = 0; i < _transferAssetsLength; i++) {
-            address _trackedAsset = _transferAssets[i];
-            if (assetSet.contains(_trackedAsset)) {
-                uint256 _assetBalancesInVaultBuffer = _balanceOfToken(_trackedAsset, vaultBufferAddress);
-                if (_assetBalancesInVaultBuffer > 0) {
-                    uint256 _value = _calculateAssetValue(
-                        _assetPrices,
-                        _assetDecimals,
-                        i,
-                        _trackedAsset,
-                        _assetBalancesInVaultBuffer
-                    );
+        {
+            uint256 _transferAssetsLength = _trackedAssets.length;
+            //price in vault
+            for (uint256 i = 0; i < _transferAssetsLength; i++) {
+                address _trackedAsset = _trackedAssets[i];
+                if (assetSet.contains(_trackedAsset)) {
+                    uint256 _assetBalancesInVaultBuffer = _balanceOfToken(_trackedAsset, _vaultBufferAddress);
+                    if (_assetBalancesInVaultBuffer > 0) {
+                        uint256 _value = _calculateAssetValue(
+                            _assetPrices,
+                            _assetDecimals,
+                            i,
+                            _trackedAsset,
+                            _assetBalancesInVaultBuffer
+                        );
 
-                    if (_needTransferValue > _value) {
-                        _totalTransferValue = _totalTransferValue + _value;
-                        _needTransferValue = _needTransferValue - _value;
-                        _amounts[i] = _assetBalancesInVaultBuffer;
-                    } else {
-                        _totalTransferValue = _totalTransferValue + _needTransferValue;
-                        _amounts[i] = (_assetBalancesInVaultBuffer * _needTransferValue) / _value;
-                        _needTransferValue = 0;
-                        break;
+                        if (_needTransferValue > _value) {
+                            _totalTransferValue = _totalTransferValue + _value;
+                            _needTransferValue = _needTransferValue - _value;
+                            _amounts[i] = _assetBalancesInVaultBuffer;
+                        } else {
+                            _totalTransferValue = _totalTransferValue + _needTransferValue;
+                            _amounts[i] = (_assetBalancesInVaultBuffer * _needTransferValue) / _value;
+                            _needTransferValue = 0;
+                            break;
+                        }
                     }
                 }
             }
         }
         if (_totalTransferValue > 0) {
-            IVaultBuffer(vaultBufferAddress).transferCashToVault(_transferAssets, _amounts);
+            IVaultBuffer(_vaultBufferAddress).transferCashToVault(_trackedAssets, _amounts);
 
             uint256 _totalTransferShares = _calculateShare(
                 _totalTransferValue,
                 _totalAssets,
                 _totalShares
             );
-            IPegToken(pegTokenAddress).mintShares(vaultBufferAddress, _totalTransferShares);
+            IPegToken(pegTokenAddress).mintShares(_vaultBufferAddress, _totalTransferShares);
 
-            emit PegTokenSwapCash(_totalTransferValue, _transferAssets, _amounts);
+            emit PegTokenSwapCash(_totalTransferValue, _trackedAssets, _amounts);
         }
         return _totalTransferValue;
     }
