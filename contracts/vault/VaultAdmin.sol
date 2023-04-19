@@ -179,15 +179,18 @@ contract VaultAdmin is VaultStorage {
     /// @dev Remove support for specific asset.
     /// Requirements: only vault manager can call
     function removeAsset(address _asset) external isVaultManager {
+        address _vaultBufferAddress = vaultBufferAddress;
         require(assetSet.contains(_asset), "not exist");
         require(
-            balanceOfTokenByOwner(_asset, vaultBufferAddress) < 10,
+            balanceOfTokenByOwner(_asset, _vaultBufferAddress) < 10,
             "vaultBuffer exist this asset"
         );
         assetSet.remove(_asset);
         trackedAssetsMap.minus(_asset, 1);
         if (
-            trackedAssetsMap.get(_asset) <= 0 && balanceOfTokenByOwner(_asset, address(this)) < 10
+            trackedAssetsMap.get(_asset) <= 0 &&
+            balanceOfTokenByOwner(_asset, address(this)) < 1 &&
+            balanceOfTokenByOwner(_asset, _vaultBufferAddress) < 1
         ) {
             trackedAssetsMap.remove(_asset);
             delete trackedAssetDecimalsMap[_asset];
@@ -314,12 +317,14 @@ contract VaultAdmin is VaultStorage {
         }
 
         address[] memory _wants = IStrategy(_addr).getWants();
+        address _vaultBufferAddress = vaultBufferAddress;
         for (uint256 i = 0; i < _wants.length; i++) {
             address _wantToken = _wants[i];
             trackedAssetsMap.minus(_wantToken, 1);
             if (
                 trackedAssetsMap.get(_wantToken) <= 0 &&
-                balanceOfTokenByOwner(_wantToken, address(this)) == 0
+                balanceOfTokenByOwner(_wantToken, address(this)) <= 1 &&
+                balanceOfTokenByOwner(_wantToken, _vaultBufferAddress) <= 1
             ) {
                 trackedAssetsMap.remove(_wantToken);
             }

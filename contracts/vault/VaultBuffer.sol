@@ -160,6 +160,7 @@ contract VaultBuffer is
         returns (bool)
     {
         assert(!IVault(vault).adjustPositionPeriod());
+        assert(isDistributing);
         bool _result = _distribute();
         if (!_result) {
             isDistributing = false;
@@ -178,7 +179,7 @@ contract VaultBuffer is
             if (_asset == NativeToken.NATIVE_TOKEN) {
                 require(address(this).balance == 0, "cash remain.");
             } else {
-                require(IERC20Upgradeable(_asset).balanceOf(address(this)) == 0, "cash remain.");
+                require(IERC20Upgradeable(_asset).balanceOf(address(this)) <= 10, "cash remain.");
             }
         }
 

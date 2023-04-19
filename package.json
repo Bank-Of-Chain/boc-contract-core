@@ -1,6 +1,6 @@
 {
   "name": "boc-contract-core",
-  "version": "2.0.0-beta21",
+  "version": "2.0.0-beta22",
   "description": "BankOfChain protocol core.",
   "main": "index.js",
   "license": "AGPL-3.0-or-later",
@@ -31,7 +31,7 @@
     "eslint-plugin-promise": "^5.2.0",
     "ethereum-waffle": "^4.0.0-alpha.0",
     "ethers": "^5.5.4",
-    "hardhat": "^2.9.2",
+    "hardhat": "2.12.0",
     "hardhat-contract-sizer": "^2.0.3",
     "hardhat-deploy-ethers": "^0.3.0-beta.10",
     "hardhat-gas-reporter": "^1.0.8",
