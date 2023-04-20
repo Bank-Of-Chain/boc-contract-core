@@ -22,7 +22,7 @@ contract CustomFrxEthPriceFeed is ICustomPriceFeed {
         require(_ethInUsdRate > 0, "invalid price");
 
         uint256 _priceInETH = _frxEthPriceInEth();
-        return (_amount * _priceInETH * uint256(_ethInUsdRate)) / 1e8;
+        return (_amount * _priceInETH * uint256(_ethInUsdRate)) / 1e26; // /1e8/getAssetUnit()
     }
 
     function calcValueInEth(uint256 _amount) external view override returns (uint256 _valueInEth) {
