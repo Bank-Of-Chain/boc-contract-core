@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import "brain-forge-std/Test.sol";
+import "forge-std/Test.sol";
 
 import "../../access-control/AccessControlProxy.sol";
 import "../../price-feeds/ValueInterpreter.sol";
