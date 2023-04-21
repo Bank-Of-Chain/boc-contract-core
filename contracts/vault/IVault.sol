@@ -557,4 +557,10 @@ interface IVault {
 
     /// @notice Sets new paraswap transfer proxy address
     function setParaTransferProxy(address _newRouter) external;
+
+    // @notice The delta threshold and the denominator is 1e7. x/1e7
+    function deltaThreshold() external view returns(uint256);
+
+    /// @notice Sets a max reduce difference ratio when will revert(when lend or redeem)
+    function setDeltaThreshold(uint256 _threshold) external;
 }

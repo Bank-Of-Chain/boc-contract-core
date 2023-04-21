@@ -51,7 +51,7 @@ contract VaultTest is Test {
     address constant SETH2_ADDRESS = 0xFe2e637202056d30016725477c5da089Ab0A043A;
     address constant SETH2_WETH_POOL_ADDRESS = 0x7379e81228514a1D2a6Cf7559203998E20598346;
 
-    address constant NATIVE_TOKEN_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address constant NATIVE_TOKEN_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE; 
     address constant FAKE_TOKEN_ADDRESS = 0x3F9F6ca28f711B82421A45d3e8a3B73Bd295922B;
     // address constant SETH2_WETH_POOL_ADDRESS = 0xDADcF64BAbfb566785f1e9DFC4889C5e593DDdC7;
 
@@ -75,6 +75,7 @@ contract VaultTest is Test {
     CustomEthPriceFeed customEthPriceFeed;
     CustomFakePriceFeed customFakePriceFeed;
     Treasury treasury;
+    Treasury treasury02;
     TestAdapter testAdapter;
     Vault vault;
     Vault ethVault;
@@ -196,6 +197,9 @@ contract VaultTest is Test {
         treasury = new Treasury();
         treasury.initialize(address(accessControlProxy));
         vm.label(address(treasury), "treasury");
+
+        treasury02 = new Treasury();
+        treasury02.initialize(address(accessControlProxy));
 
         testAdapter = new TestAdapter(address(valueInterpreter));
         testAdapter = new TestAdapter(address(valueInterpreter));
@@ -331,6 +335,96 @@ contract VaultTest is Test {
         vm.label(address(otherEthMock3CoinStrategy), "otherEthMock3CoinStrategy");
 
         vm.stopPrank();
+    }
+
+    function testSetMethodsOfVaultAdmin() public {
+        vm.startPrank(GOVERNANOR);
+        assertEq(iVault.emergencyShutdown(),false);
+        iVault.setEmergencyShutdown(true);
+        assertEq(iVault.emergencyShutdown(),true);
+
+        assertEq(iVault.adjustPositionPeriod(),false);
+        iVault.setAdjustPositionPeriod(true);
+        assertEq(iVault.adjustPositionPeriod(),true);
+
+        //iVault.deltaThreshold()
+        assertEq(iVault.deltaThreshold(),100);
+        iVault.setDeltaThreshold(1000);
+        assertEq(iVault.deltaThreshold(),1000);
+
+        // setRedeemFeeBps
+        assertEq(iVault.redeemFeeBps(),0);
+        iVault.setRedeemFeeBps(100);
+        assertEq(iVault.redeemFeeBps(),100);
+
+        assertEq(iVault.maxTimestampBetweenTwoReported(),604800);
+        iVault.setMaxTimestampBetweenTwoReported(864000);
+        assertEq(iVault.maxTimestampBetweenTwoReported(),864000);
+
+        //setMinCheckedStrategyTotalDebt
+        assertEq(iVault.minCheckedStrategyTotalDebt(),1000e18);
+        iVault.setMinCheckedStrategyTotalDebt(2000e18);
+        assertEq(iVault.minCheckedStrategyTotalDebt(),2000e18);
+
+        assertEq(iVault.minimumInvestmentAmount(),0);
+        iVault.setMinimumInvestmentAmount(1e19);
+        assertEq(iVault.minimumInvestmentAmount(),1e19);
+
+        address _newAddress = address(treasury02);
+
+        assertEq(iVault.treasury(),address(treasury));
+        iVault.setTreasuryAddress(address(treasury02));
+        assertEq(iVault.treasury(),address(treasury02));
+
+        assertEq(iVault.exchangeManager(),address(0));
+        iVault.setExchangeManagerAddress(_newAddress);
+        assertEq(iVault.exchangeManager(),_newAddress);
+
+        assertEq(iVault.trusteeFeeBps(),0);
+        iVault.setTrusteeFeeBps(1000);
+        assertEq(iVault.trusteeFeeBps(),1000);
+
+        assertEq(iVault.rebasePaused(),false);
+        iVault.pauseRebase();
+        assertEq(iVault.rebasePaused(),true);
+
+        iVault.unpauseRebase();
+        assertEq(iVault.rebasePaused(),false);
+
+        // assertEq(iVault.(),);
+        // iVault.();
+        // assertEq(iVault.(),);
+        
+        // assertEq(iVault.(),);
+        // iVault.();
+        // assertEq(iVault.(),);
+
+        // assertEq(iVault.(),);
+        // iVault.();
+        // assertEq(iVault.(),);
+
+        // assertEq(iVault.(),);
+        // iVault.();
+        // assertEq(iVault.(),);
+        
+        // assertEq(iVault.(),);
+        // iVault.();
+        // assertEq(iVault.(),);
+
+        // assertEq(iVault.(),);
+        // iVault.();
+        // assertEq(iVault.(),);
+
+        // assertEq(iVault.(),);
+        // iVault.();
+        // assertEq(iVault.(),);
+        
+        // assertEq(iVault.(),);
+        // iVault.();
+        // assertEq(iVault.(),);
+
+
+        
     }
 
     function testAddAndRemoveAssets() public { 
@@ -683,6 +777,40 @@ contract VaultTest is Test {
         assertEq(_strategies.length, _strategyAdds.length);
     }
 
+    function testSetStrategyEnforceChangeLimit() public {
+        testAddAndRemoveAssets();
+        testAddAndRemoveStrategies();
+
+        address[] memory _strategies = iVault.getStrategies();
+        IVault.StrategyParams memory strategyParam = iVault.strategies(_strategies[0]);
+        assertEq(strategyParam.enforceChangeLimit,true);
+
+        vm.startPrank(GOVERNANOR);
+        iVault.setStrategyEnforceChangeLimit(_strategies[0], false);
+        strategyParam = iVault.strategies(_strategies[0]);
+        assertEq(strategyParam.enforceChangeLimit,false);
+        vm.stopPrank();
+    
+    }
+
+    function testSetStrategySetLimitRatio() public {
+        testAddAndRemoveAssets();
+        testAddAndRemoveStrategies();
+
+        address[] memory _strategies = iVault.getStrategies();
+        IVault.StrategyParams memory strategyParam = iVault.strategies(_strategies[0]);
+        assertEq(strategyParam.lossLimitRatio,100);
+        assertEq(strategyParam.profitLimitRatio,100);
+
+        vm.startPrank(GOVERNANOR);
+        iVault.setStrategySetLimitRatio(_strategies[0], 200,200);
+        strategyParam = iVault.strategies(_strategies[0]);
+        assertEq(strategyParam.lossLimitRatio,200);
+        assertEq(strategyParam.profitLimitRatio,200);
+        vm.stopPrank();
+    
+    }
+
     function testAddAndRemoveStrategiesWithETHi() public {
         address[] memory _strategies = iETHVault.getStrategies();
         assertEq(_strategies.length, 0);
@@ -1006,6 +1134,34 @@ contract VaultTest is Test {
         console2.log("valueOfTrackedTokensInVaultBuffer is",valueOfTrackedTokensInVaultBuffer);
 
         assertEq(valueOfTrackedTokensIncludeVaultBuffer, valueOfTrackedTokensInVaultBuffer);
+    }
+
+    function testWithdrawlQueueOpMethod() public {
+        testDeposit();
+        vm.startPrank(GOVERNANOR);
+        address[] memory _queues = new address[](2);
+        _queues[0] = address(mock3CoinStrategy);
+        _queues[1] = address(otherMock3CoinStrategy);
+        iVault.setWithdrawalQueue(_queues);
+
+        address[] memory wthdrawalQueue = iVault.getWithdrawalQueue();
+        assertEq(wthdrawalQueue[0],address(mock3CoinStrategy));
+        assertEq(wthdrawalQueue[1],address(otherMock3CoinStrategy));
+
+        address[] memory removeWthdrawalQueue = new address[](1);
+        removeWthdrawalQueue[0] = address(mock3CoinStrategy);
+        iVault.removeStrategyFromQueue(removeWthdrawalQueue);
+
+        address[] memory wthdrawalQueueAfterRemove = iVault.getWithdrawalQueue();
+        assertEq(wthdrawalQueueAfterRemove[0],address(otherMock3CoinStrategy));
+        assertEq(wthdrawalQueueAfterRemove[1],address(0));
+
+        iVault.forceRemoveStrategy(address(otherMock3CoinStrategy));
+        address[] memory wthdrawalQueueAfterForceRemove = iVault.getWithdrawalQueue();
+        //assertEq(wthdrawalQueueAfterForceRemove.length, 0);
+        assertEq(wthdrawalQueueAfterForceRemove[0],address(0));
+        assertEq(wthdrawalQueueAfterForceRemove[1],address(0));
+
     }
 
     function testAdjustPosition() public {
