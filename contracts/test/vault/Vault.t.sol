@@ -55,6 +55,10 @@ contract VaultTest is Test {
     address constant FAKE_TOKEN_ADDRESS = 0x3F9F6ca28f711B82421A45d3e8a3B73Bd295922B;
     // address constant SETH2_WETH_POOL_ADDRESS = 0xDADcF64BAbfb566785f1e9DFC4889C5e593DDdC7;
 
+    bytes txData1 = hex"e449022e0000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000391c1cb6ba5562ab100000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000180000000000000000000000060594a405d53811d3bc4766596efd80fd545a270cfee7c08";
+    // copy from https://cn.etherscan.com/tx/0xa8a80056e01222e2608781dedca8988c22a5f2ea6a7867a87f55fba832c66df3
+    bytes txData2 = hex"0b86a4c1000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000003dae3c788199a8fb62000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000001000000000000000000004de494b86ca6f7a495930fe7f552eb9e4cbb5ef2b736";
+
     uint256 constant HOURS_OF_24_HEARTBEAT = 24 hours;
     uint256 constant HOURS_OF_1_HEARTBEAT = 1 hours;
     uint32 constant ROCKET_ETH_DURATION = 1 hours;
@@ -354,7 +358,7 @@ contract VaultTest is Test {
         string memory version = iVault.getVersion();
         string memory curVersion = "2.0.0";// to be edited if version update
         assertEq(version, curVersion);
-        
+
         // test muliti methods:getSupportAssets,getTrackedAssets,
         address[] memory _assets = iVault.getSupportAssets();
         assertEq(_assets.length, 0);
@@ -1675,6 +1679,41 @@ contract VaultTest is Test {
         vm.prank(FRIEND);
         iETHVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
         assertEq(iETHVault.totalValueInStrategies(), 0);
+    }
+
+    function testExchange() public {
+
+        address WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+        address USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+        address DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+        
+        deal(WETH,address(iETHVault),1 ether);
+
+        console.log("iETHVault address: " ,address(iETHVault));
+        address _fromToken = WETH;
+        address _toToken = DAI;
+        uint256 _fromAmount = 1 ether;
+        uint256 _platform1inch = 0;// 1inch
+        uint256 _platformPara = 1;//paraswap
+        bytes memory  _calldata0 = txData1;
+        bytes memory  _calldata1 = txData2;
+        
+        vm.prank(KEEPER);
+
+        uint256 _returnAmount = iETHVault.exchange(_fromToken, _toToken, _fromAmount, _calldata0, _platform1inch);
+        console.log("_returnAmount-1inch",_returnAmount);
+        console.log("DAI balance: " ,IERC20(DAI).balanceOf(address(iETHVault)));
+        
+        deal(WETH,address(iETHVault),1 ether);
+
+        address ICE = 0xf16e81dce15B08F326220742020379B855B87DF9;
+        _toToken = ICE;
+        deal(WETH,KEEPER,1 ether);
+        vm.prank(KEEPER);
+        _returnAmount = iETHVault.exchange(_fromToken, _toToken, _fromAmount, _calldata1, _platformPara);
+        console.log("_returnAmount-para",_returnAmount);
+        console.log("ICE balance: " ,IERC20(ICE).balanceOf(address(iETHVault)));
+
     }
 
     function _safeApprove(address _trackedAsset, address _targetAddress, uint256 _amount) internal {
