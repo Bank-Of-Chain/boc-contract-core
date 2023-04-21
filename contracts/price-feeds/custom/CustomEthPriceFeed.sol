@@ -25,7 +25,7 @@ contract CustomEthPriceFeed is ICustomPriceFeed {
         return 10 ** 18;
     }
 
-    function getRateAsset() external view override returns (IPrimitivePriceFeed.RateAsset _rateAsset) {
+    function getRateAsset() external pure override returns (IPrimitivePriceFeed.RateAsset _rateAsset) {
         return IPrimitivePriceFeed.RateAsset.ETH;
     }
 }

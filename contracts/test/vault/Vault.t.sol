@@ -18,7 +18,6 @@ import "../../vault/Vault.sol";
 import "../../vault/IVault.sol";
 import "../../vault/VaultAdmin.sol";
 import "../../vault/VaultBuffer.sol";
-import "../../exchanges/adapters/TestAdapter.sol";
 import "../../token/PegToken.sol";
 import "../../mock/Mock3CoinStrategy.sol";
 import "../../harvester/Harvester.sol";
@@ -77,7 +76,6 @@ contract VaultTest is Test {
     CustomEthPriceFeed customEthPriceFeed;
     CustomFakePriceFeed customFakePriceFeed;
     Treasury treasury;
-    TestAdapter testAdapter;
     Vault vault;
     Vault ethVault;
     IVault iETHVault;
@@ -198,12 +196,6 @@ contract VaultTest is Test {
         treasury = new Treasury();
         treasury.initialize(address(accessControlProxy));
         vm.label(address(treasury), "treasury");
-
-        testAdapter = new TestAdapter(address(valueInterpreter));
-        testAdapter = new TestAdapter(address(valueInterpreter));
-        vm.label(address(testAdapter), "testAdapter");
-        address[] memory _exchangeAdapters = new address[](1);
-        _exchangeAdapters[0] = address(testAdapter);
 
         // init USDi Vault
         vaultAdmin = new VaultAdmin();

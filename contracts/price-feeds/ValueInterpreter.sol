@@ -3,8 +3,6 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "./derivatives/IAggregatedDerivativePriceFeed.sol";
-import "./derivatives/IDerivativePriceFeed.sol";
 import "./primitives/IPrimitivePriceFeed.sol";
 import "./custom/ICustomPriceFeedAggregator.sol";
 import "./../access-control/AccessControlMixin.sol";

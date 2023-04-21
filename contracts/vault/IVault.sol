@@ -3,7 +3,6 @@
 pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
-import "../exchanges/IExchangeAggregator.sol";
 
 /// @title IVault interface
 interface IVault {
@@ -69,19 +68,6 @@ interface IVault {
         uint256 _shareAmount,
         address[] _assets,
         uint256[] _amounts
-    );
-
-    /// @param  _platform The platform used for the exchange
-    /// @param _srcAsset The address of asset exchange from
-    /// @param _srcAmount The amount of asset exchange from
-    /// @param _distAsset The address of asset exchange to
-    /// @param _distAmount The amount of asset exchange to
-    event Exchange(
-        address _platform,
-        address _srcAsset,
-        uint256 _srcAmount,
-        address _distAsset,
-        uint256 _distAmount
     );
 
     /// @param  _strategy The specified strategy to redeem

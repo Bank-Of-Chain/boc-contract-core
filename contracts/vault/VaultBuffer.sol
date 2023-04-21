@@ -15,7 +15,6 @@ import "./../access-control/AccessControlMixin.sol";
 import "./IVault.sol";
 import "./IVaultBuffer.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "../price-feeds/IValueInterpreter.sol";
 import "../exchanges/ExchangeHelper.sol";
 
 /// @title VaultBuffer

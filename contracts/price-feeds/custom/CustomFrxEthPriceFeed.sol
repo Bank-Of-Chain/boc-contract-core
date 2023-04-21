@@ -30,11 +30,11 @@ contract CustomFrxEthPriceFeed is ICustomPriceFeed {
         return (_amount * _priceInETH) / 1e18;
     }
 
-    function getAssetUnit() public view override returns (uint256 _unit) {
+    function getAssetUnit() public pure override returns (uint256 _unit) {
         return 10 ** 18;
     }
 
-    function getRateAsset() external view override returns (IPrimitivePriceFeed.RateAsset _rateAsset) {
+    function getRateAsset() external pure override returns (IPrimitivePriceFeed.RateAsset _rateAsset) {
         return IPrimitivePriceFeed.RateAsset.ETH;
     }
 
