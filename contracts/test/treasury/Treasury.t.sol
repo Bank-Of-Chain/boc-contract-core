@@ -30,7 +30,6 @@ contract TreasuryTest is Test {
         accessControlProxy = new AccessControlProxy();
         accessControlProxy.initialize(GOVERNANOR, DEGEGATOR, VAULT_MANAGER, KEEPER);
 
-        vm.startPrank(GOVERNANOR);
         treasury = new Treasury();
         treasury.initialize(address(accessControlProxy));
         vm.label(address(treasury), "treasury");
@@ -42,7 +41,6 @@ contract TreasuryTest is Test {
         vm.label(alice, "Alice");
         bob = users[1];
         vm.label(bob, "Bob");
-        vm.stopPrank();
     }
 
     function testVersion() public {
