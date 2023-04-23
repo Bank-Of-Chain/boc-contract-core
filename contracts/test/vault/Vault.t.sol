@@ -389,42 +389,7 @@ contract VaultTest is Test {
         assertEq(iVault.rebasePaused(),true);
 
         iVault.unpauseRebase();
-        assertEq(iVault.rebasePaused(),false);
-
-        // assertEq(iVault.(),);
-        // iVault.();
-        // assertEq(iVault.(),);
-        
-        // assertEq(iVault.(),);
-        // iVault.();
-        // assertEq(iVault.(),);
-
-        // assertEq(iVault.(),);
-        // iVault.();
-        // assertEq(iVault.(),);
-
-        // assertEq(iVault.(),);
-        // iVault.();
-        // assertEq(iVault.(),);
-        
-        // assertEq(iVault.(),);
-        // iVault.();
-        // assertEq(iVault.(),);
-
-        // assertEq(iVault.(),);
-        // iVault.();
-        // assertEq(iVault.(),);
-
-        // assertEq(iVault.(),);
-        // iVault.();
-        // assertEq(iVault.(),);
-        
-        // assertEq(iVault.(),);
-        // iVault.();
-        // assertEq(iVault.(),);
-
-
-        
+        assertEq(iVault.rebasePaused(),false);  
     }
 
     function testAddAndRemoveAssets() public { 
