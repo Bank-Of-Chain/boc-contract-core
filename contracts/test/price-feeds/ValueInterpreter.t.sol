@@ -20,8 +20,11 @@ import "../Constants.sol";
 contract ValueInterpreterTest is Test {
     address constant ETH_USD_AGGREGATOR = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address constant STETH_ADDRESS = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+    address constant CBETH_ADDRESS = 0xBe9895146f7AF43049ca1c1AE358B0541Ea49704;
     address constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address constant STETH_AGGREAGTOR_ADDRESS = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
+    address constant CBETH_AGGREAGTOR_ADDRESS = 0xF017fcB346A1885194689bA23Eff2fE6fA5C483b;
+    address constant RETH_AGGREAGTOR_ADDRESS = 0x536218f9E9Eb48863970252233c8F271f554C2d0;
     address constant ROCKET_ETH_ADDRESS = 0xae78736Cd615f374D3085123A210448E74Fc6393;
     address constant ROCKET_ETH_WETH_POOL_ADDRESS = 0xa4e0faA58465A2D369aa21B3e42d43374c6F9613;
 
@@ -36,7 +39,7 @@ contract ValueInterpreterTest is Test {
     address constant FAKE_TOKEN_ADDRESS = 0x3F9F6ca28f711B82421A45d3e8a3B73Bd295922B;
     // address constant SETH2_WETH_POOL_ADDRESS = 0xDADcF64BAbfb566785f1e9DFC4889C5e593DDdC7;
 
-    uint256 constant STETH_HEARTBEAT = 24 hours;
+    uint256 constant ONE_DAY_HEARTBEAT = 24 hours;
     uint32 constant ROCKET_ETH_DURATION = 1 hours;
     uint32 constant SETH2_DURATION = 1 hours;
     IPrimitivePriceFeed.RateAsset constant STETH_RATE_ASSET = IPrimitivePriceFeed.RateAsset.ETH; //eth
@@ -54,6 +57,8 @@ contract ValueInterpreterTest is Test {
     CustomSEthPriceFeed customSEthPriceFeed;
 
     uint[] public arr2 = [1, 2, 3];
+    uint256 constant PRICE_UPPER = 12 * 1e17;
+    uint256 constant PRICE_LOWER = 8 * 1e17;
 
     function setUp() public {
         console2.log("========ValueInterpreterTest========");
@@ -62,22 +67,34 @@ contract ValueInterpreterTest is Test {
         accessControlProxy.initialize(GOVERNANOR, DEGEGATOR, VAULT_MANAGER, KEEPER);
 
         vm.startPrank(GOVERNANOR);
-        address[] memory _primitives = new address[](1);
+        address[] memory _primitives = new address[](3);
         _primitives[0] = STETH_ADDRESS;
-        address[] memory _aggregators = new address[](1);
+        _primitives[1] = ROCKET_ETH_ADDRESS;
+        _primitives[2] = CBETH_ADDRESS;
+
+        address[] memory _aggregators = new address[](3);
         _aggregators[0] = STETH_AGGREAGTOR_ADDRESS;
-        uint256[] memory _heartbeats = new uint256[](1);
-        _heartbeats[0] = STETH_HEARTBEAT;
-        IPrimitivePriceFeed.RateAsset[] memory _rateAssets = new IPrimitivePriceFeed.RateAsset[](1);
-        _rateAssets[0] = STETH_RATE_ASSET;
+        _aggregators[1] = RETH_AGGREAGTOR_ADDRESS;
+        _aggregators[2] = CBETH_AGGREAGTOR_ADDRESS;
+
+        uint256[] memory _heartbeats = new uint256[](3);
+        _heartbeats[0] = ONE_DAY_HEARTBEAT;
+        _heartbeats[1] = ONE_DAY_HEARTBEAT;
+        _heartbeats[2] = ONE_DAY_HEARTBEAT;
+
+        IPrimitivePriceFeed.RateAsset[] memory _rateAssets = new IPrimitivePriceFeed.RateAsset[](3);
+        _rateAssets[0] = IPrimitivePriceFeed.RateAsset.ETH;
+        _rateAssets[1] = IPrimitivePriceFeed.RateAsset.ETH;
+        _rateAssets[2] = IPrimitivePriceFeed.RateAsset.ETH;
+
         address[] memory _basePeggeds = new address[](1);
         _basePeggeds[0] = WETH_ADDRESS;
         IPrimitivePriceFeed.RateAsset[] memory _peggedRateAssets = new IPrimitivePriceFeed.RateAsset[](1);
-        _peggedRateAssets[0] = STETH_RATE_ASSET;
+        _peggedRateAssets[0] = IPrimitivePriceFeed.RateAsset.ETH;
 
         chainlinkPriceFeed = new ChainlinkPriceFeed(
             ETH_USD_AGGREGATOR,
-            STETH_HEARTBEAT,
+            ONE_DAY_HEARTBEAT,
             _primitives,
             _aggregators,
             _heartbeats,
@@ -89,15 +106,16 @@ contract ValueInterpreterTest is Test {
 
         vm.label(address(chainlinkPriceFeed), "chainlinkPriceFeed");
 
-        address[] memory _primitives2 = new address[](2);
-        _primitives2[0] = ROCKET_ETH_ADDRESS;
-        _primitives2[1] = SETH2_ADDRESS;
-        address[] memory _pools = new address[](2);
-        _pools[0] = ROCKET_ETH_WETH_POOL_ADDRESS;
-        _pools[1] = SETH2_WETH_POOL_ADDRESS;
-        uint32[] memory _durations = new uint32[](2);
-        _durations[0] = ROCKET_ETH_DURATION;
-        _durations[1] = SETH2_DURATION;
+        address[] memory _primitives2 = new address[](1);
+        _primitives2[0] = SETH2_ADDRESS;
+
+        address[] memory _pools = new address[](1);
+        _pools[0] = SETH2_WETH_POOL_ADDRESS;
+
+        uint32[] memory _durations = new uint32[](1);
+        _durations[0] = SETH2_DURATION;
+
+
         uniswapV3PriceFeed = new UniswapV3PriceFeed(
             address(accessControlProxy),
             ETH_USD_AGGREGATOR,
@@ -150,28 +168,22 @@ contract ValueInterpreterTest is Test {
         vm.stopPrank();
     }
 
-    function testQueryAssetPriceInUsd() public view {
+    function testQueryAssetPriceInUsd() public {
         uint256 stEthPriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(STETH_ADDRESS, 1 ether);
         console2.log("stEthPriceInUsd:", stEthPriceInUsd);
+        uint256 ethPriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(NATIVE_TOKEN_ADDRESS, 1 ether);
+        assertGt(stEthPriceInUsd, PRICE_LOWER * ethPriceInUsd/1e18, "price in usd lte PRICE_LOWER");
+        assertLt(stEthPriceInUsd, PRICE_UPPER * ethPriceInUsd/1e18, "price in usd gte PRICE_UPPER");
     }
 
-    function testQueryAssetPriceInEth() public view {
+    function testQueryAssetPriceInEth() public {
         uint256 stEthPriceInEth = valueInterpreter.calcCanonicalAssetValueInEth(STETH_ADDRESS, 1 ether);
         console2.log("stEthPriceInEth:", stEthPriceInEth);
+        assertGt(stEthPriceInEth, PRICE_LOWER, "price in eth lte PRICE_LOWER");
+        assertLt(stEthPriceInEth, PRICE_UPPER, "price in eth gte PRICE_UPPER");
     }
 
-    function testUniswapV3PriceFeed() public view {
-        uint256 rEthPriceInEth = valueInterpreter.calcCanonicalAssetValueInEth(
-            ROCKET_ETH_ADDRESS,
-            1 ether
-        );
-        console2.log("rEthPriceInEth:", rEthPriceInEth);
-
-        uint256 rEthPriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(
-            ROCKET_ETH_ADDRESS,
-            1 ether
-        );
-        console2.log("rEthPriceInUsd:", rEthPriceInUsd);
+    function testUniswapV3PriceFeed() public {
 
         uint256 sEth2PriceInEth = valueInterpreter.calcCanonicalAssetValueInEth(SETH2_ADDRESS, 1 ether);
         console2.log("sEth2PriceInEth:", sEth2PriceInEth);
@@ -179,19 +191,13 @@ contract ValueInterpreterTest is Test {
         uint256 sEth2PriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(SETH2_ADDRESS, 1 ether);
         console2.log("sEth2PriceInUsd:", sEth2PriceInUsd);
 
-        uint256 rEthToSEth2 = valueInterpreter.calcCanonicalAssetValue(
-            ROCKET_ETH_ADDRESS,
-            1 ether,
-            SETH2_ADDRESS
-        );
-        console2.log("rEthToSEth2:", rEthToSEth2);
+        uint256 ethPriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(NATIVE_TOKEN_ADDRESS, 1 ether);
 
-        uint256 sEth2ToREth = valueInterpreter.calcCanonicalAssetValue(
-            SETH2_ADDRESS,
-            1 ether,
-            ROCKET_ETH_ADDRESS
-        );
-        console2.log("sEth2ToREth:", sEth2ToREth);
+        assertGt(sEth2PriceInEth, PRICE_LOWER, "price in eth lte PRICE_LOWER");
+        assertLt(sEth2PriceInEth, PRICE_UPPER, "price in eth gte PRICE_UPPER");
+
+        assertGt(sEth2PriceInUsd, PRICE_LOWER * ethPriceInUsd/1e18, "price in usd lte PRICE_LOWER");
+        assertLt(sEth2PriceInUsd, PRICE_UPPER * ethPriceInUsd/1e18, "price in usd gte PRICE_UPPER");
     }
 
     function testCustomWstEthPriceFeed() public {
@@ -199,6 +205,14 @@ contract ValueInterpreterTest is Test {
         console2.log("wstEth valueInEth:", valueInEth);
         uint valueInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(WSTETH, 1e18);
         console2.log("wstEth valueInUsd:", valueInUsd);
+
+        uint256 ethPriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(NATIVE_TOKEN_ADDRESS, 1 ether);
+
+        assertGt(valueInEth, PRICE_LOWER, "price in eth lte PRICE_LOWER");
+        assertLt(valueInEth, PRICE_UPPER, "price in eth gte PRICE_UPPER");
+
+        assertGt(valueInUsd, PRICE_LOWER * ethPriceInUsd/1e18, "price in usd lte PRICE_LOWER");
+        assertLt(valueInUsd, PRICE_UPPER * ethPriceInUsd/1e18, "price in usd gte PRICE_UPPER");
 
         vm.prank(GOVERNANOR);
         customPriceFeedAggregator.removeCustomPriceFeed(WSTETH);
@@ -216,6 +230,14 @@ contract ValueInterpreterTest is Test {
         uint valueInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(S_ETH, 1e18);
         console2.log("sEth valueInUsd:", valueInUsd);
 
+        uint256 ethPriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(NATIVE_TOKEN_ADDRESS, 1 ether);
+
+        assertGt(valueInEth, PRICE_LOWER, "price in eth lte PRICE_LOWER");
+        assertLt(valueInEth, PRICE_UPPER, "price in eth gte PRICE_UPPER");
+
+        assertGt(valueInUsd, PRICE_LOWER * ethPriceInUsd/1e18, "price in usd lte PRICE_LOWER");
+        assertLt(valueInUsd, PRICE_UPPER * ethPriceInUsd/1e18, "price in usd gte PRICE_UPPER");
+
         vm.prank(GOVERNANOR);
         customPriceFeedAggregator.removeCustomPriceFeed(S_ETH);
         vm.expectRevert();
@@ -232,6 +254,14 @@ contract ValueInterpreterTest is Test {
         uint valueInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(FRX_ETH, 1e18);
         console2.log("frxEth valueInUsd:", valueInUsd);
 
+        uint256 ethPriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(NATIVE_TOKEN_ADDRESS, 1 ether);
+
+        assertGt(valueInEth, PRICE_LOWER, "price in eth lte PRICE_LOWER");
+        assertLt(valueInEth, PRICE_UPPER, "price in eth gte PRICE_UPPER");
+
+        assertGt(valueInUsd, PRICE_LOWER * ethPriceInUsd/1e18, "price in usd lte PRICE_LOWER");
+        assertLt(valueInUsd, PRICE_UPPER * ethPriceInUsd/1e18, "price in usd gte PRICE_UPPER");
+
         vm.prank(GOVERNANOR);
         customPriceFeedAggregator.removeCustomPriceFeed(FRX_ETH);
         vm.expectRevert();
@@ -247,6 +277,14 @@ contract ValueInterpreterTest is Test {
         console2.log("sfrxEth valueInEth:", valueInEth);
         uint valueInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(SFRX_ETH, 1e18);
         console2.log("sfrxEth valueInUsd:", valueInUsd);
+
+        uint256 ethPriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(NATIVE_TOKEN_ADDRESS, 1 ether);
+
+        assertGt(valueInEth, PRICE_LOWER, "price in eth lte PRICE_LOWER");
+        assertLt(valueInEth, PRICE_UPPER, "price in eth gte PRICE_UPPER");
+
+        assertGt(valueInUsd, PRICE_LOWER * ethPriceInUsd/1e18, "price in usd lte PRICE_LOWER");
+        assertLt(valueInUsd, PRICE_UPPER * ethPriceInUsd/1e18, "price in usd gte PRICE_UPPER");
 
         vm.prank(GOVERNANOR);
         customPriceFeedAggregator.removeCustomPriceFeed(SFRX_ETH);
