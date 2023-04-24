@@ -9,6 +9,6 @@ package-lock.json
 yarn.lock
 #Hardhat files
 cache_foundry
-cache
+cache_hardhat
 artifacts
 forge-out/
