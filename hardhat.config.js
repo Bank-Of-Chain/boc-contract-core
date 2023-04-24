@@ -3,6 +3,7 @@ require("dotenv").config();
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
 require('@nomiclabs/hardhat-truffle5');
+require('@nomicfoundation/hardhat-foundry');
 require("hardhat-gas-reporter");
 require("solidity-coverage");
 require('hardhat-contract-sizer');
