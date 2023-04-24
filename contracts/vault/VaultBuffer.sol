@@ -77,7 +77,7 @@ contract VaultBuffer is
         address _accessControlProxy
     ) external initializer {
         __InitializeRouters();
-        
+
         mName = _name;
         mSymbol = _symbol;
         vault = _vault;
@@ -128,8 +128,7 @@ contract VaultBuffer is
         for (uint256 i = 0; i < _len; i++) {
             uint256 _amount = _amounts[i];
             if (_amount > 0) {
-                address _asset = _assets[i];
-                __transferToken(_asset, _amount, vault);
+                __transferToken(_assets[i], _amount, vault);
             }
         }
     }
@@ -171,7 +170,11 @@ contract VaultBuffer is
         address[] memory _assets = IVault(vault).getTrackedAssets();
         for (uint256 i = 0; i < _assets.length; i++) {
             address _asset = _assets[i];
-            __balanceOfToken(_asset, address(this));
+            if (_asset == NativeToken.NATIVE_TOKEN) {
+                require(address(this).balance == 0, "cash remain.");
+            } else {
+                require(IERC20Upgradeable(_asset).balanceOf(address(this)) <= 10, "cash remain.");
+            }
         }
 
         bool _result = _distribute();

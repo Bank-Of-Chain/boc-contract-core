@@ -316,12 +316,14 @@ contract VaultAdmin is VaultStorage {
         }
 
         address[] memory _wants = IStrategy(_addr).getWants();
+        address _vaultBufferAddress = vaultBufferAddress;
         for (uint256 i = 0; i < _wants.length; i++) {
             address _wantToken = _wants[i];
             trackedAssetsMap.minus(_wantToken, 1);
             if (
                 trackedAssetsMap.get(_wantToken) <= 0 &&
-                balanceOfTokenByOwner(_wantToken, address(this)) == 0
+                balanceOfTokenByOwner(_wantToken, address(this)) <= 1 &&
+                balanceOfTokenByOwner(_wantToken, _vaultBufferAddress) <= 1
             ) {
                 trackedAssetsMap.remove(_wantToken);
             }
