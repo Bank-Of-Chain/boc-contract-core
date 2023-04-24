@@ -83,13 +83,7 @@ contract Harvester is IHarvester, ExchangeHelper {
         emit TransferTokenToTreasury(msg.sender, _asset, _amount);
     }
 
-    function __transferToken(address _asset, uint256 _amount, address _recipient) internal {
-        if (__isNativeToken(_asset)) {
-            payable(_recipient).transfer(_amount);
-        } else {
-            IERC20(_asset).safeTransfer(_recipient, _amount);
-        }
-    }
+    
 
     /// @notice Collect the reward token from strategy.
     /// @param _vault The vault of the strategy

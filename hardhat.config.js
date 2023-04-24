@@ -13,13 +13,13 @@ const {
 
 let keys = {}
 try {
-    keys = require('./dev-keys.json');
+  keys = require('./dev-keys.json');
 } catch (error) {
-    keys = {
-        alchemyKey: {
-            dev: process.env.CHAIN_KEY
-        }
+  keys = {
+    alchemyKey: {
+      dev: process.env.CHAIN_KEY
     }
+  }
 }
 
 const DEFAULT_BLOCK_GAS_LIMIT = 30000000;
@@ -105,7 +105,7 @@ module.exports = {
   paths: {
     sources: './contracts',
     tests: './test',
-    cache: './cache',
+    cache: './cache_hardhat',
     artifacts: './artifacts',
   },
   // spdxLicenseIdentifier: {

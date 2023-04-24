@@ -7,8 +7,9 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "./../access-control/AccessControlMixin.sol";
 import "../library/NativeToken.sol";
 import "../strategy/IStrategy.sol";
+import "../util/AssetHelpers.sol";
 
-contract MockVault is AccessControlMixin {
+contract MockVault is AccessControlMixin, AssetHelpers {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     address public valueInterpreter;
     // strategy info
@@ -63,27 +64,22 @@ contract MockVault is AccessControlMixin {
 
     /// @notice Mock function for burning
     /// @param _amount Amount of USDi to burn
-    function burn(uint256 _amount, uint256 _minimumAmount, uint256 _redeemFeeBps, uint256 _trusteeFeeBps) external {}
+    function burn(
+        uint256 _amount,
+        uint256 _minimumAmount,
+        uint256 _redeemFeeBps,
+        uint256 _trusteeFeeBps
+    ) external {}
 
     /// @notice Allocate funds in Vault to strategies.
     /// @param _strategy The specified strategy to lend
     /// @param _assets Address of the asset being lended
     /// @param _amounts Amount of the asset being lended
-    function lend(
-        address _strategy,
-        address[] memory _assets,
-        uint256[] memory _amounts
-    ) external {
+    function lend(address _strategy, address[] memory _assets, uint256[] memory _amounts) external {
         for (uint8 i = 0; i < _assets.length; i++) {
             address _token = _assets[i];
             uint256 _amount = _amounts[i];
-            if (_token == NativeToken.NATIVE_TOKEN) {
-                payable(address(_strategy)).transfer(_amount);
-            }else{
-                IERC20Upgradeable _item = IERC20Upgradeable(_token);
-                require(_item.balanceOf(address(this)) >= _amount, "Insufficient tokens");
-                _item.safeTransfer(_strategy, _amount);
-            }
+            __transferToken(_token, _amount, address(_strategy));
         }
         IStrategy(_strategy).borrow(_assets, _amounts);
     }
@@ -92,18 +88,13 @@ contract MockVault is AccessControlMixin {
     /// @param _strategy The specified strategy to redeem
     /// @param _usdOrEthValue The amount to redeem in USD(USDi)/ETH(ETHi)
     /// @param _outputCode The code of output
-    function redeem(
-        address _strategy,
-        uint256 _usdOrEthValue,
-        uint256 _outputCode
-    ) external {
+    function redeem(address _strategy, uint256 _usdOrEthValue, uint256 _outputCode) external {
         uint256 _totalValue = strategies[_strategy].totalDebt;
         if (_usdOrEthValue > _totalValue) {
             _usdOrEthValue = _totalValue;
         }
         strategies[_strategy].totalDebt -= _usdOrEthValue;
         IStrategy(_strategy).repay(_usdOrEthValue, _totalValue, _outputCode);
-
     }
 
     /// @dev Report the current asset of strategy caller
@@ -113,11 +104,7 @@ contract MockVault is AccessControlMixin {
         emit StrategyReported(msg.sender, 0, 0, 0, 0, 0);
     }
 
-    function _report(
-        address _strategy,
-        uint256 _lendValue,
-        uint256 _type
-    ) private {
+    function _report(address _strategy, uint256 _lendValue, uint256 _type) private {
         StrategyParams memory _strategyParam = strategies[_strategy];
         uint256 _lastStrategyTotalDebt = _strategyParam.totalDebt + _lendValue;
         uint256 _nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();

@@ -63,4 +63,19 @@ abstract contract AssetHelpers {
             IERC20(_asset).safeApprove(_target, _neededAmount);
         }
     }
+
+    
+    /// @dev __transferToken is an internal function that is responsible for transfering tokens from one address to another. 
+    /// @param _asset: The address of the asset to be transfered 
+    /// @param _amount: The amount of the asset to be transfered 
+    /// @param _recipient: The address of the recipient 
+    function __transferToken(address _asset, uint256 _amount, address _recipient) internal {
+        if (__isNativeToken(_asset)) {
+            // payable(_recipient).transfer(_amount);   // if recipient is ZeppelinTransparentProxy contract，recive will fail.
+            (bool succ, ) = _recipient.call{value: _amount}("");
+            require(succ, "Failed to send Ether");
+        } else {
+            IERC20(_asset).safeTransfer(_recipient, _amount);
+        }
+    }
 }

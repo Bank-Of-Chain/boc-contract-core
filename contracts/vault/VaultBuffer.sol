@@ -126,14 +126,10 @@ contract VaultBuffer is
     ) external override onlyVault {
         uint256 _len = _assets.length;
         for (uint256 i = 0; i < _len; i++) {
-            uint256 amount = _amounts[i];
-            if (amount > 0) {
-                address asset = _assets[i];
-                if (asset == NativeToken.NATIVE_TOKEN) {
-                    payable(vault).transfer(amount);
-                } else {
-                    IERC20Upgradeable(asset).safeTransfer(vault, amount);
-                }
+            uint256 _amount = _amounts[i];
+            if (_amount > 0) {
+                address _asset = _assets[i];
+                __transferToken(_asset, _amount, vault);
             }
         }
     }
@@ -142,7 +138,7 @@ contract VaultBuffer is
     /// @inheritdoc IVaultBuffer
     function openDistribute() external override onlyVault {
         assert(!isDistributing);
-        uint256 _pegTokenBalance = IERC20Upgradeable(pegTokenAddr).balanceOf(address(this));
+        uint256 _pegTokenBalance = __balanceOfToken(pegTokenAddr, address(this));
         if (_pegTokenBalance > 0) {
             isDistributing = true;
 
@@ -175,11 +171,7 @@ contract VaultBuffer is
         address[] memory _assets = IVault(vault).getTrackedAssets();
         for (uint256 i = 0; i < _assets.length; i++) {
             address _asset = _assets[i];
-            if (_asset == NativeToken.NATIVE_TOKEN) {
-                require(address(this).balance == 0, "cash remain.");
-            } else {
-                require(IERC20Upgradeable(_asset).balanceOf(address(this)) <= 10, "cash remain.");
-            }
+            __balanceOfToken(_asset, address(this));
         }
 
         bool _result = _distribute();

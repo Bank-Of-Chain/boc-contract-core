@@ -588,12 +588,7 @@ contract Vault is VaultStorage, ExchangeHelper {
             IVaultBuffer(vaultBufferAddress).transferCashToVault(_trackedAssets, _transferAmounts);
         }
         totalDebtOfBeforeAdjustPosition = _totalDebt;
-        emit StartAdjustPosition(
-            _totalDebt,
-            _trackedAssets,
-            _vaultAmounts,
-            _transferAmounts
-        );
+        emit StartAdjustPosition(_totalDebt, _trackedAssets, _vaultAmounts, _transferAmounts);
     }
 
     /// @notice end  Adjust Position
@@ -1028,14 +1023,17 @@ contract Vault is VaultStorage, ExchangeHelper {
             if (_amount > 0) {
                 address _trackedAsset = _trackedAssets[i];
                 if (__isNativeToken(_trackedAsset)) {
-                    _actualAmount = _actualAmount + _amount;
-                    payable(msg.sender).transfer(_amount);
+                    _actualAmount += _amount;
                 } else {
-                    _actualAmount =
-                        _actualAmount +
-                        _calculateAssetValue(_assetPrices, _assetDecimals, i, _trackedAsset, _amount);
-                    IERC20Upgradeable(_trackedAsset).safeTransfer(msg.sender, _amount);
+                    _actualAmount += _calculateAssetValue(
+                        _assetPrices,
+                        _assetDecimals,
+                        i,
+                        _trackedAsset,
+                        _amount
+                    );
                 }
+                __transferToken(_trackedAsset, _amount, msg.sender);
             }
         }
         return _actualAmount;
