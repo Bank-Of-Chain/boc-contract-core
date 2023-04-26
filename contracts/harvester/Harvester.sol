@@ -2,10 +2,9 @@
 
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
 import "./IHarvester.sol";
 import "./../library/BocRoles.sol";
 import "../vault/IVault.sol";
@@ -15,7 +14,7 @@ import "./../strategy/IClaimableStrategy.sol";
 /// @notice Harvester for function used by keeper
 /// @author Bank of Chain Protocol Inc
 contract Harvester is IHarvester, ExchangeHelper {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
     using IterableSellInfoMap for IterableSellInfoMap.AddressToSellInfoMap;
 
     /// @notice The addres of Treasury
@@ -75,18 +74,16 @@ contract Harvester is IHarvester, ExchangeHelper {
     }
 
     /// @inheritdoc IHarvester
-    function transferToken(
+    function transferTokenToTreasury(
         address _asset,
         uint256 _amount
     ) external override onlyRole(BocRoles.GOV_ROLE) {
-        if (_asset == NativeToken.NATIVE_TOKEN) {
-            payable(treasuryAddress).transfer(_amount);
-        } else {
-            IERC20Upgradeable(_asset).safeTransfer(treasuryAddress, _amount);
-        }
+        __transferToken(_asset, _amount, treasuryAddress);
 
-        emit TransferToken(msg.sender, _asset, _amount);
+        emit TransferTokenToTreasury(msg.sender, _asset, _amount);
     }
+
+    
 
     /// @notice Collect the reward token from strategy.
     /// @param _vault The vault of the strategy
@@ -171,10 +168,13 @@ contract Harvester is IHarvester, ExchangeHelper {
         address _strategy,
         ExchangeHelper.ExchangeParams[] calldata _exchangeParams
     ) internal returns (uint256[] memory _receiveAmounts) {
+        // Check if the vault is either USD or ETH
         require(_vault == usdVaultAddress || _vault == ethVaultAddress);
+        // Get the strategies from the vault
         IterableSellInfoMap.AddressToSellInfoMap storage strategies = _vault == usdVaultAddress
             ? usdStrategyCollection
             : ethStrategyCollection;
+        // Get the sell info
         IterableSellInfoMap.SellInfo memory sellInfo = strategies.get(_strategy);
         uint256 _sellToAmount = 0;
         uint256 exchangeRound = _exchangeParams.length;
@@ -187,13 +187,16 @@ contract Harvester is IHarvester, ExchangeHelper {
         uint256[] memory _toTokenAmounts = new uint256[](exchangeRound);
         for (uint256 i = 0; i < exchangeRound; i++) {
             ExchangeHelper.ExchangeParams memory _exchangeParam = _exchangeParams[i];
+            // Check if the rewards can only be sold as sellTo
             require(_exchangeParam.toToken == sellInfo.sellToToken, "Rewards can only be sold as sellTo");
+            // Check if the source token is sufficient
             require(
                 _exchangeParam.fromAmount > 0 &&
-                    _exchangeParam.fromAmount <= balanceOfToken(_exchangeParam.fromToken),
+                    _exchangeParam.fromAmount <=
+                    __balanceOfToken(_exchangeParam.fromToken, address(this)),
                 "Source token insufficient."
             );
-            // exchange
+            // Exchange the tokens
             uint256 _receiveAmount = _exchange(
                 _exchangeParam.fromToken,
                 _exchangeParam.toToken,
@@ -201,27 +204,23 @@ contract Harvester is IHarvester, ExchangeHelper {
                 _exchangeParam.txData,
                 _exchangeParam.platform
             );
+            // Store the receive amount
             _receiveAmounts[i] = _receiveAmount;
-            // transfer token to recipient
-            if (_exchangeParam.toToken == NativeToken.NATIVE_TOKEN) {
-                payable(sellInfo.recipient).transfer(_receiveAmount);
-            } else {
-                IERC20Upgradeable(_exchangeParam.toToken).safeTransfer(
-                    sellInfo.recipient,
-                    _receiveAmount
-                );
-            }
+            // Transfer the receive amount to the recipient
+            __transferToken(_exchangeParam.toToken, _receiveAmount, sellInfo.recipient);
+            // Store the platform, from tokens, from token amounts and to token amounts
             _platforms[i] = _exchangeParam.platform;
             _fromTokens[i] = _exchangeParam.fromToken;
             _fromTokenAmounts[i] = _exchangeParam.fromAmount;
             _toTokenAmounts[i] = _receiveAmount;
+            // Calculate the sell to amount
             _sellToAmount += _receiveAmount;
         }
-
+        // Call the exchange finish callback
         IClaimableStrategy(_strategy).exchangeFinishCallback(_sellToAmount);
-
+        // Remove the strategy
         strategies.remove(_strategy);
-
+        // Emit the exchange event
         emit Exchange(
             _strategy,
             _platforms,
@@ -230,13 +229,5 @@ contract Harvester is IHarvester, ExchangeHelper {
             _toTokenAmounts,
             sellInfo.sellToToken
         );
-    }
-
-    /// @notice Return the token's balance Of this contract
-    function balanceOfToken(address _tokenAddress) internal view returns (uint256) {
-        if (_tokenAddress == NativeToken.NATIVE_TOKEN) {
-            return address(this).balance;
-        }
-        return IERC20Upgradeable(_tokenAddress).balanceOf(address(this));
     }
 }

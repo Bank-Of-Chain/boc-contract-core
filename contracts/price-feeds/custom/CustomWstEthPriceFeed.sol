@@ -20,6 +20,13 @@ contract CustomWstEthPriceFeed is ICustomPriceFeed {
     address immutable STETH_ETH_PRICEFEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
 
     function calcValueInUsd(uint256 _amount) external view override returns (uint256 _valueInUsd) {
+
+        (, int256 _ethInUsdRate, , , ) = AggregatorV3Interface(ETH_USD_AGGREGATOR).latestRoundData();
+
+        return uint(_ethInUsdRate) * _amount * 1e10 / getAssetUnit(); // * 1e18 / 1e8
+
+
+
         (, int256 _stEthInUsdRate, , , ) = AggregatorV3Interface(STETH_USD_PRICEFEED).latestRoundData();
         uint256 _stEthPerToken = IWstETH(WSTETH).stEthPerToken();
 
@@ -37,7 +44,7 @@ contract CustomWstEthPriceFeed is ICustomPriceFeed {
         return 10 ** IWstETH(WSTETH).decimals();
     }
 
-    function getRateAsset() external view override returns (IPrimitivePriceFeed.RateAsset _rateAsset) {
+    function getRateAsset() external pure override returns (IPrimitivePriceFeed.RateAsset _rateAsset) {
         return IPrimitivePriceFeed.RateAsset.ETH;
     }
 }

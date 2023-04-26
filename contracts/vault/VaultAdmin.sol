@@ -22,7 +22,7 @@ contract VaultAdmin is VaultStorage {
         emit SetEmergencyShutdown(_active);
     }
 
-    /// @dev Sets adjustPositionPeriod true when adjust position occurs, 
+    /// @dev Sets adjustPositionPeriod true when adjust position occurs,
     ///   cannot remove add asset/strategy and cannot mint/burn.
     /// Requirements: only keeper can call
     function setAdjustPositionPeriod(bool _adjustPositionPeriod) external isKeeperOrVaultOrGovOrDelegate {
@@ -57,20 +57,18 @@ contract VaultAdmin is VaultStorage {
 
     /// @dev Sets the Maximum timestamp between two reported
     /// Requirements: only vault manager can call
-    function setMaxTimestampBetweenTwoReported(uint256 _maxTimestampBetweenTwoReported)
-        external
-        isVaultManager
-    {
+    function setMaxTimestampBetweenTwoReported(
+        uint256 _maxTimestampBetweenTwoReported
+    ) external isVaultManager {
         maxTimestampBetweenTwoReported = _maxTimestampBetweenTwoReported;
         emit MaxTimestampBetweenTwoReportedChanged(_maxTimestampBetweenTwoReported);
     }
 
     /// @dev Sets the minimum strategy total debt that will be checked for the strategy reporting
     /// Requirements: only vault manager can call
-    function setMinCheckedStrategyTotalDebt(uint256 _minCheckedStrategyTotalDebt)
-        external
-        isVaultManager
-    {
+    function setMinCheckedStrategyTotalDebt(
+        uint256 _minCheckedStrategyTotalDebt
+    ) external isVaultManager {
         minCheckedStrategyTotalDebt = _minCheckedStrategyTotalDebt;
         emit MinCheckedStrategyTotalDebtChanged(_minCheckedStrategyTotalDebt);
     }
@@ -87,14 +85,16 @@ contract VaultAdmin is VaultStorage {
     /// Requirements: only governance role can call
     function setTreasuryAddress(address _address) external onlyRole(BocRoles.GOV_ROLE) {
         //The error message "NNA" represents "The input address need be non-zero address"
-        require(_address != address(0),"NNA");
+        require(_address != address(0), "NNA");
         treasury = _address;
         emit TreasuryAddressChanged(_address);
     }
 
     /// @dev Sets the exchangeManagerAddress that can receive a portion of yield.
     /// Requirements: only governance role can call
-    function setExchangeManagerAddress(address _exchangeManagerAddress) external onlyRole(BocRoles.GOV_ROLE) {
+    function setExchangeManagerAddress(
+        address _exchangeManagerAddress
+    ) external onlyRole(BocRoles.GOV_ROLE) {
         require(_exchangeManagerAddress != address(0), "exchangeManager ad is 0");
         exchangeManager = _exchangeManagerAddress;
         emit ExchangeManagerAddressChanged(_exchangeManagerAddress);
@@ -164,11 +164,11 @@ contract VaultAdmin is VaultStorage {
         assetSet.add(_asset);
         // Verify that our oracle supports the asset
         // slither-disable-next-line unused-return
-        if(vaultType > 0){
-            if (_asset != NativeToken.NATIVE_TOKEN){
+        if (vaultType > 0) {
+            if (_asset != NativeToken.NATIVE_TOKEN) {
                 IValueInterpreter(valueInterpreter).priceInEth(_asset);
             }
-        }else{
+        } else {
             IValueInterpreter(valueInterpreter).price(_asset);
         }
         trackedAssetsMap.plus(_asset, 1);
@@ -181,10 +181,7 @@ contract VaultAdmin is VaultStorage {
     function removeAsset(address _asset) external isVaultManager {
         address _vaultBufferAddress = vaultBufferAddress;
         require(assetSet.contains(_asset), "not exist");
-        require(
-            balanceOfTokenByOwner(_asset, _vaultBufferAddress) < 10,
-            "vaultBuffer exist this asset"
-        );
+        require(balanceOfTokenByOwner(_asset, _vaultBufferAddress) < 10, "vaultBuffer exist this asset");
         assetSet.remove(_asset);
         trackedAssetsMap.minus(_asset, 1);
         if (
@@ -215,7 +212,12 @@ contract VaultAdmin is VaultStorage {
                 "Strategy is invalid"
             );
             _strategies[i] = _strategyAddr;
-            _addStrategy(_strategyAddr, _strategyAdd.profitLimitRatio, _strategyAdd.lossLimitRatio, _strategyAdd.targetDebt);
+            _addStrategy(
+                _strategyAddr,
+                _strategyAdd.profitLimitRatio,
+                _strategyAdd.lossLimitRatio,
+                _strategyAdd.targetDebt
+            );
             address[] memory _wants = IStrategy(_strategyAddr).getWants();
             for (uint256 j = 0; j < _wants.length; j++) {
                 trackedAssetsMap.plus(_wants[j], 1);
@@ -256,7 +258,9 @@ contract VaultAdmin is VaultStorage {
     /// @dev Remove multi strategies from the withdrawal queue
     /// @param _strategies multi strategies to remove
     /// Requirements: only keeper can call
-    function removeStrategyFromQueue(address[] memory _strategies) external isKeeperOrVaultOrGovOrDelegate {
+    function removeStrategyFromQueue(
+        address[] memory _strategies
+    ) external isKeeperOrVaultOrGovOrDelegate {
         for (uint256 i = 0; i < _strategies.length; i++) {
             _removeStrategyFromQueue(_strategies[i]);
         }
@@ -275,7 +279,7 @@ contract VaultAdmin is VaultStorage {
         emit RemoveStrategies(_strategies);
     }
 
-    /// @dev Forced to remove the '_strategy' 
+    /// @dev Forced to remove the '_strategy'
     /// Requirements: only governance or delegate role can call
     function forceRemoveStrategy(address _strategy) external onlyGovOrDelegate {
         _removeStrategy(_strategy, true);
@@ -307,7 +311,7 @@ contract VaultAdmin is VaultStorage {
     /// @param _addr Address of the strategy to remove
     /// @param _force Forced to remove if 'true'
     function _removeStrategy(address _addr, bool _force) internal {
-        if(strategies[_addr].totalDebt > 0){
+        if (strategies[_addr].totalDebt > 0) {
             // Withdraw all assets
             try IStrategy(_addr).repay(MAX_BPS, MAX_BPS, 0) {} catch {
                 if (!_force) {
@@ -329,7 +333,7 @@ contract VaultAdmin is VaultStorage {
                 trackedAssetsMap.remove(_wantToken);
             }
         }
-        if(strategies[_addr].totalDebt > 0){
+        if (strategies[_addr].totalDebt > 0) {
             totalDebt -= strategies[_addr].totalDebt;
         }
         delete strategies[_addr];
@@ -344,7 +348,7 @@ contract VaultAdmin is VaultStorage {
             if (_curStrategy == _strategy) {
                 withdrawQueue[i] = ZERO_ADDRESS;
                 _organizeWithdrawalQueue();
-        
+
                 return;
             }
         }
@@ -360,6 +364,30 @@ contract VaultAdmin is VaultStorage {
                 withdrawQueue[i - _offset] = _strategy;
                 withdrawQueue[i] = ZERO_ADDRESS;
             }
+        }
+    }
+
+    function setStrategyTargetDebts(
+        address[] memory _strategies,
+        uint256[] memory _newTargetDebts
+    ) external isKeeperOrVaultOrGovOrDelegate {
+        require(_strategies.length == _newTargetDebts.length, "Two lengths must be equal");
+        uint256 _len = _strategies.length;
+        for (uint256 i = 0; i < _len; i++) {
+            StrategyParams storage strategyParams = strategies[_strategies[i]];
+            strategyParams.targetDebt = _newTargetDebts[i];
+        }
+    }
+
+    function increaseStrategyTargetDebts(
+        address[] memory _strategies,
+        uint256[] memory _addAmounts
+    ) external isKeeperOrVaultOrGovOrDelegate {
+        require(_strategies.length == _addAmounts.length, "Two lengths must be equal");
+        uint256 _len = _strategies.length;
+        for (uint256 i = 0; i < _len; i++) {
+            StrategyParams storage strategyParams = strategies[_strategies[i]];
+            strategyParams.targetDebt += _addAmounts[i];
         }
     }
 
@@ -380,7 +408,10 @@ contract VaultAdmin is VaultStorage {
     }
 
     /// @notice Return the token's balance Of this contract
-    function balanceOfTokenByOwner(address _tokenAddress,address _owner) internal view returns (uint256) {
+    function balanceOfTokenByOwner(
+        address _tokenAddress,
+        address _owner
+    ) internal view returns (uint256) {
         if (_tokenAddress == NativeToken.NATIVE_TOKEN) {
             return _owner.balance;
         }

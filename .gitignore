@@ -8,6 +8,7 @@ typechain
 package-lock.json
 yarn.lock
 #Hardhat files
-cache
+cache_foundry
+cache_hardhat
 artifacts
 forge-out/

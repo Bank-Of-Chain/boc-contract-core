@@ -107,6 +107,63 @@ contract Vault is VaultStorage, ExchangeHelper {
         return _totalAssetInVaultAndVaultBuffer();
     }
 
+    function isTrackedAssets(address _token) external view returns (bool) {
+        return trackedAssetsMap.contains(_token);
+    }
+
+    /// @notice Vault holds asset value directly in USD(USDi)/ETH(ETHi)(1e18)
+    function valueOfTrackedTokensInVaultBuffer() public view returns (uint256) {
+        uint256 _valueOfTrackedTokensIncludeVaultBuffer = valueOfTrackedTokensIncludeVaultBuffer();
+        uint256 _valueOfTrackedTokensInVault = valueOfTrackedTokens();
+        if (_valueOfTrackedTokensIncludeVaultBuffer > _valueOfTrackedTokensInVault) {
+            return _valueOfTrackedTokensIncludeVaultBuffer - _valueOfTrackedTokensInVault;
+        }
+        return 0;
+    }
+
+    /// @notice Gets token value transfered from vault buffer in USD(USDi)/ETH(ETHi)(1e18)
+    function getTransferValueFromVaultBuffer() internal view returns (uint256 _transferTotalValue) {
+        address[] memory _trackedAssets = _getTrackedAssets();
+        uint256 _trackedAssetsLength = _trackedAssets.length;
+
+        uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
+        uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
+
+        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
+            address _trackedAsset = _trackedAssets[i];
+            _transferTotalValue =
+                _transferTotalValue +
+                _calculateAssetValue(
+                    _assetPrices,
+                    _assetDecimals,
+                    i,
+                    _trackedAsset,
+                    transferFromVaultBufferAssetsMap[_trackedAsset]
+                );
+        }
+        return _transferTotalValue;
+    }
+
+    /// @notice Gets pegged token value holded by vault buffer in USD(USDi)/ETH(ETHi)(1e18)
+    function getPegTokenValueOfVaultBuffer() internal view returns (uint256) {
+        address _pegToken = pegTokenAddress;
+        uint256 _balance = IPegToken(_pegToken).balanceOf(vaultBufferAddress);
+        uint256 _assetDecimal = IPegToken(_pegToken).decimals();
+        uint256 _pegTokenPrice = getPegTokenPrice();
+
+        return _balance.mulTruncateScale(_pegTokenPrice, 10 ** _assetDecimal);
+    }
+
+    /// @dev Calculate total value of all assets held in VaultBuffer.
+    /// @return _value Total value(by oracle price) in USD(USDi)/ETH(ETHi)(1e18)
+    function totalValueInVaultBuffer() public view returns (uint256) {
+        uint256 _bufferCash = valueOfTrackedTokensInVaultBuffer();
+        uint256 _transferValue = getTransferValueFromVaultBuffer();
+        uint256 _pegTokenTotalValue = getPegTokenValueOfVaultBuffer();
+
+        return _bufferCash + _transferValue + _pegTokenTotalValue;
+    }
+
     /// @notice Vault total asset in USD(USDi)/ETH(ETHi)(1e18)
     function totalAssets() external view returns (uint256) {
         return _totalAssetInVault() + totalDebt;
@@ -128,9 +185,9 @@ contract Vault is VaultStorage, ExchangeHelper {
         address[] memory _trackedAssets = _getTrackedAssets();
         for (uint256 i = 0; i < _trackedAssets.length; i++) {
             address _trackedAsset = _trackedAssets[i];
-            uint256 _balance = _balanceOfToken(_trackedAsset, address(this));
+            uint256 _balance = __balanceOfToken(_trackedAsset, address(this));
             if (_balance > 0) {
-                if (NativeToken.NATIVE_TOKEN == _trackedAsset) {
+                if (__isNativeToken(_trackedAsset)) {
                     _value =
                         _value +
                         IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(W_ETH, _balance);
@@ -176,7 +233,7 @@ contract Vault is VaultStorage, ExchangeHelper {
             uint256 _totalTransferValue;
             for (uint256 i = 0; i < _trackedAssetsLength; i++) {
                 address _trackedAsset = _trackedAssets[i];
-                uint256 _balance = _balanceOfToken(_trackedAsset, address(this));
+                uint256 _balance = __balanceOfToken(_trackedAsset, address(this));
                 if (_balance > 0) {
                     _totalAssetInVault =
                         _totalAssetInVault +
@@ -232,7 +289,7 @@ contract Vault is VaultStorage, ExchangeHelper {
         address _vaultBufferAddress = vaultBufferAddress;
         for (uint256 i = 0; i < _assets.length; i++) {
             address _asset = _assets[i];
-            if (_asset != NativeToken.NATIVE_TOKEN) {
+            if (!__isNativeToken(_asset)) {
                 // Transfer the deposited coins to the vault
                 IERC20Upgradeable(_asset).safeTransferFrom(msg.sender, _vaultBufferAddress, _amounts[i]);
             }
@@ -415,7 +472,7 @@ contract Vault is VaultStorage, ExchangeHelper {
                             continue;
                         }
                     }
-                    if (_want == NativeToken.NATIVE_TOKEN) {
+                    if (__isNativeToken(_want)) {
                         _lendValue += _actualAmount;
                         _ethAmount = _actualAmount;
                     } else {
@@ -510,31 +567,28 @@ contract Vault is VaultStorage, ExchangeHelper {
             uint256 _trackedAssetsLength = _trackedAssets.length;
             uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
             uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
-            uint256 _totalAssetInVault;
+            uint256 _totalAssets = _totalDebt;
             for (uint256 i = 0; i < _trackedAssetsLength; i++) {
                 address _trackedAsset = _trackedAssets[i];
                 uint256 _amount = _vaultAmounts[i];
                 if (_amount > 0) {
-                    _totalAssetInVault =
-                        _totalAssetInVault +
-                        _calculateAssetValue(_assetPrices, _assetDecimals, i, _trackedAsset, _amount);
+                    _totalAssets += _calculateAssetValue(
+                        _assetPrices,
+                        _assetDecimals,
+                        i,
+                        _trackedAsset,
+                        _amount
+                    );
                 }
             }
-            uint256 _totalAssets = _totalAssetInVault + _totalDebt;
             uint256 _totalShares = IPegToken(pegTokenAddress).totalShares();
             if (!rebasePaused) {
                 _rebase(_totalAssets, _totalShares, trusteeFeeBps);
             }
             IVaultBuffer(vaultBufferAddress).transferCashToVault(_trackedAssets, _transferAmounts);
         }
-        uint256 _totalDebtOfBeforeAdjustPosition = _totalDebt;
-        totalDebtOfBeforeAdjustPosition = _totalDebtOfBeforeAdjustPosition;
-        emit StartAdjustPosition(
-            _totalDebtOfBeforeAdjustPosition,
-            _trackedAssets,
-            _vaultAmounts,
-            _transferAmounts
-        );
+        totalDebtOfBeforeAdjustPosition = _totalDebt;
+        emit StartAdjustPosition(_totalDebt, _trackedAssets, _vaultAmounts, _transferAmounts);
     }
 
     /// @notice end  Adjust Position
@@ -553,36 +607,34 @@ contract Vault is VaultStorage, ExchangeHelper {
         uint256 _vaultValueOfBefore;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
-            _transferValue =
-                _transferValue +
-                _calculateAssetValue(
-                    _assetPrices,
-                    _assetDecimals,
-                    i,
-                    _trackedAsset,
-                    transferFromVaultBufferAssetsMap[_trackedAsset]
-                );
-            _redeemValue =
-                _redeemValue +
-                _calculateAssetValue(
-                    _assetPrices,
-                    _assetDecimals,
-                    i,
-                    _trackedAsset,
-                    redeemAssetsMap[_trackedAsset]
-                );
-            _vaultValueOfNow =
-                _vaultValueOfNow +
-                _calculateAssetValue(_assetPrices, _assetDecimals, i, _trackedAsset, _vaultAmounts[i]);
-            _vaultValueOfBefore =
-                _vaultValueOfBefore +
-                _calculateAssetValue(
-                    _assetPrices,
-                    _assetDecimals,
-                    i,
-                    _trackedAsset,
-                    beforeAdjustPositionAssetsMap[_trackedAsset]
-                );
+            _transferValue += _calculateAssetValue(
+                _assetPrices,
+                _assetDecimals,
+                i,
+                _trackedAsset,
+                transferFromVaultBufferAssetsMap[_trackedAsset]
+            );
+            _redeemValue += _calculateAssetValue(
+                _assetPrices,
+                _assetDecimals,
+                i,
+                _trackedAsset,
+                redeemAssetsMap[_trackedAsset]
+            );
+            _vaultValueOfNow += _calculateAssetValue(
+                _assetPrices,
+                _assetDecimals,
+                i,
+                _trackedAsset,
+                _vaultAmounts[i]
+            );
+            _vaultValueOfBefore += _calculateAssetValue(
+                _assetPrices,
+                _assetDecimals,
+                i,
+                _trackedAsset,
+                beforeAdjustPositionAssetsMap[_trackedAsset]
+            );
         }
 
         uint256 _totalDebtOfBefore = totalDebtOfBeforeAdjustPosition;
@@ -670,14 +722,14 @@ contract Vault is VaultStorage, ExchangeHelper {
             address _trackedAsset = _trackedAssets[i];
             uint256 _balance;
             if (_dealVaultBuffer) {
-                _balance = _balanceOfToken(_trackedAsset, _vaultBufferAddress);
+                _balance = __balanceOfToken(_trackedAsset, _vaultBufferAddress);
                 if (_balance > 0) {
                     _transferAmounts[i] = _balance;
                     _vaultBufferAboveZero = true;
                     transferFromVaultBufferAssetsMap[_trackedAsset] = _balance;
                 }
             }
-            uint256 _vaultAmount = _balanceOfToken(_trackedAsset, address(this));
+            uint256 _vaultAmount = __balanceOfToken(_trackedAsset, address(this));
             if (_vaultAmount > 0) {
                 _vaultAmounts[i] = _vaultAmount;
             }
@@ -714,7 +766,7 @@ contract Vault is VaultStorage, ExchangeHelper {
         uint256 _trackedAssetsLength = _trackedAssets.length;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
-            uint256 _balance = _balanceOfToken(_trackedAsset, address(this));
+            uint256 _balance = __balanceOfToken(_trackedAsset, address(this));
             if (_balance > 0) {
                 _totalAssetInVaultLocal =
                     _totalAssetInVaultLocal +
@@ -724,26 +776,22 @@ contract Vault is VaultStorage, ExchangeHelper {
         return _totalAssetInVaultLocal;
     }
 
-    function _totalAssetInVaultAndVaultBuffer() internal view returns (uint256) {
+    function _totalAssetInVaultAndVaultBuffer() internal view returns (uint256 _value) {
         address[] memory _trackedAssets = _getTrackedAssets();
         uint256 _trackedAssetsLength = _trackedAssets.length;
         uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
         uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
 
-        uint256 _totalAssetInVaultAndVaultBuffer;
         address _vaultBufferAddress = vaultBufferAddress;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
-            uint256 _assetBalancesInVault = _balanceOfToken(_trackedAsset, address(this));
-            uint256 _assetBalancesInVaultBuffer = _balanceOfToken(_trackedAsset, _vaultBufferAddress);
+            uint256 _assetBalancesInVault = __balanceOfToken(_trackedAsset, address(this));
+            uint256 _assetBalancesInVaultBuffer = __balanceOfToken(_trackedAsset, _vaultBufferAddress);
             uint256 _balance = _assetBalancesInVault + _assetBalancesInVaultBuffer;
             if (_balance > 0) {
-                _totalAssetInVaultAndVaultBuffer =
-                    _totalAssetInVaultAndVaultBuffer +
-                    _calculateAssetValue(_assetPrices, _assetDecimals, i, _trackedAsset, _balance);
+                _value += _calculateAssetValue(_assetPrices, _assetDecimals, i, _trackedAsset, _balance);
             }
         }
-        return _totalAssetInVaultAndVaultBuffer;
     }
 
     function _estimateMint(
@@ -845,7 +893,10 @@ contract Vault is VaultStorage, ExchangeHelper {
             for (uint256 i = 0; i < _transferAssetsLength; i++) {
                 address _trackedAsset = _trackedAssets[i];
                 if (assetSet.contains(_trackedAsset)) {
-                    uint256 _assetBalancesInVaultBuffer = _balanceOfToken(_trackedAsset, _vaultBufferAddress);
+                    uint256 _assetBalancesInVaultBuffer = __balanceOfToken(
+                        _trackedAsset,
+                        _vaultBufferAddress
+                    );
                     if (_assetBalancesInVaultBuffer > 0) {
                         uint256 _value = _calculateAssetValue(
                             _assetPrices,
@@ -916,7 +967,7 @@ contract Vault is VaultStorage, ExchangeHelper {
 
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
-            uint256 _balance = _balanceOfToken(_trackedAsset, address(this));
+            uint256 _balance = __balanceOfToken(_trackedAsset, address(this));
             if (_balance > 0) {
                 uint256 _value = _calculateAssetValue(
                     _assetPrices,
@@ -971,15 +1022,18 @@ contract Vault is VaultStorage, ExchangeHelper {
             uint256 _amount = _outputs[i];
             if (_amount > 0) {
                 address _trackedAsset = _trackedAssets[i];
-                if (_trackedAsset == NativeToken.NATIVE_TOKEN) {
-                    _actualAmount = _actualAmount + _amount;
-                    payable(msg.sender).transfer(_amount);
+                if (__isNativeToken(_trackedAsset)) {
+                    _actualAmount += _amount;
                 } else {
-                    _actualAmount =
-                        _actualAmount +
-                        _calculateAssetValue(_assetPrices, _assetDecimals, i, _trackedAsset, _amount);
-                    IERC20Upgradeable(_trackedAsset).safeTransfer(msg.sender, _amount);
+                    _actualAmount += _calculateAssetValue(
+                        _assetPrices,
+                        _assetDecimals,
+                        i,
+                        _trackedAsset,
+                        _amount
+                    );
                 }
+                __transferToken(_trackedAsset, _amount, msg.sender);
             }
         }
         return _actualAmount;
@@ -1232,7 +1286,7 @@ contract Vault is VaultStorage, ExchangeHelper {
     function _getAssetPrice(address _asset) internal view returns (uint256 _price) {
         //ETHi
         if (vaultType > 0) {
-            if (_asset == NativeToken.NATIVE_TOKEN) {
+            if (__isNativeToken(_asset)) {
                 _price = 1e18;
             } else {
                 _price = IValueInterpreter(valueInterpreter).priceInEth(_asset);
@@ -1257,7 +1311,7 @@ contract Vault is VaultStorage, ExchangeHelper {
             uint256 _amount = _amounts[i];
             checkIsSupportAsset(_asset);
             require(_amount > 0, "ASI"); //Amount must be gt 0
-            if (_asset == NativeToken.NATIVE_TOKEN) {
+            if (__isNativeToken(_asset)) {
                 _ethAmount = _ethAmount + _amount;
             }
         }
@@ -1292,86 +1346,5 @@ contract Vault is VaultStorage, ExchangeHelper {
                 return(0, returndatasize())
             }
         }
-    }
-
-    function setStrategyTargetDebts(
-        address[] memory _strategies,
-        uint256[] memory _newTargetDebts
-    ) external isKeeperOrVaultOrGovOrDelegate {
-        require(_strategies.length == _newTargetDebts.length, "Two lengths must be equal");
-        uint256 _len = _strategies.length;
-        for (uint256 i = 0; i < _len; i++) {
-            StrategyParams storage strategyParams = strategies[_strategies[i]];
-            strategyParams.targetDebt = _newTargetDebts[i];
-        }
-    }
-
-    function increaseStrategyTargetDebts(
-        address[] memory _strategies,
-        uint256[] memory _addAmounts
-    ) external isKeeperOrVaultOrGovOrDelegate {
-        require(_strategies.length == _addAmounts.length, "Two lengths must be equal");
-        uint256 _len = _strategies.length;
-        for (uint256 i = 0; i < _len; i++) {
-            StrategyParams storage strategyParams = strategies[_strategies[i]];
-            strategyParams.targetDebt += _addAmounts[i];
-        }
-    }
-
-    function isTrackedAssets(address _token) external view returns (bool) {
-        return trackedAssetsMap.contains(_token);
-    }
-
-    /// @notice Vault holds asset value directly in USD(USDi)/ETH(ETHi)(1e18)
-    function valueOfTrackedTokensInVaultBuffer() public view returns (uint256) {
-        uint256 _valueOfTrackedTokensIncludeVaultBuffer = valueOfTrackedTokensIncludeVaultBuffer();
-        uint256 _valueOfTrackedTokensInVault = valueOfTrackedTokens();
-        if (_valueOfTrackedTokensIncludeVaultBuffer > _valueOfTrackedTokensInVault) {
-            return _valueOfTrackedTokensIncludeVaultBuffer - _valueOfTrackedTokensInVault;
-        }
-        return 0;
-    }
-
-    /// @notice Gets token value transfered from vault buffer in USD(USDi)/ETH(ETHi)(1e18)
-    function getTransferValueFromVaultBuffer() internal view returns (uint256 _transferTotalValue) {
-        address[] memory _trackedAssets = _getTrackedAssets();
-        uint256 _trackedAssetsLength = _trackedAssets.length;
-
-        uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
-        uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
-
-        for (uint256 i = 0; i < _trackedAssetsLength; i++) {
-            address _trackedAsset = _trackedAssets[i];
-            _transferTotalValue =
-                _transferTotalValue +
-                _calculateAssetValue(
-                    _assetPrices,
-                    _assetDecimals,
-                    i,
-                    _trackedAsset,
-                    transferFromVaultBufferAssetsMap[_trackedAsset]
-                );
-        }
-        return _transferTotalValue;
-    }
-
-    /// @notice Gets pegged token value holded by vault buffer in USD(USDi)/ETH(ETHi)(1e18)
-    function getPegTokenValueOfVaultBuffer() internal view returns (uint256) {
-        address _pegToken = pegTokenAddress;
-        uint256 _balance = IPegToken(_pegToken).balanceOf(vaultBufferAddress);
-        uint256 _assetDecimal = IPegToken(_pegToken).decimals();
-        uint256 _pegTokenPrice = getPegTokenPrice();
-
-        return _balance.mulTruncateScale(_pegTokenPrice, 10 ** _assetDecimal);
-    }
-
-    /// @dev Calculate total value of all assets held in VaultBuffer.
-    /// @return _value Total value(by oracle price) in USD(USDi)/ETH(ETHi)(1e18)
-    function totalValueInVaultBuffer() public view returns (uint256) {
-        uint256 _bufferCash = valueOfTrackedTokensInVaultBuffer();
-        uint256 _transferValue = getTransferValueFromVaultBuffer();
-        uint256 _pegTokenTotalValue = getPegTokenValueOfVaultBuffer();
-
-        return _bufferCash + _transferValue + _pegTokenTotalValue;
     }
 }

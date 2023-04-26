@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity 0.8.17;
 
-import "brain-forge-std/Test.sol";
+import "forge-std/Test.sol";
 
 import "../../library/NativeToken.sol";
 import "../../vault/IVault.sol";
@@ -24,7 +24,8 @@ contract HarvesterTest is Test {
     address ethVault = 0x8f0Cb368C63fbEDF7a90E43fE50F7eb8B9411746;
     address treasuryAddress;
 
-    bytes txData1 = hex"e449022e0000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000391c1cb6ba5562ab100000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000180000000000000000000000060594a405d53811d3bc4766596efd80fd545a270cfee7c08";
+    bytes txData1 =
+        hex"e449022e0000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000391c1cb6ba5562ab100000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000180000000000000000000000060594a405d53811d3bc4766596efd80fd545a270cfee7c08";
 
     function setUp() public {
         Treasury treasury = new Treasury();
@@ -46,13 +47,13 @@ contract HarvesterTest is Test {
 
         uint256 beforeTransfer = IERC20(WETH).balanceOf(treasuryAddress);
         vm.startPrank(GOVERNANOR);
-        harvester.transferToken(WETH, wethBalance);
+        harvester.transferTokenToTreasury(WETH, wethBalance);
         uint256 afterTransfer = IERC20(WETH).balanceOf(treasuryAddress);
 
         assertEq(afterTransfer - beforeTransfer, wethBalance);
 
         uint256 beforeTransferBalance = treasuryAddress.balance;
-        harvester.transferToken(NativeToken.NATIVE_TOKEN, ethBalance);
+        harvester.transferTokenToTreasury(NativeToken.NATIVE_TOKEN, ethBalance);
         vm.stopPrank();
         uint256 afterTransferBalance = treasuryAddress.balance;
 
@@ -242,19 +243,19 @@ contract HarvesterTest is Test {
         pendingToClaim[0] = address(mockStrategy);
         vm.prank(KEEPER);
         harvester.collectStrategies(ethVault, pendingToClaim);
-        deal(WETH,address(harvester),1 ether);
+        deal(WETH, address(harvester), 1 ether);
 
-        console.log("harvester address: " ,address(harvester));
+        console.log("harvester address: ", address(harvester));
         ExchangeHelper.ExchangeParams[] memory exchangeParams = new ExchangeHelper.ExchangeParams[](1);
         exchangeParams[0].fromToken = WETH;
         exchangeParams[0].toToken = DAI;
         exchangeParams[0].fromAmount = 1 ether;
         exchangeParams[0].platform = ExchangeHelper.ExchangePlatform.ONE_INCH;
         exchangeParams[0].txData = txData1;
-        
+
         vm.prank(KEEPER);
         harvester.exchangeStrategyReward(ethVault, address(mockStrategy), exchangeParams);
 
-        console.log("DAI balance: " ,IERC20(DAI).balanceOf(address(mockStrategy)));
+        console.log("DAI balance: ", IERC20(DAI).balanceOf(address(mockStrategy)));
     }
 }
