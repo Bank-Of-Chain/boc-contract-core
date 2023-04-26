@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.17;
 
-import {Test} from "brain-forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
 contract Utils is Test {
     bytes32 internal nextUser = keccak256(abi.encodePacked("user address"));

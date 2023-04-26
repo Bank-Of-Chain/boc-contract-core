@@ -75,7 +75,6 @@ contract VaultTest is Test {
     CustomFakePriceFeed customFakePriceFeed;
     Treasury treasury;
     Treasury treasury02;
-    TestAdapter testAdapter;
     Vault vault;
     Vault ethVault;
     IVault iETHVault;
@@ -199,12 +198,6 @@ contract VaultTest is Test {
 
         treasury02 = new Treasury();
         treasury02.initialize(address(accessControlProxy));
-
-        testAdapter = new TestAdapter(address(valueInterpreter));
-        testAdapter = new TestAdapter(address(valueInterpreter));
-        vm.label(address(testAdapter), "testAdapter");
-        address[] memory _exchangeAdapters = new address[](1);
-        _exchangeAdapters[0] = address(testAdapter);
 
         // init USDi Vault
         vaultAdmin = new VaultAdmin();
