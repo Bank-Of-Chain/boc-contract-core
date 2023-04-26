@@ -9,11 +9,11 @@ import "../../access-control/AccessControlProxy.sol";
 import "../../treasury/Treasury.sol";
 
 import "../Constants.sol";
-import "../Utils.sol";
+import "../UtilsTest.sol";
 
 contract TreasuryTest is Test {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    Utils internal utils;
+    UtilsTest internal utils;
     address payable[] internal users;
 
     address internal alice;
@@ -34,7 +34,7 @@ contract TreasuryTest is Test {
         treasury.initialize(address(accessControlProxy));
         vm.label(address(treasury), "treasury");
 
-        utils = new Utils();
+        utils = new UtilsTest();
         users = utils.createUsers(2);
 
         alice = users[0];

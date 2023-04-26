@@ -7,10 +7,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "../../access-control/AccessControlProxy.sol";
 
 import "../Constants.sol";
-import "../Utils.sol";
+import "../UtilsTest.sol";
 
 contract AccessControlProxyTest is Test {
-    Utils internal utils;
+    UtilsTest internal utils;
     address payable[] internal users;
 
     address internal alice;
@@ -26,7 +26,7 @@ contract AccessControlProxyTest is Test {
 
         
 
-        utils = new Utils();
+        utils = new UtilsTest();
         users = utils.createUsers(2);
 
         alice = users[0];

@@ -21,11 +21,11 @@ import "../../vault/VaultBuffer.sol";
 import "../../token/PegToken.sol";
 
 import "../Constants.sol";
-import "../Utils.sol";
+import "../UtilsTest.sol";
 
 contract PegTokenTest is Test {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    Utils internal utils;
+    UtilsTest internal utils;
     address payable[] internal users;
 
     address internal alice;
@@ -227,7 +227,7 @@ contract PegTokenTest is Test {
 
         vm.stopPrank();
 
-        utils = new Utils();
+        utils = new UtilsTest();
         users = utils.createUsers(2);
 
         alice = users[0];
