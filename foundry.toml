@@ -4,7 +4,7 @@ src = 'contracts'
 libs = ['lib']
 out = 'forge-out'
 cache = true
-cache_path = 'cache'
+cache_path = 'cache_foundry'
 
 optimizer = true
 optimizer_runs = 1000

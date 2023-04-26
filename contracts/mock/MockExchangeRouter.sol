@@ -7,9 +7,10 @@ import "../library/NativeToken.sol";
 import "../price-feeds/IValueInterpreter.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "../util/AssetHelpers.sol";
 // import "brain-forge-std/Test.sol";
 
-contract MockExchangeRouter {
+contract MockExchangeRouter is AssetHelpers{
     using SafeERC20Upgradeable for IERC20Upgradeable;
     address private valueInterpreter;
     address private W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -52,10 +53,7 @@ contract MockExchangeRouter {
         }
         // Mock exchange
         _expectAmount = (_amount * 1000) / 1000;
-        if (_to == NativeToken.NATIVE_TOKEN) {
-            payable(_receiver).transfer(_expectAmount);
-        } else {
-            IERC20Upgradeable(_to).safeTransfer(_receiver, _expectAmount);
-        }
+
+        __transferToken(_to, _expectAmount, _receiver);
     }
 }

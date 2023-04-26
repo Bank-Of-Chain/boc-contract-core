@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.17;
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../library/RevertReasonParser.sol";
 import "../library/NativeToken.sol";
 import "../access-control/AccessControlMixin.sol";
+import "../util/AssetHelpers.sol";
 
-abstract contract ExchangeHelper is Initializable, AccessControlMixin {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-
+abstract contract ExchangeHelper is AssetHelpers, Initializable, AccessControlMixin {
     enum ExchangePlatform {
         ONE_INCH,
         PARA_SWAP
@@ -49,6 +47,14 @@ abstract contract ExchangeHelper is Initializable, AccessControlMixin {
         paraTransferProxy = 0x216B4B4Ba9F3e719726886d34a177484278Bfcae;
     }
 
+    /// @dev Exchange tokens using a third party exchange platform.  
+    /// Current support: 1Inch and ParaSwap. 
+    /// @param _fromToken address of token being exchanged
+    /// @param _toToken address of token being received
+    /// @param _fromAmount amount of token being exchanged
+    /// @param _calldata calldata to exchange the tokens
+    /// @param _platform exchange platform for the exchange
+    /// @return _returnAmount the amount of token received
     function _exchange(
         address _fromToken,
         address _toToken,
@@ -83,21 +89,26 @@ abstract contract ExchangeHelper is Initializable, AccessControlMixin {
         paraTransferProxy = _newTransferProxy;
     }
 
+    /// This internal function conducts a token swap on the 1Inch exchange and returns the amount of the '_toToken' exchanged.
+    /// @param _fromToken The address of the token to be exchanged.
+    /// @param _toToken The address of the token to be received in the swap.
+    /// @param _fromAmount The amount of the '_fromToken' to be exchanged.
+    /// @param _calldata The calldata for the 1Inch swap.
+    /// @return _returnAmount The amount of the '_toToken' exchanged in the swap.
     function exchangeOn1Inch(
         address _fromToken,
         address _toToken,
         uint256 _fromAmount,
         bytes memory _calldata
     ) internal returns (uint256 _returnAmount) {
-        uint256 _beforeBalOfToToken = _balanceOfToken(_toToken, address(this));
+        uint256 _beforeBalOfToToken = __balanceOfToken(_toToken, address(this));
         address _oneInchRouter = oneInchRouter;
         bool _success;
         bytes memory _result;
-        if (_fromToken == NativeToken.NATIVE_TOKEN) {
+        if (__isNativeToken(_fromToken)) {
             (_success, _result) = payable(_oneInchRouter).call{value: _fromAmount}(_calldata);
         } else {
-            IERC20Upgradeable(_fromToken).safeApprove(_oneInchRouter, 0);
-            IERC20Upgradeable(_fromToken).safeApprove(_oneInchRouter, _fromAmount);
+            __approveAssetMaxAsNeeded(_fromToken, _oneInchRouter, _fromAmount);
             (_success, _result) = _oneInchRouter.call(_calldata);
         }
 
@@ -105,26 +116,31 @@ abstract contract ExchangeHelper is Initializable, AccessControlMixin {
             revert(RevertReasonParser.parse(_result, "1inch swap failed: "));
         }
 
-        uint256 _afterBalOfToToken = _balanceOfToken(_toToken, address(this));
+        uint256 _afterBalOfToToken = __balanceOfToken(_toToken, address(this));
         _returnAmount = _afterBalOfToToken - _beforeBalOfToToken;
     }
 
+    /// This function is used to exchange tokens on Paraswap, transferring a given amount of _fromToken to receive an equivalent amount of _toToken.
+    /// @param _fromToken The address of the token to be exchanged.
+    /// @param _toToken The address of the token to be received in the swap.
+    /// @param _fromAmount The amount of the '_fromToken' to be exchanged.
+    /// @param _calldata The calldata for the paraswap.
+    /// @return _returnAmount The amount of the '_toToken' exchanged in the swap.
     function exchangeOnPara(
         address _fromToken,
         address _toToken,
         uint256 _fromAmount,
         bytes memory _calldata
     ) internal returns (uint256 _returnAmount) {
-        uint256 _beforeBalOfToToken = _balanceOfToken(_toToken, address(this));
+        uint256 _beforeBalOfToToken = __balanceOfToken(_toToken, address(this));
         address _paraRouter = paraRouter;
         address _paraTransferProxy = paraTransferProxy;
         bool _success;
         bytes memory _result;
-        if (_fromToken == NativeToken.NATIVE_TOKEN) {
+        if (__isNativeToken(_fromToken)) {
             (_success, _result) = payable(_paraRouter).call{value: _fromAmount}(_calldata);
         } else {
-            IERC20Upgradeable(_fromToken).safeApprove(_paraTransferProxy, 0);
-            IERC20Upgradeable(_fromToken).safeApprove(_paraTransferProxy, _fromAmount);
+            __approveAssetMaxAsNeeded(_fromToken, _paraTransferProxy, _fromAmount);
             (_success, _result) = _paraRouter.call(_calldata);
         }
 
@@ -132,17 +148,7 @@ abstract contract ExchangeHelper is Initializable, AccessControlMixin {
             revert(RevertReasonParser.parse(_result, "paraswap callBytes failed: "));
         }
 
-        uint256 _afterBalOfToToken = _balanceOfToken(_toToken, address(this));
+        uint256 _afterBalOfToToken = __balanceOfToken(_toToken, address(this));
         _returnAmount = _afterBalOfToToken - _beforeBalOfToToken;
-    }
-
-    function _balanceOfToken(address _trackedAsset, address _owner) internal view returns (uint256) {
-        uint256 _balance;
-        if (_trackedAsset == NativeToken.NATIVE_TOKEN) {
-            _balance = _owner.balance;
-        } else {
-            _balance = IERC20Upgradeable(_trackedAsset).balanceOf(_owner);
-        }
-        return _balance;
     }
 }

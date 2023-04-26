@@ -10,7 +10,7 @@ interface IHarvester {
     /// @param _sender The manager address
     /// @param _token The transfer token
     /// @param _amount The transfer amount
-    event TransferToken(address indexed _sender, address indexed _token, uint256 _amount);
+    event TransferTokenToTreasury(address indexed _sender, address indexed _token, uint256 _amount);
 
     /// @param _strategy The traget strategy
     /// @param _rewardTokens The reward token array
@@ -51,7 +51,7 @@ interface IHarvester {
     /// @dev Transfer token to governor.
     /// @param _asset Address for the asset
     /// @param _amount Amount of the asset to transfer
-    function transferToken(address _asset, uint256 _amount) external;
+    function transferTokenToTreasury(address _asset, uint256 _amount) external;
 
     /// @notice Collect the reward token from strategy.
     /// @param _vault The vault of the strategy

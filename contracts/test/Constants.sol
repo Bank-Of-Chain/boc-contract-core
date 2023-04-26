@@ -1,7 +1,7 @@
 
 
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity 0.8.17;
 
 address constant GOVERNANOR = 0x4fd4c98baBEe5E22219C573713308329da40649D;
 address constant DEGEGATOR = 0x4A22Dccb55723506b795A29E6861288D4147654a;

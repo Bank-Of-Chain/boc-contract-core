@@ -6,8 +6,9 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "./../access-control/AccessControlMixin.sol";
-import "./../library/BocRoles.sol";
+import "../access-control/AccessControlMixin.sol";
+import "../util/AssetHelpers.sol";
+import "../library/BocRoles.sol";
 import "../library/StableMath.sol";
 import "../library/NativeToken.sol";
 import "../price-feeds/IValueInterpreter.sol";
@@ -15,7 +16,7 @@ import "./IStrategy.sol";
 
 /// @title BaseStrategy
 /// @author Bank of Chain Protocol Inc
-abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
+abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin, AssetHelpers {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using StableMath for uint256;
 
@@ -94,7 +95,7 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
     }
 
     /// @inheritdoc IStrategy
-    function getOutputsInfo() external view virtual override returns (OutputInfo[] memory _outputsInfo){
+    function getOutputsInfo() external view virtual override returns (OutputInfo[] memory _outputsInfo) {
         _outputsInfo = new OutputInfo[](1);
         OutputInfo memory _info = _outputsInfo[0];
         _info.outputCode = 0;
@@ -137,22 +138,15 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
     function get3rdPoolAssets() external view virtual override returns (uint256);
 
     /// @inheritdoc IStrategy
-    function reportToVault()
-        external
-        virtual
-        override
-        isKeeperOrVaultOrGovOrDelegate
-    {
+    function reportToVault() external virtual override isKeeperOrVaultOrGovOrDelegate {
         vault.report();
     }
 
     /// @inheritdoc IStrategy
-    function borrow(address[] memory _assets, uint256[] memory _amounts)
-        external
-        payable
-        override
-        onlyVault
-    {
+    function borrow(
+        address[] memory _assets,
+        uint256[] memory _amounts
+    ) external payable override onlyVault {
         depositTo3rdPool(_assets, _amounts);
         emit Borrow(_assets, _amounts);
     }
@@ -213,18 +207,14 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
 
     /// @notice Return the token's balance Of this contract
     function balanceOfToken(address _tokenAddress) internal view returns (uint256) {
-        if (_tokenAddress == NativeToken.NATIVE_TOKEN) {
-            return address(this).balance;
-        }
-        return IERC20Upgradeable(_tokenAddress).balanceOf(address(this));
+        return __balanceOfToken(_tokenAddress, address(this));
     }
 
     /// @notice Return the value of token in USD(USDi)/ETH(ETHi).
-    function queryTokenValue(address _token, uint256 _amount)
-        internal
-        view
-        returns (uint256 _valueInUsdOrEth)
-    {
+    function queryTokenValue(
+        address _token,
+        uint256 _amount
+    ) internal view returns (uint256 _valueInUsdOrEth) {
         if (vault.vaultType() > 0) {
             if (_token == NativeToken.NATIVE_TOKEN) {
                 _valueInUsdOrEth = _amount;
@@ -238,10 +228,7 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
 
     /// @notice Return the uint with decimal of one token
     function decimalUnitOfToken(address _token) internal view returns (uint256) {
-        if (_token == NativeToken.NATIVE_TOKEN) {
-            return 1e18;
-        }
-        return 10**IERC20MetadataUpgradeable(_token).decimals();
+        return 10 ** __getDecimals(_token);
     }
 
     /// @notice Transfer `_assets` token from this contract to target address.
@@ -257,11 +244,7 @@ abstract contract BaseStrategy is IStrategy, Initializable, AccessControlMixin {
             uint256 _amount = _amounts[i];
             address _asset = _assets[i];
             if (_amount > 0) {
-                if (_asset == NativeToken.NATIVE_TOKEN) {
-                    payable(_target).transfer(_amount);
-                } else {
-                    IERC20Upgradeable(_asset).safeTransfer(address(_target), _amount);
-                }
+                __transferToken(_asset, _amount, _target);
             }
         }
     }

@@ -1,6 +1,6 @@
 {
   "name": "boc-contract-core",
-  "version": "2.0.0-beta23",
+  "version": "2.0.0-beta-1",
   "description": "BankOfChain protocol core.",
   "main": "index.js",
   "license": "AGPL-3.0-or-later",
@@ -10,6 +10,7 @@
   "keywords": [],
   "author": "",
   "devDependencies": {
+    "@nomicfoundation/hardhat-foundry": "^1.0.1",
     "@nomiclabs/hardhat-ethers": "^2.0.5",
     "@nomiclabs/hardhat-etherscan": "^3.0.3",
     "@nomiclabs/hardhat-truffle5": "2.0.0",
@@ -19,7 +20,6 @@
     "@uniswap/v3-core": "github:lbertenasco/uniswap-v3-core",
     "@uniswap/v3-periphery": "github:lbertenasco/uniswap-v3-periphery",
     "bignumber.js": "^9.0.1",
-    "brain-forge-std": "1.1.5",
     "chai": "^4.3.6",
     "dotenv": "^10.0.0",
     "eslint": "^7.32.0",

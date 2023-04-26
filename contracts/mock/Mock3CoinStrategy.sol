@@ -39,7 +39,7 @@ contract Mock3CoinStrategy is BaseStrategy {
         uint256 _ratiosLength = ratios.length;
         _ratios = new uint256[](_ratiosLength);
         for (uint256 i = 0; i < _ratiosLength; i++) {
-            _ratios[i] = (10**_getDecimals(_assets[i])) * ratios[i];
+            _ratios[i] = (10**__getDecimals(_assets[i])) * ratios[i];
         }
     }
 
@@ -60,7 +60,7 @@ contract Mock3CoinStrategy is BaseStrategy {
         _amounts = new uint256[](_tokens.length);
         for (uint256 i = 0; i < _tokens.length; i++) {
             _tokens[i] = wants[i];
-            _amounts[i] = _balanceOfToken(_tokens[i], address(this));
+            _amounts[i] = __balanceOfToken(_tokens[i], address(this));
         }
     }
 
@@ -128,38 +128,11 @@ contract Mock3CoinStrategy is BaseStrategy {
         address _asset,
         uint256 _amount
     ) external isVaultManager {
-        if (_asset == NativeToken.NATIVE_TOKEN) {
-            payable(_target).transfer(_amount);
-        } else {
-            IERC20Upgradeable(_asset).safeTransfer(address(_target), _amount);
-        }
+        __transferToken(_asset, _amount, _target);
     }
 
-    /// @notice Fetch the `decimals()` from an ERC20 token
-    /// @dev Grabs the `decimals()` from a contract and fails if
-    ///     the decimal value does not live within a certain range
-    /// @param _token Address of the ERC20 token
-    /// @return uint256 Decimals of the ERC20 token
-    function _getDecimals(address _token) private view returns (uint256) {
-        uint256 _decimals;
-        if (_token == NativeToken.NATIVE_TOKEN) {
-            _decimals = 18;
-        } else {
-            _decimals = IERC20MetadataUpgradeable(_token).decimals();
-        }
-        require(_decimals > 0, "Token must have sufficient decimal places");
-        return _decimals;
-    }
 
-    function _balanceOfToken(address _trackedAsset, address _owner) internal view returns (uint256) {
-        uint256 _balance;
-        if (_trackedAsset == NativeToken.NATIVE_TOKEN) {
-            _balance = _owner.balance;
-        } else {
-            _balance = IERC20Upgradeable(_trackedAsset).balanceOf(_owner);
-        }
-        return _balance;
-    }
+
 
     /// @inheritdoc IStrategy
     function poolWithdrawQuota() public view virtual override returns (uint256) {

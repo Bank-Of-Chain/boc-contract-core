@@ -15,7 +15,6 @@ import "./../access-control/AccessControlMixin.sol";
 import "./IVault.sol";
 import "./IVaultBuffer.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "../price-feeds/IValueInterpreter.sol";
 import "../exchanges/ExchangeHelper.sol";
 
 /// @title VaultBuffer
@@ -78,7 +77,7 @@ contract VaultBuffer is
         address _accessControlProxy
     ) external initializer {
         __InitializeRouters();
-        
+
         mName = _name;
         mSymbol = _symbol;
         vault = _vault;
@@ -127,14 +126,9 @@ contract VaultBuffer is
     ) external override onlyVault {
         uint256 _len = _assets.length;
         for (uint256 i = 0; i < _len; i++) {
-            uint256 amount = _amounts[i];
-            if (amount > 0) {
-                address asset = _assets[i];
-                if (asset == NativeToken.NATIVE_TOKEN) {
-                    payable(vault).transfer(amount);
-                } else {
-                    IERC20Upgradeable(asset).safeTransfer(vault, amount);
-                }
+            uint256 _amount = _amounts[i];
+            if (_amount > 0) {
+                __transferToken(_assets[i], _amount, vault);
             }
         }
     }
@@ -143,7 +137,7 @@ contract VaultBuffer is
     /// @inheritdoc IVaultBuffer
     function openDistribute() external override onlyVault {
         assert(!isDistributing);
-        uint256 _pegTokenBalance = IERC20Upgradeable(pegTokenAddr).balanceOf(address(this));
+        uint256 _pegTokenBalance = __balanceOfToken(pegTokenAddr, address(this));
         if (_pegTokenBalance > 0) {
             isDistributing = true;
 
