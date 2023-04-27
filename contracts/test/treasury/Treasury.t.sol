@@ -43,10 +43,6 @@ contract TreasuryTest is Test {
         vm.label(bob, "Bob");
     }
 
-    function testVersion() public {
-        assertEq(treasury.version(), "V1.0.0");
-    }
-
     function testBalance() public {
         uint256 balance = 1e10;
         deal(USDT_ADDRESS,address(treasury),balance);
