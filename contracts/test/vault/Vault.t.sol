@@ -50,15 +50,13 @@ contract VaultTest is Test {
     address constant SETH2_ADDRESS = 0xFe2e637202056d30016725477c5da089Ab0A043A;
     address constant SETH2_WETH_POOL_ADDRESS = 0x7379e81228514a1D2a6Cf7559203998E20598346;
 
-    // const ETH = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
-    // const stETH = '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84';
-    // const rETH = '0xae78736Cd615f374D3085123A210448E74Fc6393';
-    // const cbETH = '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704';
-    // const sETH = '0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb';
-
-    address constant NATIVE_TOKEN_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address constant NATIVE_TOKEN_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE; 
     address constant FAKE_TOKEN_ADDRESS = 0x3F9F6ca28f711B82421A45d3e8a3B73Bd295922B;
     // address constant SETH2_WETH_POOL_ADDRESS = 0xDADcF64BAbfb566785f1e9DFC4889C5e593DDdC7;
+
+    bytes txData1 = hex"e449022e0000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000391c1cb6ba5562ab100000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000180000000000000000000000060594a405d53811d3bc4766596efd80fd545a270cfee7c08";
+    // copy from https://cn.etherscan.com/tx/0xa8a80056e01222e2608781dedca8988c22a5f2ea6a7867a87f55fba832c66df3
+    bytes txData2 = hex"0b86a4c1000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000003dae3c788199a8fb62000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000001000000000000000000004de494b86ca6f7a495930fe7f552eb9e4cbb5ef2b736";
 
     uint256 constant HOURS_OF_24_HEARTBEAT = 24 hours;
     uint256 constant HOURS_OF_1_HEARTBEAT = 1 hours;
@@ -76,6 +74,7 @@ contract VaultTest is Test {
     CustomEthPriceFeed customEthPriceFeed;
     CustomFakePriceFeed customFakePriceFeed;
     Treasury treasury;
+    Treasury treasury02;
     Vault vault;
     Vault ethVault;
     IVault iETHVault;
@@ -196,6 +195,9 @@ contract VaultTest is Test {
         treasury = new Treasury();
         treasury.initialize(address(accessControlProxy));
         vm.label(address(treasury), "treasury");
+
+        treasury02 = new Treasury();
+        treasury02.initialize(address(accessControlProxy));
 
         // init USDi Vault
         vaultAdmin = new VaultAdmin();
@@ -327,7 +329,62 @@ contract VaultTest is Test {
         vm.stopPrank();
     }
 
-    function testAddAndRemoveAssets() public {
+    function testSetMethodsOfVaultAdmin() public {
+        vm.startPrank(GOVERNANOR);
+        assertEq(iVault.emergencyShutdown(),false);
+        iVault.setEmergencyShutdown(true);
+        assertEq(iVault.emergencyShutdown(),true);
+
+        assertEq(iVault.adjustPositionPeriod(),false);
+        iVault.setAdjustPositionPeriod(true);
+        assertEq(iVault.adjustPositionPeriod(),true);
+
+        //iVault.deltaThreshold()
+        assertEq(iVault.deltaThreshold(),100);
+        iVault.setDeltaThreshold(1000);
+        assertEq(iVault.deltaThreshold(),1000);
+
+        // setRedeemFeeBps
+        assertEq(iVault.redeemFeeBps(),0);
+        iVault.setRedeemFeeBps(100);
+        assertEq(iVault.redeemFeeBps(),100);
+
+        assertEq(iVault.maxTimestampBetweenTwoReported(),604800);
+        iVault.setMaxTimestampBetweenTwoReported(864000);
+        assertEq(iVault.maxTimestampBetweenTwoReported(),864000);
+
+        //setMinCheckedStrategyTotalDebt
+        assertEq(iVault.minCheckedStrategyTotalDebt(),1000e18);
+        iVault.setMinCheckedStrategyTotalDebt(2000e18);
+        assertEq(iVault.minCheckedStrategyTotalDebt(),2000e18);
+
+        assertEq(iVault.minimumInvestmentAmount(),0);
+        iVault.setMinimumInvestmentAmount(1e19);
+        assertEq(iVault.minimumInvestmentAmount(),1e19);
+
+        address _newAddress = address(treasury02);
+
+        assertEq(iVault.treasury(),address(treasury));
+        iVault.setTreasuryAddress(address(treasury02));
+        assertEq(iVault.treasury(),address(treasury02));
+
+        assertEq(iVault.exchangeManager(),address(0));
+        iVault.setExchangeManagerAddress(_newAddress);
+        assertEq(iVault.exchangeManager(),_newAddress);
+
+        assertEq(iVault.trusteeFeeBps(),0);
+        iVault.setTrusteeFeeBps(1000);
+        assertEq(iVault.trusteeFeeBps(),1000);
+
+        assertEq(iVault.rebasePaused(),false);
+        iVault.pauseRebase();
+        assertEq(iVault.rebasePaused(),true);
+
+        iVault.unpauseRebase();
+        assertEq(iVault.rebasePaused(),false);  
+    }
+
+    function testAddAndRemoveAssets() public { 
         address[] memory _assets = iVault.getSupportAssets();
         assertEq(_assets.length, 0);
 
@@ -346,6 +403,59 @@ contract VaultTest is Test {
         _assets = iVault.getSupportAssets();
         vm.stopPrank();
         assertEq(_assets.length, 3);
+    }
+
+    function testViewMethodsOfAssets() public { 
+        string memory version = iVault.getVersion();
+        string memory curVersion = "2.0.0";// to be edited if version update
+        assertEq(version, curVersion);
+
+        // test muliti methods:getSupportAssets,getTrackedAssets,
+        address[] memory _assets = iVault.getSupportAssets();
+        assertEq(_assets.length, 0);
+
+        address[] memory _trackedAssets = iVault.getTrackedAssets();
+        assertEq(_trackedAssets.length, 0);
+
+        vm.startPrank(GOVERNANOR);
+        iVault.addAsset(USDC_ADDRESS);
+        _assets = iVault.getSupportAssets();
+        assertEq(_assets.length, 1);
+        assertEq(_assets[0], USDC_ADDRESS);
+        //just check, non return
+        iVault.checkIsSupportAsset(USDC_ADDRESS);
+
+        _trackedAssets = iVault.getTrackedAssets();
+        assertEq(_trackedAssets.length, 1);
+        assertEq(_trackedAssets[0], USDC_ADDRESS);
+
+        iVault.removeAsset(USDC_ADDRESS);
+        _assets = iVault.getSupportAssets();
+        assertEq(_assets.length, 0);
+
+        _trackedAssets = iVault.getTrackedAssets();
+        assertEq(_trackedAssets.length, 0);
+
+
+        iVault.addAsset(USDC_ADDRESS);
+        iVault.addAsset(USDT_ADDRESS);
+        iVault.addAsset(DAI_ADDRESS);
+        _assets = iVault.getSupportAssets();
+        assertEq(_assets[0], USDC_ADDRESS);
+        assertEq(_assets[1], USDT_ADDRESS);
+        assertEq(_assets[2], DAI_ADDRESS);
+        assertEq(_assets.length, 3);
+
+        _trackedAssets = iVault.getTrackedAssets();
+        assertEq(_trackedAssets[0], USDC_ADDRESS);
+        assertEq(_trackedAssets[1], USDT_ADDRESS);
+        assertEq(_trackedAssets[2], DAI_ADDRESS);
+        assertEq(_trackedAssets.length, 3);
+        assertEq(true, iVault.isTrackedAssets(USDC_ADDRESS));
+        assertEq(true, iVault.isTrackedAssets(USDT_ADDRESS));
+        assertEq(true, iVault.isTrackedAssets(DAI_ADDRESS));
+
+        vm.stopPrank();
     }
 
     function testAddAndRemoveAssetsWithETHi() public {
@@ -596,6 +706,8 @@ contract VaultTest is Test {
         _strategies = iVault.getStrategies();
         assertEq(_strategies.length, 1);
 
+        iVault.checkActiveStrategy(address(mock3CoinStrategy));
+
         address[] memory _removeStrategies = new address[](1);
         _removeStrategies[0] = address(mock3CoinStrategy);
         iVault.removeStrategies(_removeStrategies);
@@ -620,6 +732,40 @@ contract VaultTest is Test {
         _strategies = iVault.getStrategies();
         vm.stopPrank();
         assertEq(_strategies.length, _strategyAdds.length);
+    }
+
+    function testSetStrategyEnforceChangeLimit() public {
+        testAddAndRemoveAssets();
+        testAddAndRemoveStrategies();
+
+        address[] memory _strategies = iVault.getStrategies();
+        IVault.StrategyParams memory strategyParam = iVault.strategies(_strategies[0]);
+        assertEq(strategyParam.enforceChangeLimit,true);
+
+        vm.startPrank(GOVERNANOR);
+        iVault.setStrategyEnforceChangeLimit(_strategies[0], false);
+        strategyParam = iVault.strategies(_strategies[0]);
+        assertEq(strategyParam.enforceChangeLimit,false);
+        vm.stopPrank();
+    
+    }
+
+    function testSetStrategySetLimitRatio() public {
+        testAddAndRemoveAssets();
+        testAddAndRemoveStrategies();
+
+        address[] memory _strategies = iVault.getStrategies();
+        IVault.StrategyParams memory strategyParam = iVault.strategies(_strategies[0]);
+        assertEq(strategyParam.lossLimitRatio,100);
+        assertEq(strategyParam.profitLimitRatio,100);
+
+        vm.startPrank(GOVERNANOR);
+        iVault.setStrategySetLimitRatio(_strategies[0], 200,200);
+        strategyParam = iVault.strategies(_strategies[0]);
+        assertEq(strategyParam.lossLimitRatio,200);
+        assertEq(strategyParam.profitLimitRatio,200);
+        vm.stopPrank();
+    
     }
 
     function testAddAndRemoveStrategiesWithETHi() public {
@@ -888,6 +1034,17 @@ contract VaultTest is Test {
             valueInterpreter.calcCanonicalAssetValueInUsd(DAI_ADDRESS, _daiAmount);
 
         assertEq(_ticketAmount, _valueInUSD);
+
+        uint256 valueOfTrackedTokens =  iVault.valueOfTrackedTokens();
+        assertEq(valueOfTrackedTokens, 0);
+        uint256 valueOfTrackedTokensIncludeVaultBuffer =  iVault.valueOfTrackedTokensIncludeVaultBuffer();
+        console2.log("valueOfTrackedTokensIncludeVaultBuffer is",valueOfTrackedTokensIncludeVaultBuffer);
+        
+        uint256 valueOfTrackedTokensInVaultBuffer =  iVault.valueOfTrackedTokensInVaultBuffer();
+        console2.log("valueOfTrackedTokensInVaultBuffer is",valueOfTrackedTokensInVaultBuffer);
+
+        assertEq(valueOfTrackedTokensIncludeVaultBuffer, valueOfTrackedTokensInVaultBuffer);
+
     }
 
     function testDepositWithETHi() public {
@@ -924,6 +1081,44 @@ contract VaultTest is Test {
             valueInterpreter.calcCanonicalAssetValueInEth(WETH_ADDRESS, _wETHAmount);
 
         assertEq(_ticketAmount, _valueInETH);
+
+        uint256 valueOfTrackedTokens =  iETHVault.valueOfTrackedTokens();
+        assertEq(valueOfTrackedTokens, 0);
+        uint256 valueOfTrackedTokensIncludeVaultBuffer =  iETHVault.valueOfTrackedTokensIncludeVaultBuffer();
+        console2.log("valueOfTrackedTokensIncludeVaultBuffer is",valueOfTrackedTokensIncludeVaultBuffer);
+        
+        uint256 valueOfTrackedTokensInVaultBuffer =  iETHVault.valueOfTrackedTokensInVaultBuffer();
+        console2.log("valueOfTrackedTokensInVaultBuffer is",valueOfTrackedTokensInVaultBuffer);
+
+        assertEq(valueOfTrackedTokensIncludeVaultBuffer, valueOfTrackedTokensInVaultBuffer);
+    }
+
+    function testWithdrawlQueueOpMethod() public {
+        testDeposit();
+        vm.startPrank(GOVERNANOR);
+        address[] memory _queues = new address[](2);
+        _queues[0] = address(mock3CoinStrategy);
+        _queues[1] = address(otherMock3CoinStrategy);
+        iVault.setWithdrawalQueue(_queues);
+
+        address[] memory wthdrawalQueue = iVault.getWithdrawalQueue();
+        assertEq(wthdrawalQueue[0],address(mock3CoinStrategy));
+        assertEq(wthdrawalQueue[1],address(otherMock3CoinStrategy));
+
+        address[] memory removeWthdrawalQueue = new address[](1);
+        removeWthdrawalQueue[0] = address(mock3CoinStrategy);
+        iVault.removeStrategyFromQueue(removeWthdrawalQueue);
+
+        address[] memory wthdrawalQueueAfterRemove = iVault.getWithdrawalQueue();
+        assertEq(wthdrawalQueueAfterRemove[0],address(otherMock3CoinStrategy));
+        assertEq(wthdrawalQueueAfterRemove[1],address(0));
+
+        iVault.forceRemoveStrategy(address(otherMock3CoinStrategy));
+        address[] memory wthdrawalQueueAfterForceRemove = iVault.getWithdrawalQueue();
+        //assertEq(wthdrawalQueueAfterForceRemove.length, 0);
+        assertEq(wthdrawalQueueAfterForceRemove[0],address(0));
+        assertEq(wthdrawalQueueAfterForceRemove[1],address(0));
+
     }
 
     function testAdjustPosition() public {
@@ -1016,8 +1211,26 @@ contract VaultTest is Test {
         vm.stopPrank();
 
         uint256 _usdiAmount = pegToken.balanceOf(USER);
+        uint256 getPegTokenPrice = iVault.getPegTokenPrice();
+        assertEq(getPegTokenPrice,1e18);
 
         assertEq(_usdiAmount, _valueInUSD);
+
+        uint256 valueOfTrackedTokensInVault =  iVault.valueOfTrackedTokens();
+        uint256 valueOfTrackedTokensIncludeVaultBuffer =  iVault.valueOfTrackedTokensIncludeVaultBuffer();        
+        uint256 valueOfTrackedTokensInVaultBuffer =  iVault.valueOfTrackedTokensInVaultBuffer();
+
+        assertEq(valueOfTrackedTokensInVaultBuffer, 0);
+        assertEq(valueOfTrackedTokensIncludeVaultBuffer, valueOfTrackedTokensInVault);
+
+        uint256 totalDebt = iVault.totalDebt();
+        console2.log("totalDebt",totalDebt);
+        uint256 totalAssets = iVault.totalAssets();
+        assertEq(valueOfTrackedTokensInVault + totalDebt, totalAssets);
+
+        uint256 totalAssetsIncludeVaultBuffer = iVault.totalAssetsIncludeVaultBuffer();
+        assertEq(valueOfTrackedTokensIncludeVaultBuffer + totalDebt, totalAssetsIncludeVaultBuffer);
+
     }
 
     function testAdjustPositionWithETHi() public {
@@ -1134,8 +1347,25 @@ contract VaultTest is Test {
         vm.stopPrank();
 
         uint256 _ethiAmount = ethPegToken.balanceOf(USER);
+        uint256 getPegTokenPrice = iETHVault.getPegTokenPrice();
+        assertEq(getPegTokenPrice,1e18);
 
         assertEq(_ethiAmount / 100, _valueInETH / 100);
+
+        uint256 valueOfTrackedTokensInVault =  iETHVault.valueOfTrackedTokens();
+        uint256 valueOfTrackedTokensIncludeVaultBuffer =  iETHVault.valueOfTrackedTokensIncludeVaultBuffer();        
+        uint256 valueOfTrackedTokensInVaultBuffer =  iETHVault.valueOfTrackedTokensInVaultBuffer();
+        
+        assertEq(valueOfTrackedTokensInVaultBuffer, 0);
+        assertEq(valueOfTrackedTokensIncludeVaultBuffer, valueOfTrackedTokensInVault);
+
+        uint256 totalDebt = iETHVault.totalDebt();
+        console2.log("totalDebt",totalDebt);
+        uint256 totalAssets = iETHVault.totalAssets();
+        assertEq(valueOfTrackedTokensInVault + totalDebt, totalAssets);
+
+        uint256 totalAssetsIncludeVaultBuffer = iETHVault.totalAssetsIncludeVaultBuffer();
+        assertEq(valueOfTrackedTokensIncludeVaultBuffer + totalDebt, totalAssetsIncludeVaultBuffer);
     }
 
     function testWithdraw() public {
@@ -1254,6 +1484,11 @@ contract VaultTest is Test {
             valueInterpreter.calcCanonicalAssetValueInUsd(DAI_ADDRESS, _amounts[2]);
 
         assertEq(_usdiAmount / 1e17, _valueInUSD / 1e17);
+
+        uint256 totalValueInVault =  iVault.totalValueInVault();
+        uint256 totalValueInStrategies =  iVault.totalValueInStrategies();
+        uint256 totalValue =  iVault.totalValue();
+        assertEq(totalValue, totalValueInVault + totalValueInStrategies);
     }
 
     function testSecondDepositWithETHi() public {
@@ -1319,7 +1554,15 @@ contract VaultTest is Test {
                 WETH_ADDRESS,
                 _amounts[2] - _balanceOfToken(WETH_ADDRESS, FRIEND)
             );
+        console.log("_ethiAmount is ",_ethiAmount);
         assertGe(_ethiAmount / 1e17, _valueInETH / 1e17 + 1 );
+
+        uint256 totalValueInVault =  iETHVault.totalValueInVault();
+        uint256 totalValueInStrategies =  iETHVault.totalValueInStrategies();
+        uint256 totalValue =  iETHVault.totalValue();
+        assertEq(totalValue, totalValueInVault + totalValueInStrategies);
+
+
     }
 
     function testReport() public {
@@ -1528,6 +1771,10 @@ contract VaultTest is Test {
 
     function testBurnFromStrategyWithETHi() public {
         testSecondDepositWithETHi();
+
+        uint256 valueOfTrackedTokens01 =  iETHVault.valueOfTrackedTokens();
+        console2.log("valueOfTrackedTokens01 is",valueOfTrackedTokens01);
+
         uint256 _redeemFeeBps = iETHVault.redeemFeeBps();
         uint256 _trusteeFeeBps = iETHVault.trusteeFeeBps();
         uint256 _amount = ethPegToken.balanceOf(USER);
@@ -1545,6 +1792,41 @@ contract VaultTest is Test {
         vm.prank(FRIEND);
         iETHVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
         assertEq(iETHVault.totalValueInStrategies(), 0);
+    }
+
+    function testExchange() public {
+
+        address WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+        address USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+        address DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+        
+        deal(WETH,address(iETHVault),1 ether);
+
+        console.log("iETHVault address: " ,address(iETHVault));
+        address _fromToken = WETH;
+        address _toToken = DAI;
+        uint256 _fromAmount = 1 ether;
+        uint256 _platform1inch = 0;// 1inch
+        uint256 _platformPara = 1;//paraswap
+        bytes memory  _calldata0 = txData1;
+        bytes memory  _calldata1 = txData2;
+        
+        vm.prank(KEEPER);
+
+        uint256 _returnAmount = iETHVault.exchange(_fromToken, _toToken, _fromAmount, _calldata0, _platform1inch);
+        console.log("_returnAmount-1inch",_returnAmount);
+        console.log("DAI balance: " ,IERC20(DAI).balanceOf(address(iETHVault)));
+        
+        deal(WETH,address(iETHVault),1 ether);
+
+        address ICE = 0xf16e81dce15B08F326220742020379B855B87DF9;
+        _toToken = ICE;
+        deal(WETH,KEEPER,1 ether);
+        vm.prank(KEEPER);
+        _returnAmount = iETHVault.exchange(_fromToken, _toToken, _fromAmount, _calldata1, _platformPara);
+        console.log("_returnAmount-para",_returnAmount);
+        console.log("ICE balance: " ,IERC20(ICE).balanceOf(address(iETHVault)));
+
     }
 
     function _safeApprove(address _trackedAsset, address _targetAddress, uint256 _amount) internal {
