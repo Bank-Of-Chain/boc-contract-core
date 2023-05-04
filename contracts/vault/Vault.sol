@@ -2,7 +2,6 @@
 
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "../library/StableMath.sol";
 import "./VaultStorage.sol";
 import "../exchanges/ExchangeHelper.sol";
@@ -67,29 +66,9 @@ contract Vault is VaultStorage, ExchangeHelper {
         _;
     }
 
-    modifier isActiveStrategy(address _strategy) {
-        checkActiveStrategy(_strategy);
-        _;
-    }
-
     /// @notice Version of vault
     function getVersion() external pure returns (string memory) {
         return "2.0.0";
-    }
-
-    /// @notice Minting USDi/ETHi supported assets
-    function getSupportAssets() external view returns (address[] memory) {
-        return assetSet.values();
-    }
-
-    /// @notice Return all strategies
-    function getStrategies() external view returns (address[] memory) {
-        return strategySet.values();
-    }
-
-    /// @notice Assets held by Vault
-    function getTrackedAssets() external view returns (address[] memory) {
-        return _getTrackedAssets();
     }
 
     /// @notice Check '_asset' is supported or not
@@ -105,10 +84,6 @@ contract Vault is VaultStorage, ExchangeHelper {
     /// @notice Vault and vault buffer holds asset value directly USD(USDi)/ETH(ETHi)(1e18)
     function valueOfTrackedTokensIncludeVaultBuffer() public view returns (uint256) {
         return _totalAssetInVaultAndVaultBuffer();
-    }
-
-    function isTrackedAssets(address _token) external view returns (bool) {
-        return trackedAssetsMap.contains(_token);
     }
 
     /// @notice Vault holds asset value directly in USD(USDi)/ETH(ETHi)(1e18)
@@ -253,11 +228,6 @@ contract Vault is VaultStorage, ExchangeHelper {
         return _pegTokenPrice;
     }
 
-    /// @notice Check '_strategy' is active or not
-    function checkActiveStrategy(address _strategy) public view {
-        require(strategySet.contains(_strategy), "NE"); //not exist
-    }
-
     /// @notice Estimate the pending share amount that can be minted
     /// @param _assets Address of the asset being deposited
     /// @param _amounts Amount of the asset being deposited
@@ -369,147 +339,6 @@ contract Vault is VaultStorage, ExchangeHelper {
         return _exchange(_fromToken, _toToken, _fromAmount, _calldata, ExchangePlatform(_platform));
     }
 
-    /// @notice Redeem the funds from specified strategy.
-    /// @param  _strategy The specified strategy to redeem
-    /// @param _amount The amount to redeem in USD
-    /// @param _outputCode The code of output
-    function redeem(
-        address _strategy,
-        uint256 _amount,
-        uint256 _outputCode
-    )
-        external
-        isKeeperOrVaultOrGovOrDelegate
-        isActiveStrategy(_strategy)
-        nonReentrant
-        returns (address[] memory _assets, uint256[] memory _amounts)
-    {
-        uint256 _strategyAssetValue = strategies[_strategy].totalDebt;
-        require(_amount <= _strategyAssetValue, "AI"); //amount invalid
-
-        (_assets, _amounts) = IStrategy(_strategy).repay(_amount, _strategyAssetValue, _outputCode);
-        if (adjustPositionPeriod) {
-            uint256 _assetsLength = _assets.length;
-            for (uint256 i = 0; i < _assetsLength; i++) {
-                uint256 _amount = _amounts[i];
-                if (_amount > 0) {
-                    redeemAssetsMap[_assets[i]] += _amount;
-                }
-            }
-        }
-        uint256 _nowStrategyTotalDebt = strategies[_strategy].totalDebt;
-        uint256 _thisWithdrawValue = (_nowStrategyTotalDebt * _amount) / _strategyAssetValue;
-        strategies[_strategy].totalDebt = _nowStrategyTotalDebt - _thisWithdrawValue;
-        totalDebt -= _thisWithdrawValue;
-        emit Redeem(_strategy, _amount, _assets, _amounts);
-    }
-
-    /// @notice Allocate funds in Vault to strategies.
-    /// @param _strategy The specified strategy to lend
-    /// @param _tokens want tokens
-    /// @param _amounts the amount of each tokens
-    /// @param _minDeltaAssets the minimum allowable asset increment
-    /// @return _deltaAssets The amount of newly added assets
-    function lend(
-        address _strategy,
-        address[] memory _tokens,
-        uint256[] memory _amounts,
-        uint256 _minDeltaAssets
-    )
-        external
-        isKeeperOrVaultOrGovOrDelegate
-        whenNotEmergency
-        isActiveStrategy(_strategy)
-        nonReentrant
-        returns (uint256 _deltaAssets)
-    {
-        address _strategyAddress = _strategy;
-        uint256[] memory _amountsLocal = _amounts;
-        (address[] memory _wants, uint256[] memory _ratios) = IStrategy(_strategyAddress).getWantsInfo();
-        uint256 _wantsLength = _wants.length;
-        require(_amountsLocal.length == _wantsLength, "ASI"); //_amounts invalid
-        require(_tokens.length == _wantsLength, "TSI"); //_tokens invalid
-        {
-            for (uint256 i = 0; i < _wantsLength; i++) {
-                require(_tokens[i] == _wants[i], "TSI"); //tokens invalid
-            }
-        }
-        //Definition rule 0 means unconstrained, currencies that do not participate are not in the returned wants
-        uint256 _minProductIndex;
-        bool _isWantRatioIgnorable = IStrategy(_strategyAddress).isWantRatioIgnorable();
-        if (!_isWantRatioIgnorable && _wantsLength > 1) {
-            for (uint256 i = 1; i < _wantsLength; i++) {
-                if (_ratios[i] == 0) {
-                    continue;
-                } else if (_ratios[_minProductIndex] == 0) {
-                    //minProductIndex is assigned to the first index whose proportion is not 0
-                    _minProductIndex = i;
-                } else if (
-                    _amountsLocal[_minProductIndex] * _ratios[i] >
-                    _amountsLocal[i] * _ratios[_minProductIndex]
-                ) {
-                    _minProductIndex = i;
-                }
-            }
-        }
-
-        uint256 _lendValue;
-        uint256 _ethAmount;
-        {
-            uint256 _vaultType = vaultType;
-            uint256 _minAmount = _amountsLocal[_minProductIndex];
-            uint256 _minAspect = _ratios[_minProductIndex];
-            for (uint256 i = 0; i < _wantsLength; i++) {
-                uint256 _actualAmount = _amountsLocal[i];
-                if (_actualAmount > 0) {
-                    address _want = _wants[i];
-                    if (!_isWantRatioIgnorable) {
-                        if (_ratios[i] > 0) {
-                            _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
-                            _amountsLocal[i] = _actualAmount;
-                        } else {
-                            _amountsLocal[i] = 0;
-                            continue;
-                        }
-                    }
-                    if (__isNativeToken(_want)) {
-                        _lendValue += _actualAmount;
-                        _ethAmount = _actualAmount;
-                    } else {
-                        if (_vaultType > 0) {
-                            _lendValue =
-                                _lendValue +
-                                IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInEth(
-                                    _want,
-                                    _actualAmount
-                                );
-                        } else {
-                            _lendValue =
-                                _lendValue +
-                                IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(
-                                    _want,
-                                    _actualAmount
-                                );
-                        }
-                        IERC20Upgradeable(_want).safeTransfer(_strategyAddress, _actualAmount);
-                    }
-                }
-            }
-        }
-        {
-            IStrategy(_strategyAddress).borrow{value: _ethAmount}(_wants, _amountsLocal);
-            _deltaAssets = _report(_strategyAddress, _lendValue, 1);
-            if (_minDeltaAssets > 0) {
-                require(
-                    _deltaAssets >= _minDeltaAssets ||
-                        (_minDeltaAssets - _deltaAssets) * TEN_MILLION_BPS <=
-                        _minDeltaAssets * deltaThreshold,
-                    "not enough"
-                );
-            }
-        }
-        emit LendToStrategy(_strategyAddress, _wants, _amountsLocal, _lendValue);
-    }
 
     /// @notice Change USDi/ETHi supply with Vault total assets.
     /// @param _trusteeFeeBps Amount of yield collected in basis points
@@ -519,31 +348,6 @@ contract Vault is VaultStorage, ExchangeHelper {
         require(_trusteeFeeBps == trusteeFeeBps, "TI"); //trusteeFeeBps invalid
         uint256 _totalAssets = _totalAssetInVault() + totalDebt;
         _rebase(_totalAssets, _trusteeFeeBps);
-    }
-
-    /// @dev Report the current asset of strategy caller
-    /// @param _strategies The address list of strategies to report
-    /// Requirement: only keeper call
-    /// Emits a {StrategyReported} event.
-    function reportByKeeper(address[] memory _strategies) external isKeeperOrVaultOrGovOrDelegate {
-        uint256 _strategiesLength = _strategies.length;
-        for (uint256 i = 0; i < _strategiesLength; i++) {
-            _report(_strategies[i], 0, 2);
-        }
-    }
-
-    /// @dev Report the current asset of strategy caller
-    /// Requirement: only the strategy caller is active
-    /// Emits a {StrategyReported} event.
-    function reportWithoutClaim() external isActiveStrategy(msg.sender) {
-        _report(msg.sender, 0, 2);
-    }
-
-    /// @dev Report the current asset of strategy caller
-    /// Requirement: only the strategy caller is active
-    /// Emits a {StrategyReported} event.
-    function report() public isActiveStrategy(msg.sender) {
-        _report(msg.sender, 0, 0);
     }
 
     /// @notice start  Adjust  Position
@@ -1184,72 +988,6 @@ contract Vault is VaultStorage, ExchangeHelper {
         return _totalShares;
     }
 
-    /// @notice Report the current asset of strategy
-    /// @param _strategy The strategy address
-    /// @param _lendValue The value to lend or redeem
-    /// @param _type 0-harvest(claim); 1-lend; 2-report(without claim); 3-redeem;
-    /// @return _deltaAsset The delta value between `_lastStrategyTotalDebt` and `_nowStrategyTotalDebt`
-    function _report(
-        address _strategy,
-        uint256 _lendValue,
-        uint256 _type
-    ) private returns (uint256 _deltaAsset) {
-        StrategyParams memory _strategyParam = strategies[_strategy];
-
-        uint256 _lastStrategyTotalDebt = _strategyParam.totalDebt + _lendValue;
-        uint256 _nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();
-        if (_strategyParam.totalDebt < _nowStrategyTotalDebt) {
-            _deltaAsset = _nowStrategyTotalDebt - _strategyParam.totalDebt;
-        }
-
-        uint256 _gain;
-        uint256 _loss;
-
-        if (_nowStrategyTotalDebt > _lastStrategyTotalDebt) {
-            _gain = _nowStrategyTotalDebt - _lastStrategyTotalDebt;
-        } else if (_nowStrategyTotalDebt < _lastStrategyTotalDebt) {
-            _loss = _lastStrategyTotalDebt - _nowStrategyTotalDebt;
-        }
-
-        if (_strategyParam.enforceChangeLimit) {
-            if (
-                block.timestamp - strategies[_strategy].lastReport < maxTimestampBetweenTwoReported &&
-                (_lastStrategyTotalDebt > minCheckedStrategyTotalDebt ||
-                    _nowStrategyTotalDebt > minCheckedStrategyTotalDebt)
-            ) {
-                if (_gain > 0) {
-                    require(
-                        _gain <= ((_lastStrategyTotalDebt * _strategyParam.profitLimitRatio) / MAX_BPS),
-                        "GL" //gain over the profitLimitRatio
-                    );
-                } else if (_loss > 0) {
-                    require(
-                        _loss <= ((_lastStrategyTotalDebt * _strategyParam.lossLimitRatio) / MAX_BPS),
-                        "LL" //loss over the lossLimitRatio
-                    );
-                }
-            }
-        } else {
-            strategies[_strategy].enforceChangeLimit = true;
-            // The check is turned off only once and turned back on.
-        }
-
-        strategies[_strategy].totalDebt = _nowStrategyTotalDebt;
-        totalDebt = totalDebt + _nowStrategyTotalDebt + _lendValue - _lastStrategyTotalDebt;
-
-        strategies[_strategy].lastReport = block.timestamp;
-        if (_type == 0) {
-            strategies[_strategy].lastClaim = block.timestamp;
-        }
-        emit StrategyReported(
-            _strategy,
-            _gain,
-            _loss,
-            _lastStrategyTotalDebt,
-            _nowStrategyTotalDebt,
-            _type
-        );
-    }
 
     /// @notice Get the supported asset Decimal
     /// @return _assetDecimal asset Decimals
