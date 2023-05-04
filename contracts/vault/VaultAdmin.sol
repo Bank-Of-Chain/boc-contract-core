@@ -19,7 +19,7 @@ contract VaultAdmin is VaultStorage {
         _;
     }
 
-    modifier whenNotEmergency() {
+    modifier whenNonEmergency() {
         require(!emergencyShutdown, "ES"); //emergency shutdown
         _;
     }
@@ -502,7 +502,7 @@ contract VaultAdmin is VaultStorage {
     )
     external
     isKeeperOrVaultOrGovOrDelegate
-    whenNotEmergency
+    whenNonEmergency
     isActiveStrategy(_strategy)
     nonReentrant
     returns (uint256 _deltaAssets)
