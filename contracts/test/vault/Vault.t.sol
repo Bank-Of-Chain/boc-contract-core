@@ -1485,7 +1485,7 @@ contract VaultTest is Test {
 
         assertEq(_usdiAmount / 1e17, _valueInUSD / 1e17);
 
-        uint256 totalValueInVault =  iVault.totalValueInVault();
+        uint256 totalValueInVault =  iVault.valueOfTrackedTokens();
         uint256 totalValueInStrategies =  iVault.totalValueInStrategies();
         uint256 totalValue =  iVault.totalValue();
         assertEq(totalValue, totalValueInVault + totalValueInStrategies);
@@ -1557,7 +1557,7 @@ contract VaultTest is Test {
         console.log("_ethiAmount is ",_ethiAmount);
         assertGe(_ethiAmount / 1e17, _valueInETH / 1e17 + 1 );
 
-        uint256 totalValueInVault =  iETHVault.totalValueInVault();
+        uint256 totalValueInVault =  iETHVault.valueOfTrackedTokens();
         uint256 totalValueInStrategies =  iETHVault.totalValueInStrategies();
         uint256 totalValue =  iETHVault.totalValue();
         assertEq(totalValue, totalValueInVault + totalValueInStrategies);

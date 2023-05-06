@@ -14,7 +14,7 @@ contract Verification {
     /// @param _signature The signature
     /// @param _account The user signing a message `_data`
     /// @return Returns 'true' if verification is successful, otherwise returns 'false'
-    function verifySignature(bytes32 _data, bytes memory _signature, address _account) public pure returns (bool) {
+    function verifySignature(bytes32 _data, bytes memory _signature, address _account) external pure returns (bool) {
         return getSignatureAccount(_data, _signature) == _account;
     }
 

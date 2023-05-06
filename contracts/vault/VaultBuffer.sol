@@ -80,7 +80,9 @@ contract VaultBuffer is
 
         mName = _name;
         mSymbol = _symbol;
+        // slither-disable-next-line missing-zero-check
         vault = _vault;
+        // slither-disable-next-line missing-zero-check
         pegTokenAddr = _pegTokenAddr;
         _initAccessControl(_accessControlProxy);
 
@@ -102,7 +104,7 @@ contract VaultBuffer is
     /// @param _sender the recepient assigned
     /// @param _amount the amount to mint
     /// Requirement: only vault can call
-    function mint(address _sender, uint256 _amount) external payable override onlyVault {
+    function mint(address _sender, uint256 _amount) external payable override nonReentrant onlyVault {
         _mint(_sender, _amount);
     }
 
@@ -112,7 +114,7 @@ contract VaultBuffer is
         uint256 _fromAmount,
         bytes memory _calldata,
         uint _platform
-    ) external isKeeperOrVaultOrGovOrDelegate returns (uint256 _returnAmount) {
+    ) external nonReentrant isKeeperOrVaultOrGovOrDelegate returns (uint256 _returnAmount) {
         return _exchange(_fromToken, _toToken, _fromAmount, _calldata, ExchangePlatform(_platform));
     }
 
@@ -123,19 +125,20 @@ contract VaultBuffer is
     function transferCashToVault(
         address[] memory _assets,
         uint256[] memory _amounts
-    ) external override onlyVault {
+    ) external override nonReentrant onlyVault {
         uint256 _len = _assets.length;
         for (uint256 i = 0; i < _len; i++) {
             uint256 _amount = _amounts[i];
             if (_amount > 0) {
-                __transferToken(_assets[i], _amount, vault);
+                address _asset = _assets[i];
+                __transferToken(_asset, _amount, vault);
             }
         }
     }
 
     /// Requirement: only vault can call
     /// @inheritdoc IVaultBuffer
-    function openDistribute() external override onlyVault {
+    function openDistribute() external override nonReentrant onlyVault {
         assert(!isDistributing);
         uint256 _pegTokenBalance = __balanceOfToken(pegTokenAddr, address(this));
         if (_pegTokenBalance > 0) {
@@ -150,6 +153,7 @@ contract VaultBuffer is
     function distributeWhenDistributing()
         external
         override
+        nonReentrant
         isKeeperOrVaultOrGovOrDelegate
         returns (bool)
     {
@@ -165,16 +169,18 @@ contract VaultBuffer is
 
     /// Requirement: only keeper can call
     /// @inheritdoc IVaultBuffer
-    function distributeOnce() external override isKeeperOrVaultOrGovOrDelegate returns (bool) {
+    function distributeOnce()
+        external
+        override
+        nonReentrant
+        isKeeperOrVaultOrGovOrDelegate
+        returns (bool)
+    {
         assert(!IVault(vault).adjustPositionPeriod());
         address[] memory _assets = IVault(vault).getTrackedAssets();
         for (uint256 i = 0; i < _assets.length; i++) {
             address _asset = _assets[i];
-            if (_asset == NativeToken.NATIVE_TOKEN) {
-                require(address(this).balance == 0, "cash remain.");
-            } else {
-                require(IERC20Upgradeable(_asset).balanceOf(address(this)) <= 10, "cash remain.");
-            }
+            __balanceOfToken(_asset, address(this));
         }
 
         bool _result = _distribute();
@@ -211,12 +217,12 @@ contract VaultBuffer is
     }
 
     /// @dev Returns the name of the token.
-    function name() public view virtual override returns (string memory) {
+    function name() external view virtual override returns (string memory) {
         return mName;
     }
 
     /// @dev Returns the symbol of the token, usually a shorter version of the name.
-    function symbol() public view virtual override returns (string memory) {
+    function symbol() external view virtual override returns (string memory) {
         return mSymbol;
     }
 
@@ -229,17 +235,17 @@ contract VaultBuffer is
     /// NOTE: This information is only used for _display_ purposes: it in
     /// no way affects any of the arithmetic of the contract, including
     /// {IERC20-balanceOf} and {IERC20-transfer}.
-    function decimals() public view virtual override returns (uint8) {
+    function decimals() external view virtual override returns (uint8) {
         return 18;
     }
 
     /// @dev See {IERC20-totalSupply}.
-    function totalSupply() public view virtual override returns (uint256) {
+    function totalSupply() external view virtual override returns (uint256) {
         return mTotalSupply;
     }
 
     /// @dev See {IERC20-balanceOf}.
-    function balanceOf(address _account) public view virtual override returns (uint256) {
+    function balanceOf(address _account) external view virtual override returns (uint256) {
         return mBalances.get(_account);
     }
 
@@ -247,7 +253,7 @@ contract VaultBuffer is
     /// Requirements:
     /// - `to` cannot be the zero address.
     /// - the caller must have a balance of at least `amount`.
-    function transfer(address _to, uint256 _amount) public virtual override returns (bool) {
+    function transfer(address _to, uint256 _amount) external virtual override returns (bool) {
         address _owner = _msgSender();
         _transfer(_owner, _to, _amount);
         return true;
@@ -263,7 +269,7 @@ contract VaultBuffer is
     /// `transferFrom`. This is semantically equivalent to an infinite approval.
     /// Requirements:
     /// - `spender` cannot be the zero address.
-    function approve(address _spender, uint256 _amount) public virtual override returns (bool) {
+    function approve(address _spender, uint256 _amount) external virtual override returns (bool) {
         address _owner = _msgSender();
         _approve(_owner, _spender, _amount);
         return true;
@@ -283,7 +289,7 @@ contract VaultBuffer is
         address _from,
         address _to,
         uint256 _amount
-    ) public virtual override returns (bool) {
+    ) external virtual override returns (bool) {
         address _spender = _msgSender();
         _spendAllowance(_from, _spender, _amount);
         _transfer(_from, _to, _amount);
@@ -296,7 +302,7 @@ contract VaultBuffer is
     /// Emits an {Approval} event indicating the updated allowance.
     /// Requirements:
     /// - `spender` cannot be the zero address.
-    function increaseAllowance(address _spender, uint256 _addedValue) public virtual returns (bool) {
+    function increaseAllowance(address _spender, uint256 _addedValue) external virtual returns (bool) {
         address _owner = _msgSender();
         _approve(_owner, _spender, allowance(_owner, _spender) + _addedValue);
         return true;
@@ -310,7 +316,7 @@ contract VaultBuffer is
     /// - `spender` cannot be the zero address.
     /// - `spender` must have allowance for the caller of at least
     /// `subtractedValue`.
-    function decreaseAllowance(address _spender, uint256 _subtractedValue) public virtual returns (bool) {
+    function decreaseAllowance(address _spender, uint256 _subtractedValue) external virtual returns (bool) {
         address _owner = _msgSender();
         uint256 _currentAllowance = allowance(_owner, _spender);
         require(_currentAllowance >= _subtractedValue, "ERC20: decreased allowance below zero");
@@ -338,8 +344,10 @@ contract VaultBuffer is
         unchecked {
             uint256 _newBalance = _fromBalance - _amount;
             if (_newBalance == 0) {
+                // slither-disable-next-line unused-return
                 mBalances.remove(_from);
             } else {
+                // slither-disable-next-line unused-return
                 mBalances.set(_from, _newBalance);
             }
         }
@@ -375,8 +383,10 @@ contract VaultBuffer is
         unchecked {
             uint256 newBalance = accountBalance - _amount;
             if (newBalance == 0) {
+                // slither-disable-next-line unused-return
                 mBalances.remove(_account);
             } else {
+                // slither-disable-next-line unused-return
                 mBalances.set(_account, newBalance);
             }
         }

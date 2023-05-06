@@ -161,14 +161,17 @@ contract VaultAdmin is VaultStorage {
     /// Requirements: only vault manager can call
     function addAsset(address _asset) external isVaultManager {
         require(!assetSet.contains(_asset), "existed");
+        // slither-disable-next-line unused-return
         assetSet.add(_asset);
         // Verify that our oracle supports the asset
-        // slither-disable-next-line unused-return
+        // slither-disable-next-line uninitialized-state
         if (vaultType > 0) {
             if (_asset != NativeToken.NATIVE_TOKEN) {
+                // slither-disable-next-line uninitialized-state
                 IValueInterpreter(valueInterpreter).priceInEth(_asset);
             }
         } else {
+            // slither-disable-next-line uninitialized-state
             IValueInterpreter(valueInterpreter).price(_asset);
         }
         trackedAssetsMap.plus(_asset, 1);
@@ -189,6 +192,7 @@ contract VaultAdmin is VaultStorage {
             balanceOfTokenByOwner(_asset, address(this)) < 1 &&
             balanceOfTokenByOwner(_asset, _vaultBufferAddress) < 1
         ) {
+            // slither-disable-next-line unused-return
             trackedAssetsMap.remove(_asset);
             delete trackedAssetDecimalsMap[_asset];
         }
@@ -304,6 +308,7 @@ contract VaultAdmin is VaultStorage {
             lastClaim: block.timestamp,
             targetDebt: _targetDebt
         });
+        // slither-disable-next-line unused-return
         strategySet.add(_strategy);
     }
 
@@ -330,13 +335,16 @@ contract VaultAdmin is VaultStorage {
                 balanceOfTokenByOwner(_wantToken, address(this)) <= 1 &&
                 balanceOfTokenByOwner(_wantToken, _vaultBufferAddress) <= 1
             ) {
+                // slither-disable-next-line unused-return
                 trackedAssetsMap.remove(_wantToken);
             }
         }
         if (strategies[_addr].totalDebt > 0) {
+            // slither-disable-next-line costly-loop
             totalDebt -= strategies[_addr].totalDebt;
         }
         delete strategies[_addr];
+        // slither-disable-next-line unused-return
         strategySet.remove(_addr);
         _removeStrategyFromQueue(_addr);
     }
@@ -355,6 +363,7 @@ contract VaultAdmin is VaultStorage {
     }
 
     function _organizeWithdrawalQueue() internal {
+        // slither-disable-next-line uninitialized-local
         uint256 _offset;
         for (uint256 i = 0; i < withdrawQueue.length; i++) {
             address _strategy = withdrawQueue[i];

@@ -157,7 +157,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     }
 
     /// @inheritdoc IPrimitivePriceFeed
-    function getAssetUnit(address _asset) public view override returns (uint256 _unit) {
+    function getAssetUnit(address _asset) external view override returns (uint256 _unit) {
         return getUnitForPrimitive(_asset);
     }
 
@@ -455,6 +455,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     function removeBasePeggedInfos(address[] calldata _peggedTokens) external onlyGovOrDelegate {
         require(_peggedTokens.length > 0, "removeBasePeggedInfos: _peggedTokens cannot be empty");
 
+        // slither-disable-next-line costly-loop
         for (uint256 i = 0; i < _peggedTokens.length; i++) {
             require(
                 basePeggedInfos[_peggedTokens[i]].isBasePegged,
@@ -489,7 +490,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     /// Emits a {PrimitiveRemoved} event
     function removePrimitives(address[] calldata _primitives) external onlyGovOrDelegate {
         require(_primitives.length > 0, "removePrimitives: _primitives cannot be empty");
-
+        // slither-disable-next-line costly-loop
         for (uint256 i = 0; i < _primitives.length; i++) {
             require(
                 primitiveToAggregatorInfo[_primitives[i]].aggregator != address(0),
@@ -540,6 +541,7 @@ contract ChainlinkPriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         uint256 _latestUpdatedAt,
         uint256 _heartbeat
     ) private view {
+        // slither-disable-next-line timestamp
         require(
             _latestUpdatedAt >= block.timestamp - _heartbeat,
             string(

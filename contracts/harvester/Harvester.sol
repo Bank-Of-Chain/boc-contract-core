@@ -83,8 +83,6 @@ contract Harvester is IHarvester, ExchangeHelper {
         emit TransferTokenToTreasury(msg.sender, _asset, _amount);
     }
 
-    
-
     /// @notice Collect the reward token from strategy.
     /// @param _vault The vault of the strategy
     /// @param _strategies The target strategies
@@ -158,6 +156,7 @@ contract Harvester is IHarvester, ExchangeHelper {
             _sellInfo.sellToToken = _sellTo;
             _sellInfo.recipient = _recipient;
         }
+        // slither-disable-next-line unused-return
         _collection.set(_strategy, _sellInfo);
 
         emit CollectStrategyReward(_strategy, _rewardTokens, _rewardAmounts, _sellTo, _recipient);
@@ -219,6 +218,7 @@ contract Harvester is IHarvester, ExchangeHelper {
         // Call the exchange finish callback
         IClaimableStrategy(_strategy).exchangeFinishCallback(_sellToAmount);
         // Remove the strategy
+        // slither-disable-next-line unused-return
         strategies.remove(_strategy);
         // Emit the exchange event
         emit Exchange(

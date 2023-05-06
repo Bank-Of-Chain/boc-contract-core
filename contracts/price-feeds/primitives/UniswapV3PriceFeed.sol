@@ -45,6 +45,7 @@ contract UniswapV3PriceFeed is IPrimitivePriceFeed, AccessControlMixin {
         address[] memory _pools,
         uint32[] memory _durations
     ) {
+        // slither-disable-next-line missing-zero-check
         ethUsdAggregator = _ethUsdAggregator;
         _initAccessControl(_accessControlProxy);
         __addPrimitives(_primitives, _pools, _durations);
@@ -113,13 +114,13 @@ contract UniswapV3PriceFeed is IPrimitivePriceFeed, AccessControlMixin {
     /// Emits a {PrimitiveRemoved} event
     function removePrimitives(address[] calldata _primitives) external onlyGovOrDelegate {
         require(_primitives.length > 0, "removePrimitives: _primitives cannot be empty");
-
+        // slither-disable-next-line costly-loop
         for (uint256 i = 0; i < _primitives.length; i++) {
             require(
                 primitiveToAggregatorInfo[_primitives[i]].pool != address(0),
                 "removePrimitives: Primitive not yet added"
             );
-
+            
             delete primitiveToAggregatorInfo[_primitives[i]];
             delete primitiveToUnit[_primitives[i]];
 

@@ -22,15 +22,14 @@ contract Vault is VaultStorage, ExchangeHelper {
     function initialize(
         address _accessControlProxy,
         address _treasury,
-        //address _exchangeManager,
         address _valueInterpreter,
         uint256 _valueType
-    ) public initializer {
+    ) external initializer {
         __InitializeRouters();
         _initAccessControl(_accessControlProxy);
-
+        // slither-disable-next-line missing-zero-check
         treasury = _treasury;
-
+        // slither-disable-next-line missing-zero-check
         valueInterpreter = _valueInterpreter;
         vaultType = _valueType;
 
@@ -146,7 +145,9 @@ contract Vault is VaultStorage, ExchangeHelper {
 
     /// @notice Gets pegged token value holded by vault buffer in USD(USDi)/ETH(ETHi)(1e18)
     function getPegTokenValueOfVaultBuffer() internal view returns (uint256) {
+        // slither-disable-next-line uninitialized-state
         address _pegToken = pegTokenAddress;
+        // slither-disable-next-line uninitialized-state
         uint256 _balance = IPegToken(_pegToken).balanceOf(vaultBufferAddress);
         uint256 _assetDecimal = IPegToken(_pegToken).decimals();
         uint256 _pegTokenPrice = getPegTokenPrice();
@@ -156,7 +157,7 @@ contract Vault is VaultStorage, ExchangeHelper {
 
     /// @dev Calculate total value of all assets held in VaultBuffer.
     /// @return _value Total value(by oracle price) in USD(USDi)/ETH(ETHi)(1e18)
-    function totalValueInVaultBuffer() public view returns (uint256) {
+    function totalValueInVaultBuffer() external view returns (uint256) {
         uint256 _bufferCash = valueOfTrackedTokensInVaultBuffer();
         uint256 _transferValue = getTransferValueFromVaultBuffer();
         uint256 _pegTokenTotalValue = getPegTokenValueOfVaultBuffer();
@@ -164,7 +165,7 @@ contract Vault is VaultStorage, ExchangeHelper {
         return _bufferCash + _transferValue + _pegTokenTotalValue;
     }
 
-    /// @notice Vault total asset in USD(USDi)/ETH(ETHi)(1e18)
+    /// @notice Vault total asset in USD(USDi)/ETH(ETHi)(1e18)，last reported
     function totalAssets() external view returns (uint256) {
         return _totalAssetInVault() + totalDebt;
     }
@@ -174,37 +175,13 @@ contract Vault is VaultStorage, ExchangeHelper {
         return _totalAssetInVaultAndVaultBuffer() + totalDebt;
     }
 
-    /// @notice Vault total value(by oracle price) in USD(1e18)
+    /// @notice Vault total asset in USD(USDi)/ETH(ETHi)(1e18)，current
     function totalValue() external view returns (uint256) {
-        return totalValueInVault() + totalValueInStrategies();
-    }
-
-    /// @dev Calculate total value of all assets held in Vault.
-    /// @return _value Total value(by oracle price) in USD (1e18)
-    function totalValueInVault() public view returns (uint256 _value) {
-        address[] memory _trackedAssets = _getTrackedAssets();
-        for (uint256 i = 0; i < _trackedAssets.length; i++) {
-            address _trackedAsset = _trackedAssets[i];
-            uint256 _balance = __balanceOfToken(_trackedAsset, address(this));
-            if (_balance > 0) {
-                if (__isNativeToken(_trackedAsset)) {
-                    _value =
-                        _value +
-                        IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(W_ETH, _balance);
-                } else {
-                    _value =
-                        _value +
-                        IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(
-                            _trackedAsset,
-                            _balance
-                        );
-                }
-            }
-        }
+        return _totalAssetInVault() + totalValueInStrategies();
     }
 
     /// @dev Calculate total value of all assets held in Strategies.
-    /// @return _value Total value(by oracle price) in USD (1e18)
+    /// @return _value Total value(by oracle price) in USD(USDi)/ETH(ETHi)(1e18)
     function totalValueInStrategies() public view returns (uint256 _value) {
         uint256 _strategyLength = strategySet.length();
         for (uint256 i = 0; i < _strategyLength; i++) {
@@ -213,15 +190,12 @@ contract Vault is VaultStorage, ExchangeHelper {
                 _value = _value + estimatedTotalAssets;
             }
         }
-        //ETHi
-        if (vaultType > 0) {
-            _value = IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(W_ETH, _value);
-        }
     }
 
     /// @notice Get pegToken price in USD(USDi)/ETH(ETHi)(1e18)
     /// @return  price in USD(USDi)/ETH(ETHi)(1e18)
     function getPegTokenPrice() public view returns (uint256) {
+        // slither-disable-next-line uninitialized-state
         uint256 _totalSupply = IPegToken(pegTokenAddress).totalSupply();
         uint256 _pegTokenPrice = 1e18;
         if (_totalSupply > 0) {
@@ -229,25 +203,35 @@ contract Vault is VaultStorage, ExchangeHelper {
             uint256 _trackedAssetsLength = _trackedAssets.length;
             uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
             uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
-            uint256 _totalAssetInVault;
+            // slither-disable-next-line uninitialized-local
+            uint256 _trackedAssetsValue;
+            // slither-disable-next-line uninitialized-local
             uint256 _totalTransferValue;
             for (uint256 i = 0; i < _trackedAssetsLength; i++) {
                 address _trackedAsset = _trackedAssets[i];
                 uint256 _balance = __balanceOfToken(_trackedAsset, address(this));
                 if (_balance > 0) {
-                    _totalAssetInVault =
-                        _totalAssetInVault +
-                        _calculateAssetValue(_assetPrices, _assetDecimals, i, _trackedAsset, _balance);
+                    _trackedAssetsValue += _calculateAssetValue(
+                        _assetPrices,
+                        _assetDecimals,
+                        i,
+                        _trackedAsset,
+                        _balance
+                    );
                 }
                 _balance = transferFromVaultBufferAssetsMap[_trackedAsset];
                 if (_balance > 0) {
-                    _totalTransferValue =
-                        _totalTransferValue +
-                        _calculateAssetValue(_assetPrices, _assetDecimals, i, _trackedAsset, _balance);
+                    _totalTransferValue += _calculateAssetValue(
+                        _assetPrices,
+                        _assetDecimals,
+                        i,
+                        _trackedAsset,
+                        _balance
+                    );
                 }
             }
             _pegTokenPrice =
-                ((_totalAssetInVault + totalDebt - _totalTransferValue) * 1e18) /
+                ((_trackedAssetsValue + totalDebt - _totalTransferValue) * 1e18) /
                 _totalSupply;
         }
         return _pegTokenPrice;
@@ -266,7 +250,7 @@ contract Vault is VaultStorage, ExchangeHelper {
     function estimateMint(
         address[] memory _assets,
         uint256[] memory _amounts
-    ) public view returns (uint256) {
+    ) external view returns (uint256) {
         (uint256 _mintAmount, ) = _estimateMint(_assets, _amounts);
         return _mintAmount;
     }
@@ -286,6 +270,7 @@ contract Vault is VaultStorage, ExchangeHelper {
         if (_minimumAmount > 0) {
             require(_shareAmount >= _minimumAmount, "RLTM"); //received less than the minimum
         }
+        // slither-disable-next-line uninitialized-state
         address _vaultBufferAddress = vaultBufferAddress;
         for (uint256 i = 0; i < _assets.length; i++) {
             address _asset = _assets[i];
@@ -320,14 +305,17 @@ contract Vault is VaultStorage, ExchangeHelper {
         nonReentrant
         returns (address[] memory _assets, uint256[] memory _amounts, uint256 _actuallyReceivedAmount)
     {
+        // slither-disable-next-line uninitialized-state
         uint256 _accountBalance = IPegToken(pegTokenAddress).balanceOf(msg.sender);
         require(_amount > 0 && _amount <= _accountBalance, "AI"); //USDi not enough,amount is invalid
         require(_redeemFeeBps == redeemFeeBps, "RI"); //redeemFeeBps invalid
+        // slither-disable-next-line uninitialized-state
         require(_trusteeFeeBps == trusteeFeeBps, "TI"); //trusteeFeeBps invalid
 
         address[] memory _trackedAssets = _getTrackedAssets();
         uint256[] memory _assetPrices = new uint256[](_trackedAssets.length);
         uint256[] memory _assetDecimals = new uint256[](_trackedAssets.length);
+        // slither-disable-next-line uninitialized-state
         (uint256 _sharesAmount, uint256 _actualAsset) = _repayToVault(
             _amount,
             _accountBalance,
@@ -452,8 +440,9 @@ contract Vault is VaultStorage, ExchangeHelper {
                 }
             }
         }
-
+        // slither-disable-next-line uninitialized-local
         uint256 _lendValue;
+        // slither-disable-next-line uninitialized-local
         uint256 _ethAmount;
         {
             uint256 _vaultType = vaultType;
@@ -516,6 +505,7 @@ contract Vault is VaultStorage, ExchangeHelper {
     function rebase(
         uint256 _trusteeFeeBps
     ) external whenNotEmergency whenNotAdjustPosition whenNotRebasePaused nonReentrant {
+        // slither-disable-next-line uninitialized-state
         require(_trusteeFeeBps == trusteeFeeBps, "TI"); //trusteeFeeBps invalid
         uint256 _totalAssets = _totalAssetInVault() + totalDebt;
         _rebase(_totalAssets, _trusteeFeeBps);
@@ -542,7 +532,7 @@ contract Vault is VaultStorage, ExchangeHelper {
     /// @dev Report the current asset of strategy caller
     /// Requirement: only the strategy caller is active
     /// Emits a {StrategyReported} event.
-    function report() public isActiveStrategy(msg.sender) {
+    function report() external isActiveStrategy(msg.sender) {
         _report(msg.sender, 0, 0);
     }
 
@@ -581,10 +571,13 @@ contract Vault is VaultStorage, ExchangeHelper {
                     );
                 }
             }
+            // slither-disable-next-line uninitialized-state
             uint256 _totalShares = IPegToken(pegTokenAddress).totalShares();
             if (!rebasePaused) {
+                // slither-disable-next-line uninitialized-state
                 _rebase(_totalAssets, _totalShares, trusteeFeeBps);
             }
+            // slither-disable-next-line uninitialized-state
             IVaultBuffer(vaultBufferAddress).transferCashToVault(_trackedAssets, _transferAmounts);
         }
         totalDebtOfBeforeAdjustPosition = _totalDebt;
@@ -642,10 +635,13 @@ contract Vault is VaultStorage, ExchangeHelper {
 
         uint256 _totalValueOfNow = _totalDebtOfNow + _vaultValueOfNow;
         uint256 _totalValueOfBefore = _totalDebtOfBefore + _vaultValueOfBefore;
+        // slither-disable-next-line uninitialized-state
         address _vaultBufferAddress = vaultBufferAddress;
 
         {
+            // slither-disable-next-line uninitialized-local
             uint256 _transferAssets;
+            // slither-disable-next-line uninitialized-local
             uint256 _old2LendAssets;
             if (_vaultValueOfNow + _transferValue < _vaultValueOfBefore) {
                 _old2LendAssets = _vaultValueOfBefore - _vaultValueOfNow - _transferValue;
@@ -670,8 +666,10 @@ contract Vault is VaultStorage, ExchangeHelper {
                         (_transferValue + _redeemValue + _old2LendAssets);
                 }
             }
+            // slither-disable-next-line uninitialized-state
             uint256 _totalShares = IPegToken(pegTokenAddress).totalShares();
             if (!rebasePaused && _totalShares > 0) {
+                // slither-disable-next-line uninitialized-state
                 _totalShares = _rebase(_totalValueOfNow - _transferAssets, _totalShares, trusteeFeeBps);
             }
             if (_transferAssets > 0) {
@@ -681,6 +679,7 @@ contract Vault is VaultStorage, ExchangeHelper {
                     _totalShares
                 );
                 if (_sharesAmount > 0) {
+                    // slither-disable-next-line uninitialized-state
                     IPegToken(pegTokenAddress).mintShares(_vaultBufferAddress, _sharesAmount);
                 }
             }
@@ -717,9 +716,11 @@ contract Vault is VaultStorage, ExchangeHelper {
         uint256[] memory _transferAmounts = new uint256[](_trackedAssetsLength);
         uint256[] memory _vaultAmounts = new uint256[](_trackedAssetsLength);
         bool _vaultBufferAboveZero = false;
+        // slither-disable-next-line uninitialized-state
         address _vaultBufferAddress = vaultBufferAddress;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
+            // slither-disable-next-line uninitialized-local
             uint256 _balance;
             if (_dealVaultBuffer) {
                 _balance = __balanceOfToken(_trackedAsset, _vaultBufferAddress);
@@ -752,16 +753,17 @@ contract Vault is VaultStorage, ExchangeHelper {
         uint256 _trackedAssetsLength = _trackedAssets.length;
         uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
         uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
-        return _totalAssetInVault(_trackedAssets, _assetPrices, _assetDecimals);
+        return _calculateTrackedAssetsValue(_trackedAssets, _assetPrices, _assetDecimals);
     }
 
     /// @dev Internal to calculate total value of all assets held in Vault.
     /// @return Total value in USD(USDi)/ETH(ETHi) (1e18)
-    function _totalAssetInVault(
+    function _calculateTrackedAssetsValue(
         address[] memory _trackedAssets,
         uint256[] memory _assetPrices,
         uint256[] memory _assetDecimals
     ) internal view returns (uint256) {
+        // slither-disable-next-line uninitialized-local
         uint256 _totalAssetInVaultLocal;
         uint256 _trackedAssetsLength = _trackedAssets.length;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
@@ -782,6 +784,7 @@ contract Vault is VaultStorage, ExchangeHelper {
         uint256[] memory _assetPrices = new uint256[](_trackedAssetsLength);
         uint256[] memory _assetDecimals = new uint256[](_trackedAssetsLength);
 
+        // slither-disable-next-line uninitialized-state
         address _vaultBufferAddress = vaultBufferAddress;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
             address _trackedAsset = _trackedAssets[i];
@@ -802,9 +805,11 @@ contract Vault is VaultStorage, ExchangeHelper {
         for (uint256 i = 0; i < _assets.length; i++) {
             address _asset = _assets[i];
             uint256 _assetPrice = _getAssetPrice(_asset);
+            // slither-disable-next-line uninitialized-state
             uint256 _assetDecimal = trackedAssetDecimalsMap[_asset];
             _mintAmount += _amounts[i].mulTruncateScale(_assetPrice, 10 ** _assetDecimal);
         }
+        // slither-disable-next-line uninitialized-state
         uint256 _minimumInvestmentAmount = minimumInvestmentAmount;
         if (_minimumInvestmentAmount > 0) {
             require(_mintAmount >= _minimumInvestmentAmount, "ILTM"); //Investment less than minimum
@@ -814,6 +819,7 @@ contract Vault is VaultStorage, ExchangeHelper {
     /// @notice withdraw from strategy queue
     function _repayFromWithdrawQueue(uint256 _needWithdrawValue) internal {
         uint256 _totalWithdrawValue;
+        // slither-disable-next-line uninitialized-state
         for (uint256 i = 0; i < withdrawQueue.length; i++) {
             address _strategy = withdrawQueue[i];
             if (_strategy == ZERO_ADDRESS) break;
@@ -885,7 +891,9 @@ contract Vault is VaultStorage, ExchangeHelper {
         uint256 _totalShares
     ) internal returns (uint256) {
         uint256[] memory _amounts = new uint256[](_trackedAssets.length);
+        // slither-disable-next-line uninitialized-state
         address _vaultBufferAddress = vaultBufferAddress;
+        // slither-disable-next-line uninitialized-local
         uint256 _totalTransferValue;
         {
             uint256 _transferAssetsLength = _trackedAssets.length;
@@ -928,6 +936,7 @@ contract Vault is VaultStorage, ExchangeHelper {
                 _totalAssets,
                 _totalShares
             );
+            // slither-disable-next-line uninitialized-state
             IPegToken(pegTokenAddress).mintShares(_vaultBufferAddress, _totalTransferShares);
 
             emit PegTokenSwapCash(_totalTransferValue, _trackedAssets, _amounts);
@@ -940,6 +949,7 @@ contract Vault is VaultStorage, ExchangeHelper {
         uint256 _totalAssets,
         uint256 _totalShares
     ) internal view returns (uint256) {
+        // slither-disable-next-line uninitialized-local
         uint256 _shareAmount;
         if (_totalAssets > 0 && _totalShares > 0) {
             _shareAmount = (_amount * _totalShares) / _totalAssets;
@@ -1005,8 +1015,7 @@ contract Vault is VaultStorage, ExchangeHelper {
         uint256 _assetPrice = _getAssetPrice(_assetPrices, _assetIndex, _trackedAsset);
         uint256 _assetDecimal = _getAssetDecimals(_assetDecimals, _assetIndex, _trackedAsset);
 
-        uint256 _value = _balance.mulTruncateScale(_assetPrice, 10 ** _assetDecimal);
-        return _value;
+        return _balance.mulTruncateScale(_assetPrice, 10 ** _assetDecimal);
     }
 
     // @notice without exchange token and transfer form vault to user
@@ -1016,6 +1025,7 @@ contract Vault is VaultStorage, ExchangeHelper {
         uint256[] memory _assetPrices,
         uint256[] memory _assetDecimals
     ) internal returns (uint256) {
+        // slither-disable-next-line uninitialized-local
         uint256 _actualAmount;
         uint256 _trackedAssetsLength = _trackedAssets.length;
         for (uint256 i = 0; i < _trackedAssetsLength; i++) {
@@ -1047,9 +1057,13 @@ contract Vault is VaultStorage, ExchangeHelper {
         uint256[] memory _assetPrices,
         uint256[] memory _assetDecimals
     ) internal returns (uint256 _sharesAmount, uint256 _actualAsset) {
-        uint256 _totalAssetInVault = _totalAssetInVault(_trackedAssets, _assetPrices, _assetDecimals);
+        uint256 _trackedAssetsValue = _calculateTrackedAssetsValue(
+            _trackedAssets,
+            _assetPrices,
+            _assetDecimals
+        );
         uint256 _actualAmount = _amount;
-        uint256 _currentTotalAssets = _totalAssetInVault + totalDebt;
+        uint256 _currentTotalAssets = _trackedAssetsValue + totalDebt;
         uint256 _currentTotalShares = IPegToken(pegTokenAddress).totalShares();
         {
             uint256 _underlyingUnitsPerShare = underlyingUnitsPerShare;
@@ -1069,23 +1083,20 @@ contract Vault is VaultStorage, ExchangeHelper {
             _actualAsset = (_actualAmount * _currentTotalAssets) / _currentTotalSupply;
         }
 
-        // vault not enough,withdraw from vault buffer
-        if (_totalAssetInVault < _actualAsset) {
-            _totalAssetInVault =
-                _totalAssetInVault +
-                _repayFromVaultBuffer(
-                    _actualAsset - _totalAssetInVault,
-                    _trackedAssets,
-                    _assetPrices,
-                    _assetDecimals,
-                    _currentTotalAssets,
-                    _currentTotalShares
-                );
+        if (_trackedAssetsValue < _actualAsset) {
+            // vault not enough,withdraw from vault buffer
+            _trackedAssetsValue += _repayFromVaultBuffer(
+                _actualAsset - _trackedAssetsValue,
+                _trackedAssets,
+                _assetPrices,
+                _assetDecimals,
+                _currentTotalAssets,
+                _currentTotalShares
+            );
         }
-
-        // vault not enough,withdraw from withdraw queue strategy
-        if (_totalAssetInVault < _actualAsset) {
-            _repayFromWithdrawQueue(_actualAsset - _totalAssetInVault);
+        if (_trackedAssetsValue < _actualAsset) {
+            // vault not enough,withdraw from withdraw queue strategy
+            _repayFromWithdrawQueue(_actualAsset - _trackedAssetsValue);
         }
     }
 
@@ -1123,6 +1134,7 @@ contract Vault is VaultStorage, ExchangeHelper {
         uint256[] memory _assetPrices,
         uint256[] memory _assetDecimals
     ) internal {
+        // slither-disable-next-line uninitialized-state
         IPegToken(pegTokenAddress).burnShares(msg.sender, _shareAmount);
 
         // Until we can prove that we won't affect the prices of our assets
@@ -1130,8 +1142,12 @@ contract Vault is VaultStorage, ExchangeHelper {
         // It's possible that a strategy was off on its asset total, perhaps
         // a reward token sold for more or for less than anticipated.
         if (!rebasePaused) {
-            uint256 _totalAssetInVault = _totalAssetInVault(_trackedAssets, _assetPrices, _assetDecimals);
-            _rebase(_totalAssetInVault + totalDebt, _trusteeFeeBps);
+            uint256 _trackedAssetsValue = _calculateTrackedAssetsValue(
+                _trackedAssets,
+                _assetPrices,
+                _assetDecimals
+            );
+            _rebase(_trackedAssetsValue + totalDebt, _trusteeFeeBps);
         }
         emit Burn(msg.sender, _amount, _actualAmount, _shareAmount, _assets, _amounts);
     }
@@ -1140,6 +1156,7 @@ contract Vault is VaultStorage, ExchangeHelper {
     ///      strategies and update the supply of USDi/ETHi, optionally sending a
     ///      portion of the yield to the trustee.
     function _rebase(uint256 _totalAssets, uint256 _trusteeFeeBps) internal {
+        // slither-disable-next-line uninitialized-state
         uint256 _totalShares = IPegToken(pegTokenAddress).totalShares();
         _rebase(_totalAssets, _totalShares, _trusteeFeeBps);
     }
@@ -1170,6 +1187,7 @@ contract Vault is VaultStorage, ExchangeHelper {
                 if (_fee > 0) {
                     uint256 _sharesAmount = (_fee * _totalShares) / (_totalAssets - _fee);
                     if (_sharesAmount > 0) {
+                        // slither-disable-next-line uninitialized-state
                         IPegToken(pegTokenAddress).mintShares(_treasuryAddress, _sharesAmount);
                         _totalShares = _totalShares + _sharesAmount;
                     }
@@ -1201,8 +1219,9 @@ contract Vault is VaultStorage, ExchangeHelper {
         if (_strategyParam.totalDebt < _nowStrategyTotalDebt) {
             _deltaAsset = _nowStrategyTotalDebt - _strategyParam.totalDebt;
         }
-
+        // slither-disable-next-line uninitialized-local
         uint256 _gain;
+        // slither-disable-next-line uninitialized-local
         uint256 _loss;
 
         if (_nowStrategyTotalDebt > _lastStrategyTotalDebt) {
@@ -1212,6 +1231,7 @@ contract Vault is VaultStorage, ExchangeHelper {
         }
 
         if (_strategyParam.enforceChangeLimit) {
+            // slither-disable-next-line timestamp
             if (
                 block.timestamp - strategies[_strategy].lastReport < maxTimestampBetweenTwoReported &&
                 (_lastStrategyTotalDebt > minCheckedStrategyTotalDebt ||
@@ -1233,8 +1253,8 @@ contract Vault is VaultStorage, ExchangeHelper {
             strategies[_strategy].enforceChangeLimit = true;
             // The check is turned off only once and turned back on.
         }
-
         strategies[_strategy].totalDebt = _nowStrategyTotalDebt;
+        // slither-disable-next-line costly-loop
         totalDebt = totalDebt + _nowStrategyTotalDebt + _lendValue - _lastStrategyTotalDebt;
 
         strategies[_strategy].lastReport = block.timestamp;
@@ -1260,6 +1280,7 @@ contract Vault is VaultStorage, ExchangeHelper {
     ) internal view returns (uint256) {
         uint256 _decimal = _assetDecimals[_assetIndex];
         if (_decimal == 0) {
+            // slither-disable-next-line uninitialized-state
             _decimal = trackedAssetDecimalsMap[_asset];
             _assetDecimals[_assetIndex] = _decimal;
         }
@@ -1300,6 +1321,7 @@ contract Vault is VaultStorage, ExchangeHelper {
         address[] memory _assets,
         uint256[] memory _amounts
     ) private view returns (uint256 _ethAmount) {
+        // slither-disable-next-line uninitialized-state
         require(!(IVaultBuffer(vaultBufferAddress).isDistributing()), "ID"); ////is distributing
         uint256 _assetsLength = _assets.length;
         require(

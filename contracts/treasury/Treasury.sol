@@ -12,14 +12,10 @@ import "../library/BocRoles.sol";
 /// @title Treasury
 /// @notice The treasury contract mainly used to store public assets of the protocol
 /// @author Bank of Chain Protocol Inc
-contract Treasury is
-    Initializable,
-    ReentrancyGuardUpgradeable,
-    AccessControlMixin
-{
+contract Treasury is Initializable, ReentrancyGuardUpgradeable, AccessControlMixin {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    function initialize(address _accessControlProxy) public initializer {
+    function initialize(address _accessControlProxy) external initializer {
         _initAccessControl(_accessControlProxy);
     }
 
@@ -29,7 +25,7 @@ contract Treasury is
     fallback() external payable {}
 
     /// @notice Return the current version of this contract.
-    function version() public pure returns (string memory) {
+    function version() external pure returns (string memory) {
         return "V1.0.0";
     }
 
@@ -56,12 +52,11 @@ contract Treasury is
     /// @param _destination The destination address to withdraw
     /// @param _amount The amount of ETH to withdraw
     /// Requirements: only governance role can call
-    function withdrawETH(address payable _destination, uint256 _amount)
-        external
-        payable
-        nonReentrant
-        onlyRole(BocRoles.GOV_ROLE)
-    {
+    function withdrawETH(
+        address payable _destination,
+        uint256 _amount
+    ) external payable nonReentrant onlyRole(BocRoles.GOV_ROLE) {
+        require(_destination != address(0), "destination is null");
         _destination.transfer(_amount);
     }
 }

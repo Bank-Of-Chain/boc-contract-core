@@ -71,7 +71,8 @@ abstract contract AssetHelpers {
     /// @param _recipient: The address of the recipient 
     function __transferToken(address _asset, uint256 _amount, address _recipient) internal {
         if (__isNativeToken(_asset)) {
-            // payable(_recipient).transfer(_amount);   // if recipient is ZeppelinTransparentProxy contract，recive will fail.
+            // if recipient is ZeppelinTransparentProxy contract，recive will fail.
+            // slither-disable-next-line low-level-calls
             (bool succ, ) = _recipient.call{value: _amount}("");
             require(succ, "Failed to send Ether");
         } else {

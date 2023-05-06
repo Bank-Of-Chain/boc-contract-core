@@ -36,8 +36,11 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         address _customPriceFeedAggregator,
         address _accessControlProxy
     ) {
+        // slither-disable-next-line missing-zero-check
         uniswapV3PriceFeed = _uniswapV3PriceFeed;
+        // slither-disable-next-line missing-zero-check
         chainlinkPriceFeed = _chainlinkPriceFeed;
+        // slither-disable-next-line missing-zero-check
         customPriceFeedAggregator = _customPriceFeedAggregator;
         _initAccessControl(_accessControlProxy);
     }
@@ -96,7 +99,6 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         require(_isValid, "Invalid rate");
         return _value;
     }
-
 
     /// @inheritdoc IValueInterpreter
     function calcCanonicalAssetValueInUsd(
@@ -412,6 +414,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     /// @notice Set the primitive price feed. Only governance or delegate role can call.
     /// @param _chainlinkPriceFeed The address of the new primitive price feed contract
     function setChainlinkPriceFeed(address _chainlinkPriceFeed) external onlyGovOrDelegate {
+        require(_chainlinkPriceFeed != address(0), "_chainlinkPriceFeed address invalid");
         chainlinkPriceFeed = _chainlinkPriceFeed;
         emit UpdateChainPriceFeed(_chainlinkPriceFeed);
     }
@@ -419,6 +422,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     /// @notice Set the aggregated derivative price feed. Only governance or delegate role can call.
     /// @param _uniswapV3PriceFeed The price feed address of the new aggregated derivative
     function setUniswapV3PriceFeed(address _uniswapV3PriceFeed) external onlyGovOrDelegate {
+        require(_uniswapV3PriceFeed != address(0), "_uniswapV3PriceFeed address invalid");
         uniswapV3PriceFeed = _uniswapV3PriceFeed;
         emit UpdateUniswapV3PriceFeed(_uniswapV3PriceFeed);
     }
@@ -426,6 +430,7 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
     /// @notice Set the aggregated derivative price feed. Only governance or delegate role can call.
     /// @param _customPriceFeedAggregator The price feed address of the new aggregated derivative
     function setCustomPriceFeedAggregator(address _customPriceFeedAggregator) external onlyGovOrDelegate {
+        require(_customPriceFeedAggregator != address(0), "_customPriceFeedAggregator address invalid");
         customPriceFeedAggregator = _customPriceFeedAggregator;
         emit UpdateCustomPriceFeedAggregator(_customPriceFeedAggregator);
     }
