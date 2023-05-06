@@ -181,7 +181,7 @@ contract Vault is VaultStorage, ExchangeHelper {
     }
 
     /// @dev Calculate total value of all assets held in Strategies.
-    /// @return _value Total value(by oracle price) in USD (1e18)
+    /// @return _value Total value(by oracle price) in USD(USDi)/ETH(ETHi)(1e18)
     function totalValueInStrategies() public view returns (uint256 _value) {
         uint256 _strategyLength = strategySet.length();
         for (uint256 i = 0; i < _strategyLength; i++) {
@@ -1093,6 +1093,8 @@ contract Vault is VaultStorage, ExchangeHelper {
                 _currentTotalAssets,
                 _currentTotalShares
             );
+        }
+        if (_trackedAssetsValue < _actualAsset) {
             // vault not enough,withdraw from withdraw queue strategy
             _repayFromWithdrawQueue(_actualAsset - _trackedAssetsValue);
         }
