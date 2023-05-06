@@ -195,7 +195,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     /// - `_spender` cannot be the the zero address.
     /// - the contract must not be paused.
     function increaseAllowance(address _spender, uint256 _addedValue)
-        public
+        external
         returns (bool)
     {
         _approve(
@@ -216,7 +216,7 @@ contract PegToken is IPegToken, Initializable, AccessControlMixin {
     /// - `_spender` must have allowance for the caller of at least `_subtractedValue`.
     /// - the contract must not be paused.
     function decreaseAllowance(address _spender, uint256 _subtractedValue)
-        public
+        external
         returns (bool)
     {
         uint256 _currentAllowance = allowances[msg.sender][_spender];

@@ -33,7 +33,7 @@ contract CustomPriceFeedAggregator is ICustomPriceFeedAggregator, AccessControlM
     function calcValueInUsd(
         address _baseAsset,
         uint256 _baseAssetAmount
-    ) public view override returns (uint256 _quoteAssetAmount, bool _isValid) {
+    ) external view override returns (uint256 _quoteAssetAmount, bool _isValid) {
         if (address(customPriceFeeds[_baseAsset]) == address(0)) {
             return (0, false);
         }
@@ -44,7 +44,7 @@ contract CustomPriceFeedAggregator is ICustomPriceFeedAggregator, AccessControlM
     function calcValueInEth(
         address _baseAsset,
         uint256 _baseAssetAmount
-    ) public view override returns (uint256 _quoteAssetAmount, bool _isValid) {
+    ) external view override returns (uint256 _quoteAssetAmount, bool _isValid) {
         if (address(customPriceFeeds[_baseAsset]) == address(0)) {
             return (0, false);
         }
@@ -52,11 +52,13 @@ contract CustomPriceFeedAggregator is ICustomPriceFeedAggregator, AccessControlM
         return (customPriceFeeds[_baseAsset].calcValueInEth(_baseAssetAmount), true);
     }
 
-    function getAssetUnit(address _asset) public view override returns (uint256 _unit) {
+    function getAssetUnit(address _asset) external view override returns (uint256 _unit) {
         return customPriceFeeds[_asset].getAssetUnit();
     }
 
-    function getRateAsset(address _asset) public view override returns (IPrimitivePriceFeed.RateAsset _rateAsset) {
+    function getRateAsset(
+        address _asset
+    ) external view override returns (IPrimitivePriceFeed.RateAsset _rateAsset) {
         return customPriceFeeds[_asset].getRateAsset();
     }
 

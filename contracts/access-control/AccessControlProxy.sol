@@ -27,7 +27,7 @@ contract AccessControlProxy is Initializable, AccessControlEnumerable {
         address _delegate,
         address _vault,
         address _keeper
-    ) public initializer {
+    ) external initializer {
         require(
             !(_governance == address(0) ||
                 _delegate == address(0) ||
@@ -77,21 +77,21 @@ contract AccessControlProxy is Initializable, AccessControlEnumerable {
     }
 
     /// @dev Revert with a standard message if `_account` is not gov role or delegate role.
-    function checkGovOrDelegate(address _account) public view {
+    function checkGovOrDelegate(address _account) external view {
         if (!isGovOrDelegate(_account)) {
             revert(encodeErrorMsg(_account, "governance"));
         }
     }
 
     /// @dev Revert with a standard message if `_account` is not vault role or gov role.
-    function checkVaultOrGov(address _account) public view {
+    function checkVaultOrGov(address _account) external view {
         if (!isVaultOrGovOrDelegate(_account)) {
             revert(encodeErrorMsg(_account, "vault manager"));
         }
     }
 
     /// @dev Revert with a standard message if `_account` is not keeper role, vault role or gov role.
-    function checkKeeperOrVaultOrGov(address _account) public view {
+    function checkKeeperOrVaultOrGov(address _account) external view {
         if (!isKeeperOrVaultOrGov(_account)) {
             revert(encodeErrorMsg(_account, "keeper"));
         }

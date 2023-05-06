@@ -12,9 +12,6 @@ interface ICustomSEthCurveFi {
 contract CustomSEthPriceFeed is ICustomPriceFeed {
     address immutable ETH_USD_AGGREGATOR = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address immutable SUSD_USD_AGGREGATOR = 0xad35Bd71b9aFE6e4bDc266B345c198eaDEf9Ad94;
-    address private constant W_ETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address private constant FRX_ETH = 0x5E8422345238F34275888049021821E8E08CAa1f;
-    address private constant FRXETH_ETH_UNI_V3_POOL = 0x8a15b2Dc9c4f295DCEbB0E7887DD25980088fDCB;
     address private constant SETH_ETH_CURVE_POOL = 0xc5424B857f758E906013F3555Dad202e4bdB4567;
 
     function calcValueInUsd(uint256 _amount) external view override returns (uint256 _valueInUsd) {

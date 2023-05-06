@@ -106,9 +106,11 @@ abstract contract ExchangeHelper is AssetHelpers, Initializable, AccessControlMi
         bool _success;
         bytes memory _result;
         if (__isNativeToken(_fromToken)) {
+            // slither-disable-next-line low-level-calls
             (_success, _result) = payable(_oneInchRouter).call{value: _fromAmount}(_calldata);
         } else {
             __approveAssetMaxAsNeeded(_fromToken, _oneInchRouter, _fromAmount);
+            // slither-disable-next-line low-level-calls
             (_success, _result) = _oneInchRouter.call(_calldata);
         }
 
@@ -138,9 +140,11 @@ abstract contract ExchangeHelper is AssetHelpers, Initializable, AccessControlMi
         bool _success;
         bytes memory _result;
         if (__isNativeToken(_fromToken)) {
+            // slither-disable-next-line low-level-calls
             (_success, _result) = payable(_paraRouter).call{value: _fromAmount}(_calldata);
         } else {
             __approveAssetMaxAsNeeded(_fromToken, _paraTransferProxy, _fromAmount);
+            // slither-disable-next-line low-level-calls
             (_success, _result) = _paraRouter.call(_calldata);
         }
 
