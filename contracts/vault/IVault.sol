@@ -228,7 +228,7 @@ interface IVault {
     function getPegTokenPrice() external view returns (uint256);
 
     /// @dev Calculate total value of all assets held in Strategies.
-    /// @return _value Total value(by oracle price) in USD (1e18)
+    /// @return _value Total value(by oracle price) in USD(USDi)/ETH(ETHi)(1e18)
     function totalValueInStrategies() external view returns (uint256 _value);
 
     /// @notice Return all strategy addresses
