@@ -238,6 +238,7 @@ contract VaultTest is Test {
 
         iVault.setPegTokenAddress(address(pegToken));
         iVault.setVaultBufferAddress(address(vaultBuffer));
+        iVault.setMinimumInvestmentAmount(10);
 
         mock3CoinStrategy = new Mock3CoinStrategy();
         address[] memory _wants = new address[](3);
@@ -297,6 +298,7 @@ contract VaultTest is Test {
 
         iETHVault.setPegTokenAddress(address(ethPegToken));
         iETHVault.setVaultBufferAddress(address(ethVaultBuffer));
+        iETHVault.setMinimumInvestmentAmount(10);
 
         harvester = new Harvester();
         harvester.initialize(
@@ -358,7 +360,7 @@ contract VaultTest is Test {
         iVault.setMinCheckedStrategyTotalDebt(2000e18);
         assertEq(iVault.minCheckedStrategyTotalDebt(),2000e18);
 
-        assertEq(iVault.minimumInvestmentAmount(),0);
+        assertEq(iVault.minimumInvestmentAmount(),10);
         iVault.setMinimumInvestmentAmount(1e19);
         assertEq(iVault.minimumInvestmentAmount(),1e19);
 
@@ -1127,8 +1129,11 @@ contract VaultTest is Test {
         iVault.setRebaseThreshold(uint256(1));
         uint256 _beforeAdjustPositionOfVault = _balanceOfToken(USDT_ADDRESS, address(vault));
         uint256 _beforeAdjustPositionOfVaultBuffer = _balanceOfToken(USDT_ADDRESS, address(vaultBuffer));
-
+        uint256 pegTokenPrice = iVault.getPegTokenPrice();
+        assertEq(pegTokenPrice,1e18);
         iVault.startAdjustPosition();
+        pegTokenPrice = iVault.getPegTokenPrice();
+        assertEq(pegTokenPrice,1e18);
         uint256 _afterAdjustPositionOfVault = _balanceOfToken(USDT_ADDRESS, address(vault));
         uint256 _afterAdjustPositionOfVaultBuffer = _balanceOfToken(USDT_ADDRESS, address(vaultBuffer));
 
@@ -1228,6 +1233,9 @@ contract VaultTest is Test {
         uint256 totalAssets = iVault.totalAssets();
         assertEq(valueOfTrackedTokensInVault + totalDebt, totalAssets);
 
+        uint256 totalValueInVaultBuffer = iVault.totalValueInVaultBuffer();
+        assertEq(totalAssets, totalValueInVaultBuffer);
+
         uint256 totalAssetsIncludeVaultBuffer = iVault.totalAssetsIncludeVaultBuffer();
         assertEq(valueOfTrackedTokensIncludeVaultBuffer + totalDebt, totalAssetsIncludeVaultBuffer);
 
@@ -1245,8 +1253,11 @@ contract VaultTest is Test {
             NativeToken.NATIVE_TOKEN,
             address(ethVaultBuffer)
         );
-
+        uint256 pegTokenPrice = iETHVault.getPegTokenPrice();
+        assertEq(pegTokenPrice,1e18);
         iETHVault.startAdjustPosition();
+        pegTokenPrice = iETHVault.getPegTokenPrice();
+        assertEq(pegTokenPrice,1e18);
         uint256 _afterAdjustPositionOfVault = _balanceOfToken(
             NativeToken.NATIVE_TOKEN,
             address(ethVault)
@@ -1364,6 +1375,9 @@ contract VaultTest is Test {
         uint256 totalAssets = iETHVault.totalAssets();
         assertEq(valueOfTrackedTokensInVault + totalDebt, totalAssets);
 
+        uint256 totalValueInVaultBuffer = iETHVault.totalValueInVaultBuffer();
+        assertEq(totalAssets, totalValueInVaultBuffer);
+
         uint256 totalAssetsIncludeVaultBuffer = iETHVault.totalAssetsIncludeVaultBuffer();
         assertEq(valueOfTrackedTokensIncludeVaultBuffer + totalDebt, totalAssetsIncludeVaultBuffer);
     }
@@ -1374,9 +1388,11 @@ contract VaultTest is Test {
 
         uint256 _redeemFeeBps = iVault.redeemFeeBps();
         uint256 _trusteeFeeBps = iVault.trusteeFeeBps();
-        uint256 _minimumAmount = 0;
+        uint256 _minimumAmount = 10;
         vm.prank(USER);
         iVault.burn(_amount, _minimumAmount, _redeemFeeBps, _trusteeFeeBps);
+
+        iVault.rebase(_trusteeFeeBps);
 
         uint256 _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(
             USDC_ADDRESS,
@@ -1408,6 +1424,8 @@ contract VaultTest is Test {
             _redeemFeeBps,
             _trusteeFeeBps
         );
+
+        iETHVault.rebase(_trusteeFeeBps);
         uint256 _valueInETH;
         for (uint256 i = 0; i < _receiveAssets.length; i++) {
             _valueInETH =
@@ -1432,7 +1450,7 @@ contract VaultTest is Test {
         _amounts[0] = _usdcAmount;
         _amounts[1] = _usdtAmount;
         _amounts[2] = _daiAmount;
-        uint256 _minimumAmount = 0;
+        uint256 _minimumAmount = 100;
         deal(USDC_ADDRESS, FRIEND, _usdcAmount);
         deal(USDT_ADDRESS, FRIEND, _usdtAmount);
         deal(DAI_ADDRESS, FRIEND, _daiAmount);
@@ -1505,7 +1523,7 @@ contract VaultTest is Test {
         _amounts[0] = _ethAmount;
         _amounts[1] = _stETHAmount;
         _amounts[2] = _wETHAmount;
-        uint256 _minimumAmount = 0;
+        uint256 _minimumAmount = 100;
         vm.startPrank(FRIEND);
         deal(FRIEND, _ethAmount * 2 + _stETHAmount);
         IEREC20Mint(STETH_ADDRESS).submit{value: _stETHAmount}(FRIEND);
