@@ -257,8 +257,13 @@ contract VaultTest is Test {
         mock3CoinStrategy.initialize(address(vault), address(harvester), _wants, _ratios);
         vm.label(address(mock3CoinStrategy), "mock3CoinStrategy");
 
+        uint256[] memory _ratiosEmpty = new uint256[](3);
+        _ratiosEmpty[0] = 0;
+        _ratiosEmpty[1] = 2;
+        _ratiosEmpty[2] = 4;
+
         mock3CoinEmptyStrategy = new Mock3CoinStrategy();
-        mock3CoinEmptyStrategy.initialize(address(vault), address(harvester), _wants, _ratios);
+        mock3CoinEmptyStrategy.initialize(address(vault), address(harvester), _wants, _ratiosEmpty);
         vm.label(address(mock3CoinEmptyStrategy), "mock3CoinEmptyStrategy");
 
         otherMock3CoinStrategy = new Mock3CoinStrategy();
@@ -330,8 +335,13 @@ contract VaultTest is Test {
         ethMock3CoinStrategy.initialize(address(ethVault), address(ethHarvester), _ethWants, _ethRatios);
         vm.label(address(ethMock3CoinStrategy), "ethMock3CoinStrategy");
 
+        uint256[] memory _ethRatiosEmpty = new uint256[](3);
+        _ethRatios[0] = 0;
+        _ethRatios[1] = 2;
+        _ethRatios[2] = 4;
+
         ethMock3CoinEmptyStrategy = new Mock3CoinStrategy();
-        ethMock3CoinEmptyStrategy.initialize(address(ethVault), address(ethHarvester), _ethWants, _ethRatios);
+        ethMock3CoinEmptyStrategy.initialize(address(ethVault), address(ethHarvester), _ethWants, _ethRatiosEmpty);
         vm.label(address(ethMock3CoinEmptyStrategy), "ethMock3CoinEmptyStrategy");
 
         otherEthMock3CoinStrategy = new Mock3CoinStrategy();
@@ -557,12 +567,12 @@ contract VaultTest is Test {
         // DAI
         _wants[2] = DAI_ADDRESS;
         uint256[] memory _ratios = new uint256[](3);
-        _ratios[0] = 1;
+        _ratios[0] = 0;
         _ratios[1] = 2;
-        _ratios[2] = 0;
+        _ratios[2] = 1;
         mockStrategy.initialize(address(vault), address(harvester), _wants, _ratios);
 
-        IVault.StrategyAdd[] memory _strategyAdds = new IVault.StrategyAdd[](2);
+        IVault.StrategyAdd[] memory _strategyAdds = new IVault.StrategyAdd[](3);
         _strategyAdds[0] = IVault.StrategyAdd({
         strategy: address(mockStrategy),
         profitLimitRatio: uint256(100),
@@ -570,6 +580,12 @@ contract VaultTest is Test {
         targetDebt:uint256(1e24)
         });
         _strategyAdds[1] = IVault.StrategyAdd({
+        strategy: address(mock3CoinEmptyStrategy),
+        profitLimitRatio: uint256(100),
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e24)
+        });
+        _strategyAdds[2] = IVault.StrategyAdd({
         strategy: address(otherMock3CoinStrategy),
         profitLimitRatio: uint256(100),
         lossLimitRatio: uint256(100),
@@ -614,9 +630,9 @@ contract VaultTest is Test {
 
         assertGt(mockStrategy.estimatedTotalAssets(),0);
 
-        assertEq(_balanceOfToken(USDT_ADDRESS, address(vault)), _amounts[0]/2);
+        assertEq(_balanceOfToken(USDT_ADDRESS, address(vault)), _amounts[0]);
         assertEq(_balanceOfToken(USDC_ADDRESS, address(vault)), 0);
-        assertEq(_balanceOfToken(DAI_ADDRESS, address(vault)), _amounts[2]);
+        assertEq(_balanceOfToken(DAI_ADDRESS, address(vault)), _amounts[2]/2);
     }
 
     function testLendWithETHi() public{
@@ -631,9 +647,9 @@ contract VaultTest is Test {
         // weth
         _wants[2] = WETH_ADDRESS;
         uint256[] memory _ratios = new uint256[](3);
-        _ratios[0] = 1;
+        _ratios[0] = 0;
         _ratios[1] = 2;
-        _ratios[2] = 0;
+        _ratios[2] = 1;
         ethMockStrategy.initialize(address(ethVault), address(harvester), _wants, _ratios);
 
         IVault.StrategyAdd[] memory _strategyAdds = new IVault.StrategyAdd[](2);
@@ -695,9 +711,9 @@ contract VaultTest is Test {
 
         assertGt(ethMockStrategy.estimatedTotalAssets(),0);
 
-        assertEq(_balanceOfToken(NativeToken.NATIVE_TOKEN, address(ethVault))/10, _amounts[0]/20);
+        assertEq(_balanceOfToken(NativeToken.NATIVE_TOKEN, address(ethVault))/10, _amounts[0]/10);
         assertEq(_balanceOfToken(STETH_ADDRESS, address(ethVault))/10, 0);
-        assertEq(_balanceOfToken(WETH_ADDRESS, address(ethVault))/10, _amounts[2]/10);
+        assertEq(_balanceOfToken(WETH_ADDRESS, address(ethVault))/10, _amounts[2]/20);
     }
 
     function testAddAndRemoveStrategies() public {
