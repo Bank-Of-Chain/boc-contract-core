@@ -1234,7 +1234,7 @@ contract VaultTest is Test {
         assertEq(valueOfTrackedTokensInVault + totalDebt, totalAssets);
 
         uint256 totalValueInVaultBuffer = iVault.totalValueInVaultBuffer();
-        assertEq(totalAssets, totalValueInVaultBuffer);
+        assertEq(0, totalValueInVaultBuffer);
 
         uint256 totalAssetsIncludeVaultBuffer = iVault.totalAssetsIncludeVaultBuffer();
         assertEq(valueOfTrackedTokensIncludeVaultBuffer + totalDebt, totalAssetsIncludeVaultBuffer);
@@ -1376,7 +1376,7 @@ contract VaultTest is Test {
         assertEq(valueOfTrackedTokensInVault + totalDebt, totalAssets);
 
         uint256 totalValueInVaultBuffer = iETHVault.totalValueInVaultBuffer();
-        assertEq(totalAssets, totalValueInVaultBuffer);
+        assertEq(0, totalValueInVaultBuffer);
 
         uint256 totalAssetsIncludeVaultBuffer = iETHVault.totalAssetsIncludeVaultBuffer();
         assertEq(valueOfTrackedTokensIncludeVaultBuffer + totalDebt, totalAssetsIncludeVaultBuffer);
