@@ -1408,8 +1408,14 @@ contract VaultTest is Test {
         iVault.burn(_amount, _minimumAmount, _redeemFeeBps, _trusteeFeeBps);
         vm.prank(GOVERNANOR);
         iVault.setRedeemFeeBps(0);
-        deal(DAI_ADDRESS,address(iVault),1000);
+        deal(DAI_ADDRESS,address(iVault),_balanceOfToken(DAI_ADDRESS, address(iVault))+1000);
+        vm.prank(GOVERNANOR);
+        iVault.setTrusteeFeeBps(1);
+        _trusteeFeeBps = iVault.trusteeFeeBps();
         iVault.rebase(_trusteeFeeBps);
+        vm.prank(GOVERNANOR);
+        iVault.setTrusteeFeeBps(0);
+        _trusteeFeeBps = iVault.trusteeFeeBps();
 
         uint256 _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(
             USDC_ADDRESS,
@@ -1444,9 +1450,15 @@ contract VaultTest is Test {
         );
         vm.prank(GOVERNANOR);
         iETHVault.setRedeemFeeBps(0);
-        deal(address(iETHVault),1000);
+        deal(address(iETHVault),_balanceOfToken(NATIVE_TOKEN_ADDRESS, address(iETHVault))+1000);
+        vm.prank(GOVERNANOR);
+        iETHVault.setTrusteeFeeBps(1);
+        _trusteeFeeBps = iETHVault.trusteeFeeBps();
 
         iETHVault.rebase(_trusteeFeeBps);
+        vm.prank(GOVERNANOR);
+        iETHVault.setTrusteeFeeBps(0);
+        _trusteeFeeBps = iETHVault.trusteeFeeBps();
         uint256 _valueInETH;
         for (uint256 i = 0; i < _receiveAssets.length; i++) {
             _valueInETH =
@@ -1806,6 +1818,77 @@ contract VaultTest is Test {
         iVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
 
         assertEq(iVault.totalValueInStrategies(), 0);
+    }
+
+    function testBurnFromVaultBuffer() public {
+        testWithdraw();
+
+        address[] memory _assets = new address[](3);
+        _assets[0] = USDC_ADDRESS;
+        _assets[1] = USDT_ADDRESS;
+        _assets[2] = DAI_ADDRESS;
+        uint256 _usdcAmount = 10000e6;
+        uint256 _usdtAmount = 10000e6;
+        uint256 _daiAmount = 10000e18;
+        uint256[] memory _amounts = new uint256[](3);
+        _amounts[0] = _usdcAmount;
+        _amounts[1] = _usdtAmount;
+        _amounts[2] = _daiAmount;
+        uint256 _minimumAmount = 100;
+        deal(USDC_ADDRESS, FRIEND, _usdcAmount);
+        deal(USDT_ADDRESS, FRIEND, _usdtAmount);
+        deal(DAI_ADDRESS, FRIEND, _daiAmount);
+
+        vm.startPrank(FRIEND);
+        _safeApprove(USDC_ADDRESS, address(vault), _usdcAmount);
+        _safeApprove(USDT_ADDRESS, address(vault), _usdtAmount);
+        _safeApprove(DAI_ADDRESS, address(vault), _daiAmount);
+        iVault.mint(_assets, _amounts, _minimumAmount);
+        vm.stopPrank();
+        uint256 _redeemFeeBps = iVault.redeemFeeBps();
+        uint256 _trusteeFeeBps = iVault.trusteeFeeBps();
+        uint256 _amount = pegToken.balanceOf(USER);
+        vm.prank(USER);
+        iVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
+
+        assertEq(iVault.valueOfTrackedTokens(), 0);
+    }
+
+    function testBurnFromVaultBufferWithETHi() public {
+        testWithdrawWithETHi();
+
+        address[] memory _assets = new address[](3);
+        _assets[0] = NativeToken.NATIVE_TOKEN;
+        _assets[1] = STETH_ADDRESS;
+        _assets[2] = WETH_ADDRESS;
+        uint256 _ethAmount = 10000e18;
+        uint256 _stETHAmount = 10000e18;
+        uint256 _wETHAmount = 10000e18;
+        uint256[] memory _amounts = new uint256[](3);
+        _amounts[0] = _ethAmount;
+        _amounts[1] = _stETHAmount;
+        _amounts[2] = _wETHAmount;
+        uint256 _minimumAmount = 100;
+        vm.startPrank(FRIEND);
+        deal(FRIEND, _ethAmount * 2 + _stETHAmount);
+        IEREC20Mint(STETH_ADDRESS).submit{value: _stETHAmount}(FRIEND);
+        deal(WETH_ADDRESS, FRIEND, _wETHAmount);
+
+        _safeApprove(STETH_ADDRESS, address(ethVault), _stETHAmount);
+        _safeApprove(WETH_ADDRESS, address(ethVault), _wETHAmount);
+        iETHVault.mint{value: _ethAmount}(_assets, _amounts, _minimumAmount);
+        vm.stopPrank();
+
+        uint256 _redeemFeeBps = iETHVault.redeemFeeBps();
+        uint256 _trusteeFeeBps = iETHVault.trusteeFeeBps();
+        uint256 _amount = ethPegToken.balanceOf(USER);
+        ethMock3CoinStrategy.setPoolWithdrawQuota(ethMock3CoinStrategy.estimatedTotalAssets()/6);
+        vm.prank(USER);
+        iETHVault.burn(_amount, 0, _redeemFeeBps, _trusteeFeeBps);
+
+        uint256 valueOfTrackedTokens =  iETHVault.valueOfTrackedTokens();
+        console2.log("valueOfTrackedTokens is",valueOfTrackedTokens);
+        assertEq(iETHVault.valueOfTrackedTokens(), 0);
     }
 
     function testBurnFromStrategyWithETHi() public {
