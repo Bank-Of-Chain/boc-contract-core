@@ -88,8 +88,10 @@ contract VaultTest is Test {
     Harvester harvester;
     Harvester ethHarvester;
     Mock3CoinStrategy mock3CoinStrategy;
+    Mock3CoinStrategy mock3CoinEmptyStrategy;
     Mock3CoinStrategy otherMock3CoinStrategy;
     Mock3CoinStrategy ethMock3CoinStrategy;
+    Mock3CoinStrategy ethMock3CoinEmptyStrategy;
     Mock3CoinStrategy otherEthMock3CoinStrategy;
 
     uint256[] public arr2 = [1, 2, 3];
@@ -255,6 +257,10 @@ contract VaultTest is Test {
         mock3CoinStrategy.initialize(address(vault), address(harvester), _wants, _ratios);
         vm.label(address(mock3CoinStrategy), "mock3CoinStrategy");
 
+        mock3CoinEmptyStrategy = new Mock3CoinStrategy();
+        mock3CoinEmptyStrategy.initialize(address(vault), address(harvester), _wants, _ratios);
+        vm.label(address(mock3CoinEmptyStrategy), "mock3CoinEmptyStrategy");
+
         otherMock3CoinStrategy = new Mock3CoinStrategy();
         otherMock3CoinStrategy.initialize(address(vault), address(harvester), _wants, _ratios);
         vm.label(address(otherMock3CoinStrategy), "otherMock3CoinStrategy");
@@ -323,6 +329,10 @@ contract VaultTest is Test {
         _ethRatios[2] = 4;
         ethMock3CoinStrategy.initialize(address(ethVault), address(ethHarvester), _ethWants, _ethRatios);
         vm.label(address(ethMock3CoinStrategy), "ethMock3CoinStrategy");
+
+        ethMock3CoinEmptyStrategy = new Mock3CoinStrategy();
+        ethMock3CoinEmptyStrategy.initialize(address(ethVault), address(ethHarvester), _ethWants, _ethRatios);
+        vm.label(address(ethMock3CoinEmptyStrategy), "ethMock3CoinEmptyStrategy");
 
         otherEthMock3CoinStrategy = new Mock3CoinStrategy();
         otherEthMock3CoinStrategy.initialize(address(ethVault), address(ethHarvester), _ethWants, _ethRatios);
@@ -715,7 +725,7 @@ contract VaultTest is Test {
         iVault.removeStrategies(_removeStrategies);
         _strategies = iVault.getStrategies();
         assertEq(_strategies.length, 0);
-        _strategyAdds = new IVault.StrategyAdd[](2);
+        _strategyAdds = new IVault.StrategyAdd[](3);
         _strategyAdds[0] = IVault.StrategyAdd({
         strategy: address(mock3CoinStrategy),
         profitLimitRatio: uint256(100),
@@ -724,6 +734,13 @@ contract VaultTest is Test {
         });
 
         _strategyAdds[1] = IVault.StrategyAdd({
+        strategy: address(mock3CoinEmptyStrategy),
+        profitLimitRatio: uint256(100),
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e24)
+        });
+
+        _strategyAdds[2] = IVault.StrategyAdd({
         strategy: address(otherMock3CoinStrategy),
         profitLimitRatio: uint256(100),
         lossLimitRatio: uint256(100),
@@ -794,7 +811,7 @@ contract VaultTest is Test {
         assertEq(_strategies.length, 0);
 
 
-        _strategyAdds = new IVault.StrategyAdd[](2);
+        _strategyAdds = new IVault.StrategyAdd[](3);
         _strategyAdds[0] = IVault.StrategyAdd({
         strategy: address(ethMock3CoinStrategy),
         profitLimitRatio: uint256(100),
@@ -803,6 +820,13 @@ contract VaultTest is Test {
         });
 
         _strategyAdds[1] = IVault.StrategyAdd({
+        strategy: address(ethMock3CoinEmptyStrategy),
+        profitLimitRatio: uint256(100),
+        lossLimitRatio: uint256(100),
+        targetDebt:uint256(1e22)
+        });
+
+        _strategyAdds[2] = IVault.StrategyAdd({
         strategy: address(otherEthMock3CoinStrategy),
         profitLimitRatio: uint256(100),
         lossLimitRatio: uint256(100),
@@ -958,6 +982,38 @@ contract VaultTest is Test {
         iETHVault.setPegTokenAddress(address(pegToken));
     }
 
+    function testFailInitTwice() public {
+        Vault vaultTwo = new Vault();
+        vaultTwo.initialize(
+            address(accessControlProxy),
+            address(treasury),
+            address(valueInterpreter),
+            uint256(0)
+        );
+        vaultTwo.initialize(
+            address(accessControlProxy),
+            address(treasury),
+            address(valueInterpreter),
+            uint256(0)
+        );
+    }
+
+    function testFailInitTwiceWithETHi() public {
+        Vault ethVaultTwo = new Vault();
+        ethVaultTwo.initialize(
+            address(accessControlProxy),
+            address(treasury),
+            address(valueInterpreter),
+            uint256(1)
+        );
+        ethVaultTwo.initialize(
+            address(accessControlProxy),
+            address(treasury),
+            address(valueInterpreter),
+            uint256(1)
+        );
+    }
+
     function testEstimateMint() public {
         testAddAndRemoveAssets();
         testAddAndRemoveStrategies();
@@ -1098,28 +1154,32 @@ contract VaultTest is Test {
     function testWithdrawlQueueOpMethod() public {
         testDeposit();
         vm.startPrank(GOVERNANOR);
-        address[] memory _queues = new address[](2);
+        address[] memory _queues = new address[](3);
         _queues[0] = address(mock3CoinStrategy);
-        _queues[1] = address(otherMock3CoinStrategy);
+        _queues[1] = address(mock3CoinEmptyStrategy);
+        _queues[2] = address(otherMock3CoinStrategy);
         iVault.setWithdrawalQueue(_queues);
 
         address[] memory wthdrawalQueue = iVault.getWithdrawalQueue();
         assertEq(wthdrawalQueue[0],address(mock3CoinStrategy));
-        assertEq(wthdrawalQueue[1],address(otherMock3CoinStrategy));
+        assertEq(wthdrawalQueue[1],address(mock3CoinEmptyStrategy));
+        assertEq(wthdrawalQueue[2],address(otherMock3CoinStrategy));
 
         address[] memory removeWthdrawalQueue = new address[](1);
         removeWthdrawalQueue[0] = address(mock3CoinStrategy);
         iVault.removeStrategyFromQueue(removeWthdrawalQueue);
 
         address[] memory wthdrawalQueueAfterRemove = iVault.getWithdrawalQueue();
-        assertEq(wthdrawalQueueAfterRemove[0],address(otherMock3CoinStrategy));
-        assertEq(wthdrawalQueueAfterRemove[1],address(0));
+        assertEq(wthdrawalQueueAfterRemove[1],address(otherMock3CoinStrategy));
+        assertEq(wthdrawalQueueAfterRemove[2],address(0));
 
+        iVault.forceRemoveStrategy(address(mock3CoinEmptyStrategy));
         iVault.forceRemoveStrategy(address(otherMock3CoinStrategy));
         address[] memory wthdrawalQueueAfterForceRemove = iVault.getWithdrawalQueue();
         //assertEq(wthdrawalQueueAfterForceRemove.length, 0);
         assertEq(wthdrawalQueueAfterForceRemove[0],address(0));
         assertEq(wthdrawalQueueAfterForceRemove[1],address(0));
+        assertEq(wthdrawalQueueAfterForceRemove[2],address(0));
 
     }
 
@@ -1136,6 +1196,7 @@ contract VaultTest is Test {
         _strategies[1] = address(otherMock3CoinStrategy);
         vault.reportByKeeper(_strategies);
         mock3CoinStrategy.reportToVault();
+        iVault.setStrategyEnforceChangeLimit(address(mock3CoinStrategy),false);
         mock3CoinStrategy.reportWithoutClaim();
         iVault.startAdjustPosition();
         pegTokenPrice = iVault.getPegTokenPrice();
@@ -1149,9 +1210,10 @@ contract VaultTest is Test {
         );
         assertGt(_afterAdjustPositionOfVault, _beforeAdjustPositionOfVault);
 
-        address[] memory _queues = new address[](2);
+        address[] memory _queues = new address[](3);
         _queues[0] = address(mock3CoinStrategy);
-        _queues[1] = address(otherMock3CoinStrategy);
+        _queues[1] = address(mock3CoinEmptyStrategy);
+        _queues[2] = address(otherMock3CoinStrategy);
         iVault.setWithdrawalQueue(_queues);
 
         address[] memory _tokens = new address[](3);
@@ -1266,6 +1328,7 @@ contract VaultTest is Test {
         _strategies[1] = address(otherEthMock3CoinStrategy);
         iETHVault.reportByKeeper(_strategies);
         ethMock3CoinStrategy.reportToVault();
+        iETHVault.setStrategyEnforceChangeLimit(address(ethMock3CoinStrategy),false);
         ethMock3CoinStrategy.reportWithoutClaim();
 
         iETHVault.startAdjustPosition();
@@ -1286,9 +1349,10 @@ contract VaultTest is Test {
         );
         assertGt(_afterAdjustPositionOfVault, _beforeAdjustPositionOfVault);
 
-        address[] memory _queues = new address[](2);
+        address[] memory _queues = new address[](3);
         _queues[0] = address(ethMock3CoinStrategy);
-        _queues[1] = address(otherEthMock3CoinStrategy);
+        _queues[1] = address(ethMock3CoinEmptyStrategy);
+        _queues[2] = address(otherEthMock3CoinStrategy);
         iETHVault.setWithdrawalQueue(_queues);
 
         address[] memory _tokens = new address[](3);
