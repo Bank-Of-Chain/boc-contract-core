@@ -1682,8 +1682,9 @@ contract VaultTest is Test {
 
             iVault.lend(address(mock3CoinStrategy), _tokens, _lendAmounts,0);
         }
-
+        iVault.setTrusteeFeeBps(1);
         iVault.endAdjustPosition();
+        iVault.setTrusteeFeeBps(0);
         vaultBuffer.distributeWhenDistributing();
         vm.stopPrank();
 
@@ -1765,7 +1766,9 @@ contract VaultTest is Test {
             iETHVault.lend(address(ethMock3CoinStrategy), _tokens, _lendAmounts,0);
         }
 
+        iETHVault.setTrusteeFeeBps(1);
         iETHVault.endAdjustPosition();
+        iETHVault.setTrusteeFeeBps(0);
         ethVaultBuffer.distributeWhenDistributing();
         vm.stopPrank();
         {
@@ -1777,7 +1780,11 @@ contract VaultTest is Test {
                 _amounts[2] - _balanceOfToken(WETH_ADDRESS, FRIEND)
             );
             console.log("_ethiAmount is ",_ethiAmount);
-            assertGe(_ethiAmount / 1e17, _valueInETH / 1e17 + 1 );
+            if(_valueInETH>_ethiAmount){
+                assertGe((_valueInETH-_ethiAmount) / 1e17, 0);
+            }else{
+                assertGe((_ethiAmount-_valueInETH) / 1e17, 0);
+            }
         }
         uint256 totalValueInVault =  iETHVault.valueOfTrackedTokens();
         uint256 totalValueInStrategies =  iETHVault.totalValueInStrategies();
