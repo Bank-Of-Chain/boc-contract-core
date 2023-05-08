@@ -982,6 +982,16 @@ contract VaultTest is Test {
         iETHVault.setPegTokenAddress(address(pegToken));
     }
 
+    function testInit() public {
+        Vault vaultTwo = new Vault();
+        vaultTwo.initialize(
+            address(accessControlProxy),
+            address(treasury),
+            address(valueInterpreter),
+            uint256(0)
+        );
+    }
+
     function testFailInitTwice() public {
         Vault vaultTwo = new Vault();
         vaultTwo.initialize(
@@ -995,6 +1005,16 @@ contract VaultTest is Test {
             address(treasury),
             address(valueInterpreter),
             uint256(0)
+        );
+    }
+
+    function testInitWithETHi() public {
+        Vault ethVaultTwo = new Vault();
+        ethVaultTwo.initialize(
+            address(accessControlProxy),
+            address(treasury),
+            address(valueInterpreter),
+            uint256(1)
         );
     }
 
