@@ -1399,12 +1399,16 @@ contract VaultTest is Test {
         testAdjustPosition();
         uint256 _amount = pegToken.balanceOf(USER) / 4;
 
+        vm.prank(GOVERNANOR);
+        iVault.setRedeemFeeBps(1);
         uint256 _redeemFeeBps = iVault.redeemFeeBps();
         uint256 _trusteeFeeBps = iVault.trusteeFeeBps();
         uint256 _minimumAmount = 10;
         vm.prank(USER);
         iVault.burn(_amount, _minimumAmount, _redeemFeeBps, _trusteeFeeBps);
-
+        vm.prank(GOVERNANOR);
+        iVault.setRedeemFeeBps(0);
+        deal(DAI_ADDRESS,address(iVault),1000);
         iVault.rebase(_trusteeFeeBps);
 
         uint256 _valueInUSD = valueInterpreter.calcCanonicalAssetValueInUsd(
@@ -1420,13 +1424,14 @@ contract VaultTest is Test {
                 _balanceOfToken(DAI_ADDRESS, USER)
             );
 
-        assertEq(_amount / 1e18, _valueInUSD / 1e18);
+        assertEq(_amount / 1e19, _valueInUSD / 1e19);
     }
 
     function testWithdrawWithETHi() public {
         testAdjustPositionWithETHi();
         uint256 _amount = ethPegToken.balanceOf(USER) / 4;
-
+        vm.prank(GOVERNANOR);
+        iETHVault.setRedeemFeeBps(1);
         uint256 _redeemFeeBps = iETHVault.redeemFeeBps();
         uint256 _trusteeFeeBps = iETHVault.trusteeFeeBps();
         uint256 _minimumAmount = 0;
@@ -1437,6 +1442,9 @@ contract VaultTest is Test {
             _redeemFeeBps,
             _trusteeFeeBps
         );
+        vm.prank(GOVERNANOR);
+        iETHVault.setRedeemFeeBps(0);
+        deal(address(iETHVault),1000);
 
         iETHVault.rebase(_trusteeFeeBps);
         uint256 _valueInETH;
@@ -1446,7 +1454,7 @@ contract VaultTest is Test {
                 valueInterpreter.calcCanonicalAssetValueInEth(_receiveAssets[i], _receiveAmounts[i]);
         }
 
-        assertEq(_amount / 1e18, _valueInETH / 1e18);
+        assertEq(_amount / 1e19, _valueInETH / 1e19);
     }
 
     function testSecondDeposit() public {
