@@ -1131,6 +1131,12 @@ contract VaultTest is Test {
         uint256 _beforeAdjustPositionOfVaultBuffer = _balanceOfToken(USDT_ADDRESS, address(vaultBuffer));
         uint256 pegTokenPrice = iVault.getPegTokenPrice();
         assertEq(pegTokenPrice,1e18);
+        address[] memory _strategies = new address[](2);
+        _strategies[0] = address(mock3CoinStrategy);
+        _strategies[1] = address(otherMock3CoinStrategy);
+        vault.reportByKeeper(_strategies);
+        mock3CoinStrategy.reportToVault();
+        mock3CoinStrategy.reportWithoutClaim();
         iVault.startAdjustPosition();
         pegTokenPrice = iVault.getPegTokenPrice();
         assertEq(pegTokenPrice,1e18);
@@ -1255,6 +1261,13 @@ contract VaultTest is Test {
         );
         uint256 pegTokenPrice = iETHVault.getPegTokenPrice();
         assertEq(pegTokenPrice,1e18);
+        address[] memory _strategies = new address[](2);
+        _strategies[0] = address(ethMock3CoinStrategy);
+        _strategies[1] = address(otherEthMock3CoinStrategy);
+        iETHVault.reportByKeeper(_strategies);
+        ethMock3CoinStrategy.reportToVault();
+        ethMock3CoinStrategy.reportWithoutClaim();
+
         iETHVault.startAdjustPosition();
         pegTokenPrice = iETHVault.getPegTokenPrice();
         assertEq(pegTokenPrice,1e18);
