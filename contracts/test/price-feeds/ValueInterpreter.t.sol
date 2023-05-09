@@ -174,6 +174,39 @@ contract ValueInterpreterTest is Test {
         vm.stopPrank();
     }
 
+
+    function testSetMethod() public {
+        vm.startPrank(GOVERNANOR);
+        valueInterpreter.setChainlinkPriceFeed(DAI_ADDRESS);
+        assertEq(valueInterpreter.getChainlinkPriceFeed(), DAI_ADDRESS);
+        valueInterpreter.setUniswapV3PriceFeed(DAI_ADDRESS);
+        assertEq(valueInterpreter.getUniswapV3PriceFeed(), DAI_ADDRESS);
+        valueInterpreter.setCustomPriceFeedAggregator(DAI_ADDRESS);
+        assertEq(valueInterpreter.getCustomPriceFeedAggregator(), DAI_ADDRESS);
+        vm.stopPrank();
+    }
+
+    function testViewMethod() public {
+        valueInterpreter.price(STETH_ADDRESS);
+        valueInterpreter.priceInEth(STETH_ADDRESS);
+        valueInterpreter.price(SETH2_ADDRESS);
+        valueInterpreter.priceInEth(SETH2_ADDRESS);
+        valueInterpreter.price(DAI_ADDRESS);
+        valueInterpreter.priceInEth(DAI_ADDRESS);
+
+        address[] memory _baseAssets = new address[](1);
+        _baseAssets[0] = STETH_ADDRESS;
+        uint256[] memory _amounts = new uint256[](1);
+        _amounts[0] = 1 ether;
+        address _quoteAsset = SETH2_ADDRESS;
+
+        uint256 _assetValue =  valueInterpreter.calcCanonicalAssetsTotalValue(_baseAssets,_amounts, _quoteAsset);
+
+        valueInterpreter.calcCanonicalAssetValue(STETH_ADDRESS,1 ether, DAI_ADDRESS);
+        valueInterpreter.calcCanonicalAssetValue(SETH2_ADDRESS,1 ether, DAI_ADDRESS);
+        valueInterpreter.calcCanonicalAssetValue(SETH2_ADDRESS,1 ether, STETH_ADDRESS);
+    }
+
     function testChainlinkPriceFeedRemoveAndAdd() public {
         vm.startPrank(GOVERNANOR);
         assertEq(chainlinkPriceFeed.getUnitForPrimitive(STETH_ADDRESS), 1e18);
@@ -185,6 +218,9 @@ contract ValueInterpreterTest is Test {
         ChainlinkPriceFeed.AggregatorInfo memory _aggregatorInfo = chainlinkPriceFeed.getAggregatorInfoForPrimitive(STETH_ADDRESS);
         console2.log("getAggregatorInfoForPrimitive(STETH_ADDRESS).aggregator",_aggregatorInfo.aggregator);
         assertEq(_aggregatorInfo.aggregator, STETH_AGGREAGTOR_ADDRESS);
+
+        chainlinkPriceFeed.setEthUsdAggregator(STETH_AGGREAGTOR_ADDRESS,ONE_DAY_HEARTBEAT);
+        chainlinkPriceFeed.setEthUsdAggregator(ETH_USD_AGGREGATOR,ONE_DAY_HEARTBEAT);
 
         address[] memory _primitives = new address[](4);
         _primitives[0] = STETH_ADDRESS;
