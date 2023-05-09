@@ -187,6 +187,8 @@ contract ValueInterpreterTest is Test {
     }
 
     function testViewMethod() public {
+        valueInterpreter.price(FRX_ETH);
+        valueInterpreter.priceInEth(FRX_ETH);
         valueInterpreter.price(STETH_ADDRESS);
         valueInterpreter.priceInEth(STETH_ADDRESS);
         valueInterpreter.price(SETH2_ADDRESS);
@@ -201,6 +203,9 @@ contract ValueInterpreterTest is Test {
         address _quoteAsset = SETH2_ADDRESS;
 
         uint256 _assetValue =  valueInterpreter.calcCanonicalAssetsTotalValue(_baseAssets,_amounts, _quoteAsset);
+
+        valueInterpreter.calcCanonicalAssetValue(STETH_ADDRESS,1 ether, STETH_ADDRESS);
+        valueInterpreter.calcCanonicalAssetValue(STETH_ADDRESS,0, DAI_ADDRESS);
 
         valueInterpreter.calcCanonicalAssetValue(STETH_ADDRESS,1 ether, DAI_ADDRESS);
         valueInterpreter.calcCanonicalAssetValue(SETH2_ADDRESS,1 ether, DAI_ADDRESS);
