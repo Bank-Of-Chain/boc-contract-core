@@ -322,6 +322,7 @@ contract ValueInterpreterTest is Test {
 
         uint256 ethPriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(NATIVE_TOKEN_ADDRESS, 1 ether);
         valueInterpreter.calcCanonicalAssetValue(NATIVE_TOKEN_ADDRESS,1 ether, SETH2_ADDRESS);
+        valueInterpreter.calcCanonicalAssetValue(SETH2_ADDRESS,1 ether, NATIVE_TOKEN_ADDRESS);
 
         assertGt(sEth2PriceInEth, PRICE_LOWER, "price in eth lte PRICE_LOWER");
         assertLt(sEth2PriceInEth, PRICE_UPPER, "price in eth gte PRICE_UPPER");
@@ -338,6 +339,7 @@ contract ValueInterpreterTest is Test {
 
         uint256 ethPriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(NATIVE_TOKEN_ADDRESS, 1 ether);
         valueInterpreter.calcCanonicalAssetValue(NATIVE_TOKEN_ADDRESS,1 ether, WSTETH);
+        valueInterpreter.calcCanonicalAssetValue(WSTETH,1 ether, NATIVE_TOKEN_ADDRESS);
 
         assertGt(valueInEth, PRICE_LOWER, "price in eth lte PRICE_LOWER");
         assertLt(valueInEth, PRICE_UPPER, "price in eth gte PRICE_UPPER");
@@ -363,6 +365,7 @@ contract ValueInterpreterTest is Test {
 
         uint256 ethPriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(NATIVE_TOKEN_ADDRESS, 1 ether);
         valueInterpreter.calcCanonicalAssetValue(NATIVE_TOKEN_ADDRESS,1 ether, S_ETH);
+        valueInterpreter.calcCanonicalAssetValue(S_ETH,1 ether, NATIVE_TOKEN_ADDRESS);
 
         assertGt(valueInEth, PRICE_LOWER, "price in eth lte PRICE_LOWER");
         assertLt(valueInEth, PRICE_UPPER, "price in eth gte PRICE_UPPER");
@@ -388,6 +391,7 @@ contract ValueInterpreterTest is Test {
 
         uint256 ethPriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(NATIVE_TOKEN_ADDRESS, 1 ether);
         valueInterpreter.calcCanonicalAssetValue(NATIVE_TOKEN_ADDRESS,1 ether, FRX_ETH);
+        valueInterpreter.calcCanonicalAssetValue(FRX_ETH,1 ether, NATIVE_TOKEN_ADDRESS);
 
         assertGt(valueInEth, PRICE_LOWER, "price in eth lte PRICE_LOWER");
         assertLt(valueInEth, PRICE_UPPER, "price in eth gte PRICE_UPPER");
@@ -413,6 +417,7 @@ contract ValueInterpreterTest is Test {
 
         uint256 ethPriceInUsd = valueInterpreter.calcCanonicalAssetValueInUsd(NATIVE_TOKEN_ADDRESS, 1 ether);
         valueInterpreter.calcCanonicalAssetValue(NATIVE_TOKEN_ADDRESS,1 ether, SFRX_ETH);
+        valueInterpreter.calcCanonicalAssetValue(SFRX_ETH,1 ether, NATIVE_TOKEN_ADDRESS);
 
         assertGt(valueInEth, PRICE_LOWER, "price in eth lte PRICE_LOWER");
         assertLt(valueInEth, PRICE_UPPER, "price in eth gte PRICE_UPPER");
