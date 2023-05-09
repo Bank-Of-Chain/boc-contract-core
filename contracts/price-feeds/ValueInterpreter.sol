@@ -364,30 +364,6 @@ contract ValueInterpreter is IValueInterpreter, AccessControlMixin {
         return (0, false);
     }
 
-    /// @dev Helper to differentially calculate an asset value
-    /// based on if it is a primitive or derivative asset.
-    function __calcAssetValueInEth(
-        address _baseAsset,
-        uint256 _amount,
-        address _quoteAsset
-    ) private view returns (uint256 _value, bool _isValid) {
-        if (_baseAsset == _quoteAsset || _amount == 0) {
-            return (_amount, true);
-        }
-
-        (uint256 _baseTotalValueInEth, bool _baseIsValid) = __calcAssetValueInEth(_baseAsset, _amount);
-        uint256 _quoteAssetOneUnit = _getQuoteAssetUnit(_quoteAsset);
-        (uint256 _priceInEthPerQuote, bool _quoteIsValid) = __calcAssetValueInEth(
-            _quoteAsset,
-            _quoteAssetOneUnit
-        );
-
-        if (_baseIsValid && _quoteIsValid) {
-            return ((_baseTotalValueInEth * _quoteAssetOneUnit) / _priceInEthPerQuote, true);
-        }
-        return (0, false);
-    }
-
     ///////////////////
     // STATE GETTERS //
     ///////////////////

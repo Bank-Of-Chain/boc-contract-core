@@ -215,6 +215,10 @@ interface IVault {
     /// @notice Return the total asset value in USD(USDi)/ETH(ETHi) (1e18) held by vault, current
     function totalValue() external view returns (uint256);
 
+    /// @dev Calculate total value of all assets held in VaultBuffer.
+    /// @return _value Total value(by oracle price) in USD(USDi)/ETH(ETHi)(1e18)
+    function totalValueInVaultBuffer() external view returns (uint256);
+
     /// @notice Start adjust position
     function startAdjustPosition() external;
 

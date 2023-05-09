@@ -24,13 +24,6 @@ contract CustomWstEthPriceFeed is ICustomPriceFeed {
         (, int256 _ethInUsdRate, , , ) = AggregatorV3Interface(ETH_USD_AGGREGATOR).latestRoundData();
 
         return uint(_ethInUsdRate) * _amount * 1e10 / getAssetUnit(); // * 1e18 / 1e8
-
-
-
-        (, int256 _stEthInUsdRate, , , ) = AggregatorV3Interface(STETH_USD_PRICEFEED).latestRoundData();
-        uint256 _stEthPerToken = IWstETH(WSTETH).stEthPerToken();
-
-        _valueInUsd = (_amount * _stEthPerToken * uint256(_stEthInUsdRate)) / 1e8 / getAssetUnit();
     }
 
     function calcValueInEth(uint256 _amount) external view override returns (uint256 _valueInEth) {

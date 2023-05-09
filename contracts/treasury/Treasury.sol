@@ -26,7 +26,7 @@ contract Treasury is Initializable, ReentrancyGuardUpgradeable, AccessControlMix
 
     /// @notice Return the current version of this contract.
     function version() external pure returns (string memory) {
-        return "V1.0.0";
+        return "2.0.0";
     }
 
     /// @notice Return the '_token' balance of this contract.
