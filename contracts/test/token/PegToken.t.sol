@@ -236,6 +236,37 @@ contract PegTokenTest is Test {
         vm.label(bob, "Bob");
     }
 
+
+
+    function testInit() public {
+        PegToken pegTokenTwo = new PegToken();
+        pegTokenTwo.initialize(
+            "USD Peg Token",
+            "USDi",
+            uint8(18),
+            address(vault),
+            address(accessControlProxy)
+        );
+    }
+
+    function testFailInitTwice() public {
+        PegToken pegTokenTwo = new PegToken();
+        pegTokenTwo.initialize(
+            "USD Peg Token",
+            "USDi",
+            uint8(18),
+            address(vault),
+            address(accessControlProxy)
+        );
+        pegTokenTwo.initialize(
+            "USD Peg Token",
+            "USDi",
+            uint8(18),
+            address(vault),
+            address(accessControlProxy)
+        );
+    }
+
     function testSymbol() public {
         assertEq(pegToken.symbol(), "USDi", "Symbol is incorrect");
     }

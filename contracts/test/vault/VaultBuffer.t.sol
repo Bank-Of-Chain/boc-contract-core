@@ -16,6 +16,7 @@ import "../../token/PegToken.sol";
 contract VaultBufferTest is Test {
     PegToken pegToken;
     VaultBuffer vaultBuffer;
+    AccessControlProxy accessControlProxy;
 
     address USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -26,13 +27,42 @@ contract VaultBufferTest is Test {
     bytes txData2 = hex"0b86a4c1000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000003dae3c788199a8fb62000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000001000000000000000000004de494b86ca6f7a495930fe7f552eb9e4cbb5ef2b736";
 
     function setUp() public {
-        AccessControlProxy accessControlProxy = new AccessControlProxy();
+        accessControlProxy = new AccessControlProxy();
         accessControlProxy.initialize(GOVERNANOR, DEGEGATOR, VAULT_MANAGER, KEEPER);
         pegToken = new PegToken();
         pegToken.initialize("PegToken", "P", 18, address(this), address(accessControlProxy));
 
         vaultBuffer = new VaultBuffer();
         vaultBuffer.initialize(
+            "Ticket",
+            "T",
+            address(this),
+            address(pegToken),
+            address(accessControlProxy)
+        );
+    }
+
+    function testInit() public {
+        VaultBuffer vaultBufferTwo = new VaultBuffer();
+        vaultBufferTwo.initialize(
+            "Ticket",
+            "T",
+            address(this),
+            address(pegToken),
+            address(accessControlProxy)
+        );
+    }
+
+    function testFailInitTwice() public {
+        VaultBuffer vaultBufferTwo = new VaultBuffer();
+        vaultBufferTwo.initialize(
+            "Ticket",
+            "T",
+            address(this),
+            address(pegToken),
+            address(accessControlProxy)
+        );
+        vaultBufferTwo.initialize(
             "Ticket",
             "T",
             address(this),

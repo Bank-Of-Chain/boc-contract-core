@@ -43,6 +43,22 @@ contract TreasuryTest is Test {
         vm.label(bob, "Bob");
     }
 
+
+    function testInit() public {
+        Treasury treasuryTwo = new Treasury();
+        treasuryTwo.initialize(address(accessControlProxy));
+    }
+
+    function testFailInitTwice() public {
+        Treasury treasuryTwo = new Treasury();
+        treasuryTwo.initialize(address(accessControlProxy));
+        treasuryTwo.initialize(address(accessControlProxy));
+    }
+
+    function testVersion() public {
+        assertEq(treasury.version(), "2.0.0");
+    }
+
     function testBalance() public {
         uint256 balance = 1e10;
         deal(USDT_ADDRESS,address(treasury),balance);
