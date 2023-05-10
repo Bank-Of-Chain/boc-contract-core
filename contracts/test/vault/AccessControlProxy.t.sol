@@ -39,6 +39,23 @@ contract AccessControlProxyTest is Test {
         failCaller = users[4];
     }
 
+
+    function testInit() public {
+        AccessControlProxy accessControlProxyTwo = new AccessControlProxy();
+        accessControlProxyTwo.initialize(GOVERNANOR, DEGEGATOR, VAULT_MANAGER, KEEPER);
+    }
+
+    function testFailInitTwice() public {
+        AccessControlProxy accessControlProxyTwo = new AccessControlProxy();
+        accessControlProxyTwo.initialize(GOVERNANOR, DEGEGATOR, VAULT_MANAGER, KEEPER);
+        accessControlProxyTwo.initialize(GOVERNANOR, DEGEGATOR, VAULT_MANAGER, KEEPER);
+    }
+
+    function testAddRole() public {
+        vm.startPrank(GOVERNANOR);
+        accessControlProxy.addRole(keccak256("VAULT_ROLE_OTHER"), accessControlProxy.VAULT_ROLE());
+    }
+
     function testIsRoleMethods() public {
         assertEq(accessControlProxy.isGovOrDelegate(GOVERNANOR),true);
         //isVaultOrGovOrDelegate
@@ -57,6 +74,10 @@ contract AccessControlProxyTest is Test {
 
         accessControlProxy.checkKeeperOrVaultOrGov(GOVERNANOR);
         
+    }
+
+    function testFailEncodeMessage() public {
+        accessControlProxy.checkRole(accessControlProxy.VAULT_ROLE(), KEEPER);
     }
 
     function testFailCheckMethods() public {

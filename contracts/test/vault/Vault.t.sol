@@ -882,6 +882,7 @@ contract VaultTest is Test {
         vm.stopPrank();
 
     }
+
     function testFailSetAndIncreaseStrategyTargetDebts() public {
 
         testAddAndRemoveAssets();
@@ -1006,6 +1007,13 @@ contract VaultTest is Test {
             address(valueInterpreter),
             uint256(0)
         );
+
+        vm.startPrank(GOVERNANOR);
+        vaultTwo.setAdminImpl(address(vaultAdmin));
+        IVault(address(vaultTwo)).setVaultBufferAddress(address(vaultBuffer));
+        IVault(address(vaultTwo)).setPegTokenAddress(address(pegToken));
+
+        vm.stopPrank();
     }
 
     function testFailInitTwice() public {

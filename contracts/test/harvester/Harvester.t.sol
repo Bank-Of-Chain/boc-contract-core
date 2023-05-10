@@ -23,17 +23,29 @@ contract HarvesterTest is Test {
     address usdVault = 0x30D120f80D60E7b58CA9fFaf1aaB1815f000B7c3;
     address ethVault = 0x8f0Cb368C63fbEDF7a90E43fE50F7eb8B9411746;
     address treasuryAddress;
+    Treasury treasury;
 
     bytes txData1 =
         hex"e449022e0000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000391c1cb6ba5562ab100000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000180000000000000000000000060594a405d53811d3bc4766596efd80fd545a270cfee7c08";
 
     function setUp() public {
-        Treasury treasury = new Treasury();
+        treasury = new Treasury();
         treasury.initialize(accessControlProxy);
         treasuryAddress = address(treasury);
         harvester = new Harvester();
 
         harvester.initialize(accessControlProxy, treasuryAddress, usdVault, ethVault);
+    }
+
+    function testInit() public {
+        Harvester harvesterTwo = new Harvester();
+        harvesterTwo.initialize(accessControlProxy, treasuryAddress, usdVault, ethVault);
+    }
+
+    function testFailInitTwice() public {
+        Harvester harvesterTwo = new Harvester();
+        harvesterTwo.initialize(accessControlProxy, treasuryAddress, usdVault, ethVault);
+        harvesterTwo.initialize(accessControlProxy, treasuryAddress, usdVault, ethVault);
     }
 
     function test_01_transferToken() public {
