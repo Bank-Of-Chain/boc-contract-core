@@ -3,5 +3,8 @@ scripts
 test
 artifacts
 cache
+cache_foundry
+cache_hardhat
+contracts/test
 dev-keys.json
 forge-out
