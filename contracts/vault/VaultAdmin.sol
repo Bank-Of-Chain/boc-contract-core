@@ -443,7 +443,6 @@ contract VaultAdmin is VaultStorage {
         return IERC20Upgradeable(_tokenAddress).balanceOf(_owner);
     }
 
-
     /// @notice Redeem the funds from specified strategy.
     /// @param  _strategy The specified strategy to redeem
     /// @param _amount The amount to redeem in USD
@@ -453,11 +452,11 @@ contract VaultAdmin is VaultStorage {
         uint256 _amount,
         uint256 _outputCode
     )
-    external
-    isKeeperOrVaultOrGovOrDelegate
-    isActiveStrategy(_strategy)
-    nonReentrant
-    returns (address[] memory _assets, uint256[] memory _amounts)
+        external
+        isKeeperOrVaultOrGovOrDelegate
+        isActiveStrategy(_strategy)
+        nonReentrant
+        returns (address[] memory _assets, uint256[] memory _amounts)
     {
         uint256 _strategyAssetValue = strategies[_strategy].totalDebt;
         require(_amount <= _strategyAssetValue, "AI"); //amount invalid
@@ -491,12 +490,12 @@ contract VaultAdmin is VaultStorage {
         uint256[] memory _amounts,
         uint256 _minDeltaAssets
     )
-    external
-    isKeeperOrVaultOrGovOrDelegate
-    whenNonEmergency
-    isActiveStrategy(_strategy)
-    nonReentrant
-    returns (uint256 _deltaAssets)
+        external
+        isKeeperOrVaultOrGovOrDelegate
+        whenNonEmergency
+        isActiveStrategy(_strategy)
+        nonReentrant
+        returns (uint256 _deltaAssets)
     {
         address _strategyAddress = _strategy;
         uint256[] memory _amountsLocal = _amounts;
@@ -554,18 +553,18 @@ contract VaultAdmin is VaultStorage {
                     } else {
                         if (_vaultType > 0) {
                             _lendValue =
-                            _lendValue +
-                            IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInEth(
-                                _want,
-                                _actualAmount
-                            );
+                                _lendValue +
+                                IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInEth(
+                                    _want,
+                                    _actualAmount
+                                );
                         } else {
                             _lendValue =
-                            _lendValue +
-                            IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(
-                                _want,
-                                _actualAmount
-                            );
+                                _lendValue +
+                                IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(
+                                    _want,
+                                    _actualAmount
+                                );
                         }
                         IERC20Upgradeable(_want).safeTransfer(_strategyAddress, _actualAmount);
                     }
@@ -578,15 +577,14 @@ contract VaultAdmin is VaultStorage {
             if (_minDeltaAssets > 0) {
                 require(
                     _deltaAssets >= _minDeltaAssets ||
-                    (_minDeltaAssets - _deltaAssets) * TEN_MILLION_BPS <=
-                    _minDeltaAssets * deltaThreshold,
+                        (_minDeltaAssets - _deltaAssets) * TEN_MILLION_BPS <=
+                        _minDeltaAssets * deltaThreshold,
                     "not enough"
                 );
             }
         }
         emit LendToStrategy(_strategyAddress, _wants, _amountsLocal, _lendValue);
     }
-
 
     /// @dev Report the current asset of strategy caller
     /// @param _strategies The address list of strategies to report
@@ -612,7 +610,6 @@ contract VaultAdmin is VaultStorage {
     function report() external isActiveStrategy(msg.sender) {
         _report(msg.sender, 0, 0);
     }
-
 
     /// @notice Report the current asset of strategy
     /// @param _strategy The strategy address
@@ -647,7 +644,7 @@ contract VaultAdmin is VaultStorage {
             if (
                 block.timestamp - strategies[_strategy].lastReport < maxTimestampBetweenTwoReported &&
                 (_lastStrategyTotalDebt > minCheckedStrategyTotalDebt ||
-                _nowStrategyTotalDebt > minCheckedStrategyTotalDebt)
+                    _nowStrategyTotalDebt > minCheckedStrategyTotalDebt)
             ) {
                 if (_gain > 0) {
                     require(
