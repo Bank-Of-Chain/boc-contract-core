@@ -1238,7 +1238,7 @@ contract VaultTest is Test {
         address[] memory _strategies = new address[](2);
         _strategies[0] = address(mock3CoinStrategy);
         _strategies[1] = address(otherMock3CoinStrategy);
-        vault.reportByKeeper(_strategies);
+        iVault.reportByKeeper(_strategies);
         mock3CoinStrategy.reportToVault();
         iVault.setStrategyEnforceChangeLimit(address(mock3CoinStrategy),false);
         mock3CoinStrategy.reportWithoutClaim();
@@ -1976,7 +1976,7 @@ contract VaultTest is Test {
         address[] memory _strategies = new address[](1);
         _strategies[0] = address(mock3CoinStrategy);
         iVault.reportByKeeper(_strategies);
-        vm.stopPrank();
+
         _strategyParams = iVault.strategies(address(mock3CoinStrategy));
 
         _totalDebtOfAfterReport = _strategyParams.totalDebt;
@@ -2071,7 +2071,7 @@ contract VaultTest is Test {
         address[] memory _strategies = new address[](1);
         _strategies[0] = address(ethMock3CoinStrategy);
         iETHVault.reportByKeeper(_strategies);
-        vm.stopPrank();
+
         _strategyParams = iETHVault.strategies(address(ethMock3CoinStrategy));
 
         _totalDebtOfAfterReport = _strategyParams.totalDebt;

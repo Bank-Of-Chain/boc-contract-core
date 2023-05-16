@@ -10,8 +10,24 @@ import "./VaultStorage.sol";
 /// @notice The VaultAdmin contract makes configuration and admin calls on the vault.
 /// @author Bank of Chain Protocol Inc
 contract VaultAdmin is VaultStorage {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
     using IterableIntMap for IterableIntMap.AddressToIntMap;
+
+    modifier isActiveStrategy(address _strategy) {
+        checkActiveStrategy(_strategy);
+        _;
+    }
+
+    modifier whenNonEmergency() {
+        require(!emergencyShutdown, "ES"); //emergency shutdown
+        _;
+    }
+
+    /// @notice Check '_strategy' is active or not
+    function checkActiveStrategy(address _strategy) public view {
+        require(strategySet.contains(_strategy), "NE"); //not exist
+    }
 
     // External functions
 
@@ -425,5 +441,242 @@ contract VaultAdmin is VaultStorage {
             return _owner.balance;
         }
         return IERC20Upgradeable(_tokenAddress).balanceOf(_owner);
+    }
+
+    /// @notice Redeem the funds from specified strategy.
+    /// @param  _strategy The specified strategy to redeem
+    /// @param _amount The amount to redeem in USD
+    /// @param _outputCode The code of output
+    function redeem(
+        address _strategy,
+        uint256 _amount,
+        uint256 _outputCode
+    )
+        external
+        isKeeperOrVaultOrGovOrDelegate
+        isActiveStrategy(_strategy)
+        nonReentrant
+        returns (address[] memory _assets, uint256[] memory _amounts)
+    {
+        uint256 _strategyAssetValue = strategies[_strategy].totalDebt;
+        require(_amount <= _strategyAssetValue, "AI"); //amount invalid
+
+        (_assets, _amounts) = IStrategy(_strategy).repay(_amount, _strategyAssetValue, _outputCode);
+        if (adjustPositionPeriod) {
+            uint256 _assetsLength = _assets.length;
+            for (uint256 i = 0; i < _assetsLength; i++) {
+                uint256 _amount = _amounts[i];
+                if (_amount > 0) {
+                    redeemAssetsMap[_assets[i]] += _amount;
+                }
+            }
+        }
+        uint256 _nowStrategyTotalDebt = strategies[_strategy].totalDebt;
+        uint256 _thisWithdrawValue = (_nowStrategyTotalDebt * _amount) / _strategyAssetValue;
+        strategies[_strategy].totalDebt = _nowStrategyTotalDebt - _thisWithdrawValue;
+        totalDebt -= _thisWithdrawValue;
+        emit Redeem(_strategy, _amount, _assets, _amounts);
+    }
+
+    /// @notice Allocate funds in Vault to strategies.
+    /// @param _strategy The specified strategy to lend
+    /// @param _tokens want tokens
+    /// @param _amounts the amount of each tokens
+    /// @param _minDeltaAssets the minimum allowable asset increment
+    /// @return _deltaAssets The amount of newly added assets
+    function lend(
+        address _strategy,
+        address[] memory _tokens,
+        uint256[] memory _amounts,
+        uint256 _minDeltaAssets
+    )
+        external
+        isKeeperOrVaultOrGovOrDelegate
+        whenNonEmergency
+        isActiveStrategy(_strategy)
+        nonReentrant
+        returns (uint256 _deltaAssets)
+    {
+        address _strategyAddress = _strategy;
+        uint256[] memory _amountsLocal = _amounts;
+        (address[] memory _wants, uint256[] memory _ratios) = IStrategy(_strategyAddress).getWantsInfo();
+        uint256 _wantsLength = _wants.length;
+        require(_amountsLocal.length == _wantsLength, "ASI"); //_amounts invalid
+        require(_tokens.length == _wantsLength, "TSI"); //_tokens invalid
+        {
+            for (uint256 i = 0; i < _wantsLength; i++) {
+                require(_tokens[i] == _wants[i], "TSI"); //tokens invalid
+            }
+        }
+        //Definition rule 0 means unconstrained, currencies that do not participate are not in the returned wants
+        uint256 _minProductIndex;
+        bool _isWantRatioIgnorable = IStrategy(_strategyAddress).isWantRatioIgnorable();
+        if (!_isWantRatioIgnorable && _wantsLength > 1) {
+            for (uint256 i = 1; i < _wantsLength; i++) {
+                if (_ratios[i] == 0) {
+                    continue;
+                } else if (_ratios[_minProductIndex] == 0) {
+                    //minProductIndex is assigned to the first index whose proportion is not 0
+                    _minProductIndex = i;
+                } else if (
+                    _amountsLocal[_minProductIndex] * _ratios[i] >
+                    _amountsLocal[i] * _ratios[_minProductIndex]
+                ) {
+                    _minProductIndex = i;
+                }
+            }
+        }
+        // slither-disable-next-line uninitialized-local
+        uint256 _lendValue;
+        // slither-disable-next-line uninitialized-local
+        uint256 _ethAmount;
+        {
+            uint256 _vaultType = vaultType;
+            uint256 _minAmount = _amountsLocal[_minProductIndex];
+            uint256 _minAspect = _ratios[_minProductIndex];
+            for (uint256 i = 0; i < _wantsLength; i++) {
+                uint256 _actualAmount = _amountsLocal[i];
+                if (_actualAmount > 0) {
+                    address _want = _wants[i];
+                    if (!_isWantRatioIgnorable) {
+                        if (_ratios[i] > 0) {
+                            _actualAmount = (_ratios[i] * _minAmount) / _minAspect;
+                            _amountsLocal[i] = _actualAmount;
+                        } else {
+                            _amountsLocal[i] = 0;
+                            continue;
+                        }
+                    }
+                    if (_want == NativeToken.NATIVE_TOKEN) {
+                        _lendValue += _actualAmount;
+                        _ethAmount = _actualAmount;
+                    } else {
+                        if (_vaultType > 0) {
+                            _lendValue =
+                                _lendValue +
+                                IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInEth(
+                                    _want,
+                                    _actualAmount
+                                );
+                        } else {
+                            _lendValue =
+                                _lendValue +
+                                IValueInterpreter(valueInterpreter).calcCanonicalAssetValueInUsd(
+                                    _want,
+                                    _actualAmount
+                                );
+                        }
+                        IERC20Upgradeable(_want).safeTransfer(_strategyAddress, _actualAmount);
+                    }
+                }
+            }
+        }
+        {
+            IStrategy(_strategyAddress).borrow{value: _ethAmount}(_wants, _amountsLocal);
+            _deltaAssets = _report(_strategyAddress, _lendValue, 1);
+            if (_minDeltaAssets > 0) {
+                require(
+                    _deltaAssets >= _minDeltaAssets ||
+                        (_minDeltaAssets - _deltaAssets) * TEN_MILLION_BPS <=
+                        _minDeltaAssets * deltaThreshold,
+                    "not enough"
+                );
+            }
+        }
+        emit LendToStrategy(_strategyAddress, _wants, _amountsLocal, _lendValue);
+    }
+
+    /// @dev Report the current asset of strategy caller
+    /// @param _strategies The address list of strategies to report
+    /// Requirement: only keeper call
+    /// Emits a {StrategyReported} event.
+    function reportByKeeper(address[] memory _strategies) external isKeeperOrVaultOrGovOrDelegate {
+        uint256 _strategiesLength = _strategies.length;
+        for (uint256 i = 0; i < _strategiesLength; i++) {
+            _report(_strategies[i], 0, 2);
+        }
+    }
+
+    /// @dev Report the current asset of strategy caller
+    /// Requirement: only the strategy caller is active
+    /// Emits a {StrategyReported} event.
+    function reportWithoutClaim() external isActiveStrategy(msg.sender) {
+        _report(msg.sender, 0, 2);
+    }
+
+    /// @dev Report the current asset of strategy caller
+    /// Requirement: only the strategy caller is active
+    /// Emits a {StrategyReported} event.
+    function report() external isActiveStrategy(msg.sender) {
+        _report(msg.sender, 0, 0);
+    }
+
+    /// @notice Report the current asset of strategy
+    /// @param _strategy The strategy address
+    /// @param _lendValue The value to lend or redeem
+    /// @param _type 0-harvest(claim); 1-lend; 2-report(without claim); 3-redeem;
+    /// @return _deltaAsset The delta value between `_lastStrategyTotalDebt` and `_nowStrategyTotalDebt`
+    function _report(
+        address _strategy,
+        uint256 _lendValue,
+        uint256 _type
+    ) private returns (uint256 _deltaAsset) {
+        StrategyParams memory _strategyParam = strategies[_strategy];
+
+        uint256 _lastStrategyTotalDebt = _strategyParam.totalDebt + _lendValue;
+        uint256 _nowStrategyTotalDebt = IStrategy(_strategy).estimatedTotalAssets();
+        if (_strategyParam.totalDebt < _nowStrategyTotalDebt) {
+            _deltaAsset = _nowStrategyTotalDebt - _strategyParam.totalDebt;
+        }
+        // slither-disable-next-line uninitialized-local
+        uint256 _gain;
+        // slither-disable-next-line uninitialized-local
+        uint256 _loss;
+
+        if (_nowStrategyTotalDebt > _lastStrategyTotalDebt) {
+            _gain = _nowStrategyTotalDebt - _lastStrategyTotalDebt;
+        } else if (_nowStrategyTotalDebt < _lastStrategyTotalDebt) {
+            _loss = _lastStrategyTotalDebt - _nowStrategyTotalDebt;
+        }
+
+        if (_strategyParam.enforceChangeLimit) {
+            // slither-disable-next-line timestamp
+            if (
+                block.timestamp - strategies[_strategy].lastReport < maxTimestampBetweenTwoReported &&
+                (_lastStrategyTotalDebt > minCheckedStrategyTotalDebt ||
+                    _nowStrategyTotalDebt > minCheckedStrategyTotalDebt)
+            ) {
+                if (_gain > 0) {
+                    require(
+                        _gain <= ((_lastStrategyTotalDebt * _strategyParam.profitLimitRatio) / MAX_BPS),
+                        "GL" //gain over the profitLimitRatio
+                    );
+                } else if (_loss > 0) {
+                    require(
+                        _loss <= ((_lastStrategyTotalDebt * _strategyParam.lossLimitRatio) / MAX_BPS),
+                        "LL" //loss over the lossLimitRatio
+                    );
+                }
+            }
+        } else {
+            strategies[_strategy].enforceChangeLimit = true;
+            // The check is turned off only once and turned back on.
+        }
+        strategies[_strategy].totalDebt = _nowStrategyTotalDebt;
+        // slither-disable-next-line costly-loop
+        totalDebt = totalDebt + _nowStrategyTotalDebt + _lendValue - _lastStrategyTotalDebt;
+
+        strategies[_strategy].lastReport = block.timestamp;
+        if (_type == 0) {
+            strategies[_strategy].lastClaim = block.timestamp;
+        }
+        emit StrategyReported(
+            _strategy,
+            _gain,
+            _loss,
+            _lastStrategyTotalDebt,
+            _nowStrategyTotalDebt,
+            _type
+        );
     }
 }
